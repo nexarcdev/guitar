@@ -268,3 +268,114 @@
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+.testIntro {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.test {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line-2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.testSteps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.testSteps li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 14px;
+  opacity: 0.55;
+}
+.testSteps li[data-state='now'],
+.testSteps li[data-state='clear'],
+.testSteps li[data-state='bad'] {
+  opacity: 1;
+}
+.testMark {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--fill-2);
+  color: var(--muted);
+}
+.testSteps li[data-state='now'] .testMark {
+  background: var(--gold-fill);
+  color: var(--gold-hi);
+}
+.testSteps li[data-state='clear'] .testMark {
+  background: rgba(74, 222, 128, 0.2);
+  color: var(--green);
+}
+.testSteps li[data-state='bad'] .testMark {
+  background: rgba(224, 64, 64, 0.25);
+  color: var(--red-ink);
+}
+.testDetail {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+.testAsk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+.testAsk > span {
+  flex: 1 1 140px;
+}
+.testBtn,
+.testOk,
+.testBad {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--line-3);
+  background: var(--fill);
+  color: var(--ink);
+}
+.testOk {
+  background: rgba(74, 222, 128, 0.16);
+  border-color: rgba(74, 222, 128, 0.5);
+  color: var(--green);
+}
+.testBad {
+  background: rgba(224, 64, 64, 0.16);
+  border-color: rgba(224, 64, 64, 0.5);
+  color: var(--red-ink);
+}
+.testBtn:disabled,
+.testOk:disabled,
+.testBad:disabled {
+  opacity: 0.45;
+}
+.testLink {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  text-decoration: underline;
+  padding: 0;
+}

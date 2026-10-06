@@ -84,6 +84,8 @@ class AudioEngine {
 
   listening = true;
   output = false;
+  /** Audio buffer size preference; 'playback' trades latency for robustness on struggling systems. */
+  latency: 'interactive' | 'playback' = 'interactive';
   status: EngineStatus = { mic: 'idle', running: false, ml: 'off', mlBackend: '', devices: [], deviceId: '' };
 
   on<K extends keyof Events>(k: K, fn: Listener<K>) {
@@ -104,7 +106,7 @@ class AudioEngine {
       const C = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       let ac: AudioContext;
       try {
-        ac = new C({ latencyHint: 'interactive', ...(sampleRate ? { sampleRate } : {}) });
+        ac = new C({ latencyHint: this.latency, ...(sampleRate ? { sampleRate } : {}) });
       } catch {
         ac = new C();
       }
@@ -260,7 +262,7 @@ class AudioEngine {
     this.closeInput();
     this.stream = stream;
     this.src = ac.createMediaStreamSource(stream);
-    if (this.cond) this.src.connect(this.cond);
+    this.routeInput();
     if (this.capture) this.src.connect(this.capture);
     track.onended = () => this.setStatus({ mic: 'nodevice' });
     if (switched) {
@@ -290,6 +292,19 @@ class AudioEngine {
     } catch {
       return '';
     }
+  }
+
+  /** Releases the input and silences the engine so the Sound test can use fresh audio setups. */
+  private testing = false;
+  async pauseForTest() {
+    this.testing = true;
+    this.closeInput();
+    await this.ac?.suspend().catch(() => {});
+  }
+  async resumeAfterTest() {
+    this.testing = false;
+    await this.ac?.resume().catch(() => {});
+    this.sync();
   }
 
   /** Noise gate margin above the floor, app-wide. */
@@ -357,6 +372,7 @@ class AudioEngine {
   }
 
   private closeInput() {
+    this.inputRouted = false;
     if (this.src) {
       try { this.src.disconnect(); } catch { /* not connected */ }
       this.src = null;
@@ -394,11 +410,29 @@ class AudioEngine {
     this.output = on;
     const ac = this.context();
     this.master.gain.setTargetAtTime(on ? 1 : 0, ac.currentTime, 0.02);
+    this.routeInput();
     this.sync();
+  }
+
+  /**
+   * The guitar only feeds the amp path (auto level, pedals, looper) while Output is on. Listening
+   * alone just needs the raw signal at the capture tap, which keeps the audio thread light.
+   */
+  private inputRouted = false;
+  private routeInput() {
+    if (!this.src || !this.cond) return;
+    if (this.output && !this.inputRouted) {
+      this.src.connect(this.cond);
+      this.inputRouted = true;
+    } else if (!this.output && this.inputRouted) {
+      try { this.src.disconnect(this.cond); } catch { /* already disconnected */ }
+      this.inputRouted = false;
+    }
   }
 
   /** Mic stays open while anything needs it: analysis (listening) or the amp (output). */
   private sync() {
+    if (this.testing) return;
     const need = this.listening || this.output;
     if (need && !this.stream) {
       if (this.status.mic !== 'denied' && this.status.mic !== 'insecure') this.start();
@@ -411,14 +445,17 @@ class AudioEngine {
     this.pedals = ps;
     const ac = this.ac;
     if (!ac) return;
-    for (const p of ps) if (!this.fx.has(p.name)) this.fx.set(p.name, makeFx(ac, p.name));
-    const order = ps.map((p) => p.name).join();
+    for (const p of ps) if (p.on && !this.fx.has(p.name)) this.fx.set(p.name, makeFx(ac, p.name));
+    // Only switched-on pedals are in the signal path. A bypassed pedal is fully disconnected, so
+    // it costs nothing (a reverb or 2x-oversampled drive still burns CPU when merely muted).
+    const active = ps.filter((p) => p.on);
+    const order = active.map((p) => p.name).join();
     if (order !== this.fxOrder) {
       this.fxOrder = order;
       this.inBus.disconnect();
       this.fx.forEach((n) => n.o.disconnect());
       let prev: AudioNode = this.inBus;
-      for (const p of ps) {
+      for (const p of active) {
         const n = this.fx.get(p.name)!;
         prev.connect(n.i);
         prev = n.o;
@@ -426,7 +463,7 @@ class AudioEngine {
       prev.connect(this.chainOut);
     }
     const t = ac.currentTime;
-    for (const p of ps) {
+    for (const p of active) {
       const n = this.fx.get(p.name)!;
       n.set(p.level);
       n.dry.gain.setTargetAtTime(!p.on || n.mix ? 1 : 0, t, 0.01);

@@ -56,6 +56,8 @@ export interface State {
   gateLevel: GateLevel;
   /** Chord detection (basic-pitch). Off leaves single-note tabs and chroma chord names. */
   mlOn: boolean;
+  /** Audio buffer size: 'interactive' (lowest delay) or 'playback' (larger, more robust). Applies on reload. */
+  latency: 'interactive' | 'playback';
   // chords
   frets: Shape;
   baseFret: number;
@@ -105,6 +107,7 @@ const initial: State = {
   headstock: 'split',
   gateLevel: 'normal',
   mlOn: true,
+  latency: 'interactive',
   frets: [-1, 3, 2, 0, 1, 0],
   baseFret: 1,
   heard: null,
@@ -134,7 +137,7 @@ const set = useStore.setState;
 
 // ---------------------------------------------------------------- persistence
 
-const PERSIST: Array<keyof State> = ['tab', 'setup', 'pedals', 'timeSig', 'gapBeats', 'chordMode', 'deviceId', 'headstock', 'gateLevel', 'mlOn'];
+const PERSIST: Array<keyof State> = ['tab', 'setup', 'pedals', 'timeSig', 'gapBeats', 'chordMode', 'deviceId', 'headstock', 'gateLevel', 'mlOn', 'latency'];
 
 export async function hydrate() {
   try {
@@ -174,6 +177,7 @@ export async function hydrate() {
   engine.applyPedals(get().pedals);
   engine.setGate(GATE_DB[get().gateLevel] ?? 12);
   engine.setMl(get().mlOn);
+  engine.latency = get().latency;
 }
 
 // ---------------------------------------------------------------- engine wiring
@@ -188,6 +192,7 @@ let stIdx = -1;
 let stSince = 0;
 let lastLevel = 0;
 let lastLevelsAt = 0;
+let lastTunerAt = 0;
 
 function strings() {
   return openStrings(get().setup.offsets);
@@ -235,7 +240,10 @@ function onAnalysis(a: Analysis) {
   }
   if (latest) lastVoicedAt = now;
   if (s.tab === 'tuner') {
-    if (latest) {
+    if (latest && now - lastTunerAt < 33) {
+      // Readings arrive ~90×/s; the trail canvas gets all of them, React gets ~30/s.
+    } else if (latest) {
+      lastTunerAt = now;
       const idx = targetString(latest.freq, T, s.auto, s.tString);
       const c = Math.max(-50, Math.min(50, 1200 * Math.log2(latest.freq / T[idx].hz)));
       Object.assign(patch, { freq: latest.freq, cents: c, detected: idx, voiced: true });

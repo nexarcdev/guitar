@@ -98,6 +98,7 @@ export class Tracker {
   private openDb = OPEN_DB;
   private above = 0;
   private sorted: Float32Array;
+  private target = -80;
   private peakDb = -100;
   private gate = false;
   private recent: number[] = [];
@@ -192,10 +193,14 @@ export class Tracker {
     h[this.histI] = level;
     this.histI = (this.histI + 1) % h.length;
     if (this.histN < h.length) this.histN++;
-    const sv = this.sorted.subarray(0, this.histN);
-    sv.set(h.subarray(0, this.histN));
-    sv.sort();
-    const target = Math.max(-110, sv[Math.floor((this.histN - 1) * FLOOR_PCT)]);
+    // The percentile moves slowly; re-sorting every 4th frame (~43 ms) is plenty.
+    if (this.histN < 8 || (this.histI & 3) === 0) {
+      const sv = this.sorted.subarray(0, this.histN);
+      sv.set(h.subarray(0, this.histN));
+      sv.sort();
+      this.target = Math.max(-110, sv[Math.floor((this.histN - 1) * FLOOR_PCT)]);
+    }
+    const target = this.target;
     const dt = this.hop / this.sampleRate;
     this.age += dt;
     // Calibrate from the first ~0.4 s. After that the floor drops at once to quieter noise but

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { engine } from '../../audio/engine';
+import { diagnose, playStep, STEPS, type StepId, type Verdict } from '../../audio/soundTest';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore, actions } from '../../state/store';
 import { MAX_CAPO, OFFSET_MAX, OFFSET_MIN, openStrings, ord, sameArr, stringLabel, TUNINGS, tuningName, type Offsets } from '../../theory/music';
@@ -202,6 +203,7 @@ function SoundCheck() {
         </span>
       </div>
       <OutputMeter />
+      <SoundTest />
       {IS_WINDOWS && (
         <div className={s.help}>
           <div className={s.helpTitle}>Sound cutting out, or other apps going quiet?</div>
@@ -302,6 +304,157 @@ function Detection() {
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Guided test that finds where output breaks on this machine, and applies the fix when it can. */
+function SoundTest() {
+  const deviceId = useStore((x) => x.engine.deviceId);
+  const latency = useStore((x) => x.latency);
+  const [active, setActive] = useState(false);
+  const [i, setI] = useState(0);
+  const [res, setRes] = useState<Partial<Record<StepId, Verdict>>>({});
+  const [playing, setPlaying] = useState(false);
+  const [err, setErr] = useState('');
+  const cleanup = useRef<(() => void) | null>(null);
+  const savedLatency = useRef(latency);
+
+  const stop = () => {
+    cleanup.current?.();
+    cleanup.current = null;
+  };
+  const play = async (k: number) => {
+    stop();
+    setErr('');
+    setPlaying(true);
+    try {
+      cleanup.current = await playStep(STEPS[k].id, deviceId);
+    } catch (e) {
+      setErr('Could not open the input: ' + ((e as Error).message || 'unknown error'));
+    }
+    setTimeout(() => setPlaying(false), 2700);
+  };
+  const start = async () => {
+    savedLatency.current = latency;
+    setRes({});
+    setI(0);
+    setActive(true);
+    await engine.pauseForTest();
+    play(0);
+  };
+  const finish = async () => {
+    stop();
+    setActive(false);
+    await engine.resumeAfterTest();
+  };
+  // Closing Settings mid-test (or after the result) must always hand audio back to the app.
+  const activeRef = useRef(false);
+  activeRef.current = active;
+  useEffect(
+    () => () => {
+      cleanup.current?.();
+      cleanup.current = null;
+      if (activeRef.current) engine.resumeAfterTest();
+    },
+    [],
+  );
+
+  const answer = (v: Verdict) => {
+    const next = { ...res, [STEPS[i].id]: v };
+    setRes(next);
+    const d = diagnose(next);
+    if (d || i === STEPS.length - 1) {
+      stop();
+      setI(STEPS.length);
+      if (d?.kind === 'safe') useStore.setState({ latency: 'playback' });
+      return;
+    }
+    // A clean baseline but a broken step jumps straight to the large-buffer check.
+    const k = v === 'bad' && i > 0 ? STEPS.findIndex((x) => x.id === 'graphSafe') : i + 1;
+    setI(k);
+    play(k);
+  };
+
+  if (!active)
+    return (
+      <div className={s.testIntro}>
+        <button className={s.opt} style={{ minHeight: 44 }} onClick={start}>
+          <span className={s.optName}>Run a sound test</span>
+          <span className={s.optSub}>About 30 seconds</span>
+        </button>
+        <div className={s.secNote}>Sound breaking up or missing? This plays a tone a few different ways and finds what's causing it.</div>
+        <LatencyChoice />
+      </div>
+    );
+
+  const d = diagnose(res);
+  const done = i >= STEPS.length;
+  return (
+    <div className={s.test} role="region" aria-label="Sound test">
+      <ol className={s.testSteps}>
+        {STEPS.map((st, k) => (
+          <li key={st.id} data-state={res[st.id] ?? (k === i ? 'now' : 'todo')}>
+            <span className={s.testMark} aria-hidden>{res[st.id] === 'clear' ? '✓' : res[st.id] === 'bad' ? '✕' : k + 1}</span>
+            <span>
+              <b>{st.title}</b>
+              <span className={s.testDetail}>{st.detail}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      {!done && (
+        <div className={s.testAsk}>
+          <span>{playing ? 'Playing…' : 'How did that sound?'}</span>
+          <button className={s.testBtn} onClick={() => play(i)} disabled={playing}>Play again</button>
+          <button className={s.testOk} onClick={() => answer('clear')} disabled={playing}>Clear</button>
+          <button className={s.testBad} onClick={() => answer('bad')} disabled={playing}>Choppy or silent</button>
+        </div>
+      )}
+      {err && <div className={s.warn}>{err}</div>}
+      {done && (
+        <div className={s.help}>
+          <div className={s.helpTitle}>{d ? 'Result' : 'All clear'}</div>
+          <div>{d ? d.text : 'Every step sounded clean.'}</div>
+          {d?.kind === 'device' && (
+            <ol className={s.steps}>
+              <li>Press <kbd>Win</kbd> + <kbd>R</kbd>, type <kbd>mmsys.cpl</kbd>, press <kbd>Enter</kbd>.</li>
+              <li><b>Playback</b> tab: open your speakers → <b>Advanced</b>, note the <b>Default Format</b> (for example 48000 Hz).</li>
+              <li><b>Recording</b> tab: open your guitar cable → <b>Advanced</b>, set the same rate, and untick both <b>Exclusive mode</b> boxes.</li>
+              <li>Click OK, then reload Fretline.</li>
+            </ol>
+          )}
+          {d?.kind === 'safe' && <div style={{ marginTop: 8 }}><button className={s.testOk} onClick={() => location.reload()}>Reload to apply</button></div>}
+          <div style={{ marginTop: 10 }}><button className={s.testBtn} onClick={finish}>Done</button></div>
+        </div>
+      )}
+      {!done && <button className={s.testLink} onClick={finish}>Cancel test</button>}
+    </div>
+  );
+}
+
+function LatencyChoice() {
+  const latency = useStore((x) => x.latency);
+  const [initial] = useState(latency);
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div className={s.secHead}>
+        <div className="kicker">AUDIO BUFFERS</div>
+        <div className={s.secNote}>{latency !== initial ? 'Reload to apply' : latency === 'playback' ? 'Safe: more robust, a little more delay' : 'Low delay'}</div>
+      </div>
+      <div className={s.tunings}>
+        {([['interactive', 'Low delay', 'Best for playing through Output'], ['playback', 'Safe', 'If sound breaks up']] as const).map(([id, name, sub]) => (
+          <button key={id} className={s.opt} aria-pressed={latency === id} onClick={() => useStore.setState({ latency: id })}>
+            <span className={s.optName}>{name}</span>
+            <span className={s.optSub}>{sub}</span>
+          </button>
+        ))}
+      </div>
+      {latency !== initial && (
+        <button className={s.testOk} style={{ marginTop: 8 }} onClick={() => setTimeout(() => location.reload(), 300)}>
+          Reload now
+        </button>
+      )}
     </div>
   );
 }

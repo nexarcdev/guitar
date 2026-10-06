@@ -63,7 +63,7 @@ export function makeFx(ac: AudioContext, name: PedalName): FxNode {
     n.set = (l) => { c.threshold.value = -10 - l * 0.4; c.ratio.value = 2 + l * 0.1; mk.gain.value = 1 + l * 0.02; };
   } else if (name === 'Overdrive' || name === 'Distortion' || name === 'Fuzz') {
     const ws = ac.createWaveShaper(), tone = ac.createBiquadFilter(), post = ac.createGain();
-    ws.oversample = '4x';
+    ws.oversample = '2x';
     tone.type = 'lowpass';
     tone.frequency.value = name === 'Fuzz' ? 3000 : name === 'Distortion' ? 4500 : 5500;
     post.gain.value = name === 'Overdrive' ? 0.6 : 0.32;
@@ -100,7 +100,7 @@ export function makeFx(ac: AudioContext, name: PedalName): FxNode {
     n.mix = (l) => (l / 100) * 0.7;
   } else if (name === 'Reverb') {
     const cv = ac.createConvolver();
-    cv.buffer = impulse(ac, 2.6);
+    cv.buffer = impulse(ac, 2);
     i.connect(cv); cv.connect(wet);
     n.mix = (l) => l / 100;
   }

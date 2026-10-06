@@ -33,6 +33,10 @@ input ─┬─ capture worklet ──MessagePorts──▶ pitch worker (YIN, c
 - **Listening clock.** The capture worklet counts samples only while listening and stamps every chunk.
   Every note, chord and riff timestamp uses that clock, so pausing collapses cleanly. Audio goes from
   the worklet straight to the workers; the main thread never touches raw samples.
+- **Baseline.** Every stage measures the input's noise floor (calibrated in the first 0.4 s, then
+  tracked: it drops instantly to any quieter moment and rises slowly). Gates open 12 dB above it and
+  close 6 dB above it, so a quiet guitar cable works as well as a hot interface and noise never reads
+  as pitch. The monitored signal gets an automatic level (up to +24 dB) behind a noise gate.
 - **Tuner.** YIN with an FFT-based difference function (`src/dsp/yin.ts`), about 94 readings/s. Its
   pitch trail is drawn on a canvas, not through React.
 - **Chords.** Chroma uses interpolated spectral peaks with overtone suppression up to the 6th harmonic
@@ -65,6 +69,14 @@ input ─┬─ capture worklet ──MessagePorts──▶ pitch worker (YIN, c
 - The "Your guitar" sheet adds input device selection with a level meter, and a headstock style
   (3 + 3 or 6 in line), which the tuner chat asked for but the final design file only drew one way.
 - The pedals are keyboard accessible: arrow keys turn knobs, and the grip reorders.
+
+## Windows audio ducking
+
+Windows turns other audio down (by 80% by default) when it thinks a call has started, and that can
+include Fretline's own sound. Fretline opens your input by its real device id rather than the
+virtual "default" device to avoid triggering this. If it still happens: press Win + R, run
+`mmsys.cpl`, open the Communications tab and choose "Do nothing". The same steps are in the app
+under Your guitar → Sound check.
 
 ## Known limits
 

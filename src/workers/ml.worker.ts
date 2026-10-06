@@ -18,6 +18,35 @@ const RING = 1 << 17;
 /** Give up once inference runs this far behind real time for several windows in a row. */
 const SLOW_RATIO = 0.8;
 
+const OPEN_DB = 12;
+const MAX_GAIN = 100;
+const BLOCK = 1024;
+/** Noise floor across windows: drops to any quieter block at once, rises slowly. */
+let floorDb = -60;
+let floorSet = false;
+
+function windowLevels(w: Float32Array) {
+  let maxDb = -Infinity, minDb = Infinity, peak = 0;
+  for (let b = 0; b + BLOCK <= w.length; b += BLOCK) {
+    let sum = 0;
+    for (let i = b; i < b + BLOCK; i++) {
+      sum += w[i] * w[i];
+      const a = Math.abs(w[i]);
+      if (a > peak) peak = a;
+    }
+    const d = 20 * Math.log10(Math.sqrt(sum / BLOCK) + 1e-12);
+    if (d > maxDb) maxDb = d;
+    if (d < minDb) minDb = d;
+  }
+  // Zero padding at the very start of a session reads as -240 dB; ignore it for the floor.
+  if (minDb > -200) {
+    const target = minDb + 3;
+    if (!floorSet || target < floorDb) { floorDb = target; floorSet = true; }
+    else floorDb = Math.min(target, floorDb + 0.5);
+  }
+  return { maxDb, peak };
+}
+
 const post = (m: unknown) => (self as unknown as Worker).postMessage(m);
 
 let model: tf.GraphModel | null = null;
@@ -96,6 +125,17 @@ async function pump() {
     const a = wStart + i;
     win[i] = a < 0 || a < end - RING ? 0 : ring[a & (RING - 1)];
   }
+  // Skip windows that are only noise (normalizing silence makes the model hallucinate), and
+  // bring quiet playing up to a consistent level so a weak cable transcribes like a hot one.
+  const lv = windowLevels(win);
+  if (lv.maxDb < floorDb + OPEN_DB) {
+    k++;
+    busy = false;
+    pump();
+    return;
+  }
+  const gain = Math.min(0.5 / (lv.peak + 1e-9), MAX_GAIN);
+  if (gain > 1) for (let i = 0; i < win.length; i++) win[i] *= gain;
   const t = performance.now();
   try {
     const notes = await transcribeWindow(tf, model, win);

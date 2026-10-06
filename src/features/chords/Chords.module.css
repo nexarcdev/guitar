@@ -70,6 +70,10 @@
 .panel[data-dim='true'] {
   opacity: 0.5;
 }
+.panel[data-bad='true'] {
+  background: rgba(224, 64, 64, 0.12);
+  border-color: rgba(224, 64, 64, 0.55);
+}
 .panel[data-ok='true'] {
   background: rgba(74, 222, 128, 0.12);
   border-color: rgba(74, 222, 128, 0.5);
@@ -92,6 +96,10 @@
   min-height: 22px;
   text-wrap: pretty;
   transition: color 0.3s;
+}
+.subBad {
+  color: var(--red-ink);
+  font-weight: 600;
 }
 .subOk {
   color: var(--green);
@@ -122,6 +130,11 @@
   background: var(--fill);
   color: var(--muted);
   border-color: var(--fill-2);
+}
+.pillWrong {
+  background: rgba(224, 64, 64, 0.2);
+  color: var(--red-ink);
+  border-color: rgba(224, 64, 64, 0.6);
 }
 .pillHeard {
   background: rgba(74, 222, 128, 0.18);
@@ -235,6 +248,16 @@
   --str: rgba(74, 222, 128, 0.8);
   --dot: radial-gradient(circle at 35% 30%, #a7f3c4, #4ade80 50%, #15803d);
   --dotShadow: 0 0 16px rgba(74, 222, 128, 0.7);
+}
+.string[data-wrong='true'] {
+  background: rgba(224, 64, 64, 0.16);
+  --str: rgba(224, 64, 64, 0.85);
+}
+.string[data-wrong='true'] .nutLabel {
+  color: var(--red-ink);
+}
+.string[data-wrong='true'] .nut {
+  text-shadow: 0 0 12px rgba(224, 64, 64, 0.9);
 }
 .nut {
   border: none;

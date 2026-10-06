@@ -1,6 +1,5 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useStore, actions } from '../../state/store';
-import { engine } from '../../audio/engine';
 import {
   absFret, fretMidi, identifyShape, noteName, openStrings, ord, pcOf, PRESETS, stringLabel, tuningName,
   type Shape,
@@ -11,10 +10,10 @@ export function Chords() {
   const st = useStore(
     useShallow((x) => ({
       setup: x.setup, frets: x.frets, baseFret: x.baseFret, heard: x.heard, history: x.history, chordMode: x.chordMode,
-      chroma: x.chroma, mlRecent: x.mlRecent, listening: x.listening, live: x.engine.mic === 'live' && x.engine.running,
+      cf: x.confirm, listening: x.listening, live: x.engine.mic === 'live' && x.engine.running,
     })),
   );
-  const { setup, frets, baseFret, heard, history, chordMode, chroma, mlRecent, listening, live } = st;
+  const { setup, frets, baseFret, heard, history, chordMode, cf, listening, live } = st;
   const T = openStrings(setup.offsets);
   const confirm = chordMode === 'confirm';
   const hearing = listening && live;
@@ -27,24 +26,19 @@ export function Chords() {
     if (shape.root != null && shape.name !== ch.name) chordSub = shape.name + ' shape · ' + ch.sub;
   }
 
-  // Confirm: a string counts as heard when its pitch class is in the chroma, or when the ML pass
-  // heard that exact pitch (octave-accurate) in the last couple of seconds.
-  const clock = engine.clock();
-  const played: Array<{ i: number; pc: number; midi: number }> = [];
+  // Confirm state (heard / wrong / ok) is decided in the store with timing hysteresis.
+  const played: Array<{ i: number; pc: number }> = [];
   for (let i = 5; i >= 0; i--) {
     const f = frets[i];
-    if (f >= 0) {
-      const midi = fretMidi(i, absFret(f, baseFret), setup);
-      played.push({ i, pc: pcOf(midi), midi });
-    }
+    if (f >= 0) played.push({ i, pc: pcOf(fretMidi(i, absFret(f, baseFret), setup)) });
   }
-  const heardSet = new Set(
-    hearing
-      ? played.filter((p) => (chroma[p.pc] ?? 0) > 0.25 || mlRecent.some((m) => m.midi === p.midi && clock - m.t < 2.5)).map((p) => p.i)
-      : [],
-  );
-  const nHeard = heardSet.size;
-  const allHeard = played.length > 0 && nHeard === played.length;
+  const heardSet = new Set(hearing ? cf.heard : []);
+  const wrongSet = new Set(hearing ? cf.wrong : []);
+  const nHeard = played.filter((p) => heardSet.has(p.i)).length;
+  const allHeard = hearing && cf.ok;
+  const anyWrong = wrongSet.size > 0;
+  const stringName = (i: number) => (i === 0 ? 'low ' + T[0].note : i === 5 ? 'high ' + T[5].note.toLowerCase() : T[i].note);
+  const wrongText = [...wrongSet].sort((a, b) => a - b).map(stringName);
 
   const kicker = !listening
     ? 'PAUSED' + (confirm ? '' : ' · LAST HEARD')
@@ -53,6 +47,7 @@ export function Chords() {
     ? 'Set a shape on the right to confirm it'
     : !listening ? 'Resume listening to confirm'
     : !live ? 'Waiting for your guitar'
+    : anyWrong ? '✕ Mute the ' + wrongText.join(' and ') + (wrongText.length > 1 ? ' strings' : ' string')
     : allHeard ? '✓ Confirmed · all ' + played.length + ' strings heard'
     : nHeard ? nHeard + ' of ' + played.length + ' strings heard'
     : 'Play ' + ch.name + ', waiting for ' + played.length + ' strings';
@@ -65,7 +60,7 @@ export function Chords() {
     <>
       <div className={`segmented ${s.modes}`} role="group" aria-label="Mode">
         {([['identify', 'Identify'], ['confirm', 'Confirm']] as const).map(([id, label]) => (
-          <button key={id} className={s.modeBtn} aria-pressed={chordMode === id} onClick={() => useStore.setState({ chordMode: id, chroma: [] })}>
+          <button key={id} className={s.modeBtn} aria-pressed={chordMode === id} onClick={() => useStore.setState({ chordMode: id, confirm: { heard: [], wrong: [], ok: false } })}>
             {label}
           </button>
         ))}
@@ -92,20 +87,25 @@ export function Chords() {
             </div>
           ) : (
             <>
-              <div className={s.panel} data-dim={!hearing} data-ok={allHeard} aria-live="polite">
-                <div className={s.big} style={{ color: allHeard ? 'var(--green)' : played.length ? 'var(--ink)' : 'var(--muted)', transition: 'color .3s' }}>
+              <div className={s.panel} data-dim={!hearing} data-ok={allHeard && !anyWrong} data-bad={anyWrong} aria-live="polite">
+                <div className={s.big} style={{ color: anyWrong ? 'var(--red)' : allHeard ? 'var(--green)' : played.length ? 'var(--ink)' : 'var(--muted)', transition: 'color .3s' }}>
                   {ch.name}
                 </div>
-                <div className={`${s.sub} ${allHeard ? s.subOk : ''}`}>{confirmSub}</div>
+                <div className={`${s.sub} ${anyWrong ? s.subBad : allHeard ? s.subOk : ''}`}>{confirmSub}</div>
                 <div className={s.pills}>
                   {played.map((p) => (
                     <span key={p.i} className={`${s.pill} ${heardSet.has(p.i) ? s.pillHeard : s.pillWait}`}>
                       {noteName(p.pc, setup.offsets)}
                     </span>
                   ))}
+                  {[...wrongSet].map((i) => (
+                    <span key={'w' + i} className={`${s.pill} ${s.pillWrong}`}>
+                      {T[i].note + ' ✕'}
+                    </span>
+                  ))}
                 </div>
               </div>
-              <div className={s.help}>Set the shape on the right, then play it. Each string lights green as it's heard.</div>
+              <div className={s.help}>Set the shape on the right, then play it. Each string lights green as it's heard, and a string marked ✕ turns red if it rings.</div>
             </>
           )}
           {history.length > 0 && (
@@ -153,9 +153,10 @@ export function Chords() {
             {[5, 4, 3, 2, 1, 0].map((i) => {
               const f = frets[i];
               const h = confirm && heardSet.has(i);
+              const w = confirm && wrongSet.has(i);
               const nutColor = f === -1 ? 'var(--red)' : h ? 'var(--green)' : f === 0 ? 'var(--gold)' : 'var(--muted)';
               return (
-                <div key={i} className={s.string} data-heard={h}>
+                <div key={i} className={s.string} data-heard={h} data-wrong={w}>
                   <button
                     className={s.nut}
                     style={{ color: nutColor }}

@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { engine } from '../../audio/engine';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore, actions } from '../../state/store';
 import { MAX_CAPO, OFFSET_MAX, OFFSET_MIN, openStrings, ord, sameArr, stringLabel, TUNINGS, tuningName, type Offsets } from '../../theory/music';
@@ -117,10 +118,10 @@ export function SetupSheet() {
               ))}
             </div>
           )}
-          <div className={s.meter} role="meter" aria-label="Input level" aria-valuemin={0} aria-valuemax={1} aria-valuenow={level}>
-            <div className={s.meterFill} style={{ width: Math.min(100, Math.sqrt(level) * 100) + '%' }} />
-          </div>
+          <InputMeter level={level} />
         </div>
+
+        <SoundCheck />
 
         <div>
           <div className={s.secHead}>
@@ -139,6 +140,79 @@ export function SetupSheet() {
 
         <div className={s.foot}>The tuner, chords and tabs all follow this setup. With a capo on, fret numbers count from the capo, the same way a chord chart does.</div>
       </div>
+    </div>
+  );
+}
+
+const IS_WINDOWS =
+  typeof navigator !== 'undefined' &&
+  (((navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? '') === 'Windows' || /Windows/.test(navigator.userAgent));
+
+/** Level on a dB scale with the measured noise floor marked, plus the automatic boost applied. */
+function InputMeter({ level }: { level: number }) {
+  const { floorDb, peakDb, gainDb } = useStore((x) => x.levels);
+  const mic = useStore((x) => x.engine.mic);
+  const pos = (d: number) => Math.max(0, Math.min(100, ((d + 90) / 90) * 100));
+  const lvlDb = 20 * Math.log10(level + 1e-9);
+  const played = peakDb > floorDb + 14;
+  const quiet = played && peakDb - floorDb < 24;
+  return (
+    <>
+      <div className={s.meter} role="meter" aria-label="Input level" aria-valuemin={-90} aria-valuemax={0} aria-valuenow={Math.round(lvlDb)}>
+        <div className={s.meterFill} style={{ width: pos(lvlDb) + '%' }} />
+        {mic === 'live' && <div className={s.floorMark} style={{ left: pos(floorDb) + '%' }} title="Noise floor" />}
+      </div>
+      {mic === 'live' && (
+        <div className={s.meterText}>
+          {'Noise floor ' + Math.round(floorDb) + ' dB' + (played ? ' · playing peaks ' + Math.round(peakDb) + ' dB' : ' · play a string to measure your level') + (gainDb >= 1 ? ' · auto level +' + Math.round(gainDb) + ' dB' : '')}
+        </div>
+      )}
+      {quiet && (
+        <div className={s.warn}>Your guitar is only a little louder than the background noise. Turn the guitar's volume knob all the way up, or raise the input level for this device in your system sound settings.</div>
+      )}
+    </>
+  );
+}
+
+function SoundCheck() {
+  const [diag, setDiag] = useState(() => engine.diagnostics());
+  useEffect(() => {
+    const t = setInterval(() => setDiag(engine.diagnostics()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const status =
+    diag.state === 'running'
+      ? 'Audio running · ' + Math.round(diag.sampleRate / 100) / 10 + ' kHz · ' + diag.outputMs + ' ms output latency'
+      : diag.state === 'not started' ? 'Audio not started yet' : 'Audio is ' + diag.state + ', tap anywhere to start it';
+  return (
+    <div>
+      <div className={s.secHead}>
+        <div className="kicker">SOUND CHECK</div>
+        <div className={s.secNote}>{status}</div>
+      </div>
+      <div className={s.soundRow}>
+        <button className={s.opt} style={{ minHeight: 44 }} onClick={() => { engine.resume(); engine.reference(440); }}>
+          <span className={s.optName}>Play a test tone</span>
+        </button>
+        <span className={s.secNote}>{diag.micOpen ? 'Input: ' + diag.inputLabel : 'Input closed'}</span>
+      </div>
+      {IS_WINDOWS && (
+        <div className={s.help}>
+          <div className={s.helpTitle}>Sound cutting out, or other apps going quiet?</div>
+          <div>
+            Windows turns other audio down when it thinks you are on a call. Fretline opens your input in a way that should avoid this, but if it
+            still happens, switch it off once:
+          </div>
+          <ol className={s.steps}>
+            <li>Press <kbd>Win</kbd> + <kbd>R</kbd>, type <kbd>mmsys.cpl</kbd> and press <kbd>Enter</kbd>.</li>
+            <li>Open the <b>Communications</b> tab.</li>
+            <li>Choose <b>Do nothing</b>, then <b>OK</b>.</li>
+          </ol>
+          <div className={s.secNote}>
+            Or open <a href="ms-settings:sound">Windows Sound settings</a>, scroll to <b>More sound settings</b>, and use the same Communications tab.
+          </div>
+        </div>
+      )}
     </div>
   );
 }

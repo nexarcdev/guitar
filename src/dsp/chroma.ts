@@ -4,6 +4,13 @@
 
 import { fft } from './fft';
 
+export const NO_PITCH = -120;
+
+export interface ChromaFrame {
+  chroma: number[];
+  pitch: Float32Array;
+}
+
 export class Chroma {
   private readonly re: Float64Array;
   private readonly im: Float64Array;
@@ -18,8 +25,13 @@ export class Chroma {
     for (let i = 0; i < size; i++) this.win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (size - 1));
   }
 
-  /** Returns normalised chroma (max = 1) or null when the frame is too quiet to judge. */
-  compute(x: Float32Array, gate = 1e-4): number[] | null {
+  /**
+   * Normalised chroma (max = 1) plus per-MIDI pitch salience, or null when the frame is silent.
+   * `pitch[m]` is the level in dB, relative to the strongest peak, of a spectral peak within
+   * ±40 cents of MIDI note m's fundamental (NO_PITCH if there is none). Unlike chroma it is
+   * octave-exact, which is what tells an open low E apart from the E on the D string.
+   */
+  compute(x: Float32Array, gate = 1e-12): ChromaFrame | null {
     const { size, re, im, win, mag, sampleRate } = this;
     for (let i = 0; i < size; i++) { re[i] = x[i] * win[i]; im[i] = 0; }
     fft(re, im);
@@ -42,6 +54,13 @@ export class Chroma {
       peaks.push({ f: ((k + off) * sampleRate) / size, m });
     }
     const out = new Array(12).fill(0);
+    const pitch = new Float32Array(128).fill(NO_PITCH);
+    const top = 10 * Math.log10(peak + 1e-30);
+    for (const p of peaks) {
+      const m = 69 + 12 * Math.log2(p.f / 440);
+      const r = Math.round(m);
+      if (r >= 0 && r < 128 && Math.abs(m - r) <= 0.4) pitch[r] = Math.max(pitch[r], 10 * Math.log10(p.m + 1e-30) - top);
+    }
     for (const p of peaks) {
       const midi = 69 + 12 * Math.log2(p.f / 440);
       if (Math.abs(midi - Math.round(midi)) > 0.3) continue;
@@ -55,6 +74,6 @@ export class Chroma {
       out[(((Math.round(midi) % 12) + 12) % 12)] += Math.sqrt(p.m) * own;
     }
     const mx = Math.max(...out);
-    return mx > 0 ? out.map((v) => v / mx) : null;
+    return mx > 0 ? { chroma: out.map((v) => v / mx), pitch } : null;
   }
 }

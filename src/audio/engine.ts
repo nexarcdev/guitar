@@ -6,6 +6,8 @@
 
 import captureUrl from './worklets/capture.worklet.ts?worker&url';
 import looperUrl from './worklets/looper.worklet.ts?worker&url';
+import conditionerUrl from './worklets/conditioner.worklet.ts?worker&url';
+import type { ConditionerView } from './conditionerCore';
 import { makeFx, type FxNode, type Pedal, type PedalName } from './pedals';
 import { pluck, referenceTone, type Voice } from './synth';
 import type { LooperView } from './looperCore';
@@ -41,6 +43,7 @@ export interface MlNotes {
 }
 
 type Events = {
+  cond: ConditionerView;
   analysis: Analysis;
   ml: MlNotes;
   looper: LooperView;
@@ -59,11 +62,14 @@ class AudioEngine {
   private pedals: Pedal[] = [];
   private capture: AudioWorkletNode | null = null;
   private looper: AudioWorkletNode | null = null;
+  private cond: AudioWorkletNode | null = null;
+  /** Mic was released because the tab went to the background; reopen when it comes back. */
+  private releasedHidden = false;
   private stream: MediaStream | null = null;
   private src: MediaStreamAudioSourceNode | null = null;
   private pitchW: Worker | null = null;
   private mlW: Worker | null = null;
-  private listeners: { [K in keyof Events]: Set<Listener<K>> } = { analysis: new Set(), ml: new Set(), looper: new Set(), status: new Set() };
+  private listeners: { [K in keyof Events]: Set<Listener<K>> } = { cond: new Set(), analysis: new Set(), ml: new Set(), looper: new Set(), status: new Set() };
   private clockBase = 0;
   private clockAt = 0;
   private pending: Promise<void> | null = null;
@@ -103,14 +109,17 @@ class AudioEngine {
       this.master.connect(ac.destination);
       this.chainOut.connect(this.master);
       ac.onstatechange = () => this.setStatus({ running: ac.state === 'running' });
-      this.modules = Promise.all([ac.audioWorklet.addModule(captureUrl), ac.audioWorklet.addModule(looperUrl)]).then(() => {
+      this.modules = Promise.all([captureUrl, looperUrl, conditionerUrl].map((u) => ac.audioWorklet.addModule(u))).then(() => {
         this.capture = new AudioWorkletNode(ac, 'fretline-capture', { numberOfInputs: 1, numberOfOutputs: 0 });
+        // Monitored path: input → conditioner (auto level + noise gate) → pedals.
+        this.cond = new AudioWorkletNode(ac, 'fretline-conditioner', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+        this.cond.port.onmessage = (e) => this.emit('cond', e.data as ConditionerView);
+        this.cond.connect(this.inBus);
         this.capture.port.postMessage({ type: 'listening', on: this.listening });
         this.looper = new AudioWorkletNode(ac, 'fretline-looper', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
         this.looper.port.onmessage = (e) => this.emit('looper', e.data as LooperView);
         this.chainOut.connect(this.looper);
         this.looper.connect(this.master);
-        if (this.src) this.src.connect(this.capture);
         this.startWorkers(ac);
       });
       this.applyPedals(this.pedals);
@@ -182,12 +191,26 @@ class AudioEngine {
     });
     let stream: MediaStream;
     try {
+      // Open the interface by its real device id. On Windows, opening the virtual "default" or
+      // "communications" device counts as a call and triggers ducking, which turns down every
+      // other sound, including this app's own output.
+      const want = deviceId || (await this.realDefaultId());
       try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints(deviceId));
+        stream = await navigator.mediaDevices.getUserMedia(constraints(want));
       } catch (e) {
         // A remembered interface that is unplugged should not lock the user out.
-        if (deviceId && (e as DOMException).name === 'OverconstrainedError') stream = await navigator.mediaDevices.getUserMedia(constraints(''));
+        if (want && (e as DOMException).name === 'OverconstrainedError') stream = await navigator.mediaDevices.getUserMedia(constraints(''));
         else throw e;
+      }
+      // First run: labels and ids only appear after permission, so the first open may have used
+      // the virtual default. Swap to the real device straight away.
+      const opened = stream.getAudioTracks()[0]?.getSettings().deviceId ?? '';
+      if (!want && (opened === '' || opened === 'default' || opened === 'communications')) {
+        const real = await this.realDefaultId();
+        if (real) {
+          stream.getTracks().forEach((t) => t.stop());
+          stream = await navigator.mediaDevices.getUserMedia(constraints(real));
+        }
       }
     } catch (e) {
       const name = (e as DOMException).name;
@@ -201,20 +224,75 @@ class AudioEngine {
       this.setStatus({ mic: 'idle' });
       return;
     }
+    await this.modules;
+    const track = stream.getAudioTracks()[0];
+    const settings = track.getSettings() as MediaTrackSettings & { latency?: number };
+    const switched = settings.deviceId !== this.status.deviceId;
     this.closeInput();
     this.stream = stream;
     this.src = ac.createMediaStreamSource(stream);
-    this.src.connect(this.inBus);
+    if (this.cond) this.src.connect(this.cond);
     if (this.capture) this.src.connect(this.capture);
-    const track = stream.getAudioTracks()[0];
     track.onended = () => this.setStatus({ mic: 'nodevice' });
-    const settings = track.getSettings() as MediaTrackSettings & { latency?: number };
+    if (switched) {
+      // New input, new noise floor: measure the baseline again.
+      this.cond?.port.postMessage({ type: 'recalibrate' });
+      this.pitchW?.postMessage({ type: 'recalibrate' });
+    }
     const rt = (ac.baseLatency || 0) + ((ac as AudioContext & { outputLatency?: number }).outputLatency || 0) + (settings.latency ?? 0.01);
-    await this.modules;
     this.looper?.port.postMessage({ type: 'latency', samples: rt * ac.sampleRate });
     this.setStatus({ mic: 'live', deviceId: settings.deviceId ?? '' });
     this.refreshDevices();
     navigator.mediaDevices.ondevicechange = () => this.refreshDevices();
+  }
+
+  /** The physical device behind the browser's virtual "default" input, if it can be resolved. */
+  private async realDefaultId(): Promise<string> {
+    try {
+      const all = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput');
+      const virt = all.find((d) => d.deviceId === 'default');
+      const real = all.filter((d) => d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications');
+      if (!real.length || !real[0].label) return ''; // no permission yet: ids are not usable
+      if (virt) {
+        const match = real.find((d) => d.groupId === virt.groupId) ?? real.find((d) => virt.label.endsWith(d.label));
+        if (match) return match.deviceId;
+      }
+      return real[0].deviceId;
+    } catch {
+      return '';
+    }
+  }
+
+  /** Snapshot for the Sound check panel. */
+  diagnostics() {
+    const ac = this.ac;
+    const t = this.stream?.getAudioTracks()[0];
+    const st = t?.getSettings() as (MediaTrackSettings & { latency?: number }) | undefined;
+    return {
+      state: ac?.state ?? 'not started',
+      sampleRate: ac?.sampleRate ?? 0,
+      outputMs: ac ? Math.round((((ac as AudioContext & { outputLatency?: number }).outputLatency || 0) + (ac.baseLatency || 0)) * 1000) : 0,
+      inputRate: st?.sampleRate ?? 0,
+      inputLabel: t?.label ?? '',
+      micOpen: !!t && t.readyState === 'live',
+    };
+  }
+
+  /** Releases the mic while the tab is hidden (unless it's needed for Output), and reopens it on return. */
+  private onVisibility = () => {
+    if (document.hidden) {
+      if (this.stream && !this.output) {
+        this.releasedHidden = true;
+        this.closeInput();
+      }
+    } else if (this.releasedHidden) {
+      this.releasedHidden = false;
+      this.sync();
+    }
+  };
+
+  constructor() {
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this.onVisibility);
   }
 
   private closeInput() {

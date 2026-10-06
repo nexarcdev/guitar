@@ -8,7 +8,8 @@ let tracker: Tracker | null = null;
 
 self.onmessage = (e: MessageEvent) => {
   const m = e.data;
-  if (m.type === 'init') {
+  if (m.type === 'recalibrate') tracker?.recalibrate();
+  else if (m.type === 'init') {
     tracker = new Tracker(m.sampleRate);
     const port = m.port as MessagePort;
     port.onmessage = (ev: MessageEvent<{ t0: number; data: Float32Array }>) => {

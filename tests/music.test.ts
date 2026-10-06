@@ -62,3 +62,30 @@ describe('chordFromChroma', () => {
     expect(chordFromChroma(Array(12).fill(0.5), null, STD_SETUP.offsets)).toBeNull();
   });
 });
+
+import { confirmFrame } from '../src/theory/confirm';
+import { NO_PITCH } from '../src/dsp/chroma';
+describe('chord confirm (levels measured on a real guitar)', () => {
+  const C: [number, number, number, number, number, number] = [-1, 3, 2, 0, 1, 0];
+  const pitch = (lv: Record<number, number>) => {
+    const p = new Float32Array(128).fill(NO_PITCH);
+    for (const [m, d] of Object.entries(lv)) p[+m] = d;
+    return p;
+  };
+  const run = (lv: Record<number, number> | null) =>
+    confirmFrame({ frets: C, baseFret: 1, setup: STD_SETUP, pitch: lv ? pitch(lv) : null, mlRecent: [], clock: 0 });
+  it('hears every string of the shape', () => {
+    const f = run({ 48: -2, 52: -6, 55: 0, 60: -9, 64: -15 });
+    expect(f.heard.sort()).toEqual([1, 2, 3, 4, 5]);
+    expect(f.wrong).toEqual([]);
+  });
+  it('flags the muted low E when it was actually struck', () => {
+    expect(run({ 40: -3, 48: -2, 52: -6, 55: 0, 60: -9, 64: -15 }).wrong).toEqual([0]);
+  });
+  it('ignores sympathetic ringing of the muted string', () => {
+    expect(run({ 40: -14, 48: -2, 52: -6, 55: 0, 60: -9, 64: -15 }).wrong).toEqual([]);
+  });
+  it('hears nothing in silence', () => {
+    expect(run(null).heard).toEqual([]);
+  });
+});

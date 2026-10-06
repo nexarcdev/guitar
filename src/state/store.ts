@@ -11,6 +11,8 @@ import { mergeWindow } from '../theory/merge';
 import { riffDur, type SaveKind, type TabNote, type TimeSig } from '../theory/stream';
 import * as db from './db';
 import { trail } from './trail';
+import { confirmFrame } from '../theory/confirm';
+import { NO_PITCH, type ChromaFrame } from '../dsp/chroma';
 
 export type TabId = 'tuner' | 'chords' | 'tabs' | 'pedals';
 export const BUF_SEC = 60;
@@ -36,6 +38,8 @@ export interface State {
   engine: EngineStatus;
   deviceId: string;
   level: number;
+  /** Measured input baseline and the automatic level applied to it. */
+  levels: { floorDb: number; peakDb: number; gate: boolean; gainDb: number };
   // tuner
   tString: number;
   auto: boolean;
@@ -51,7 +55,7 @@ export interface State {
   heard: Heard | null;
   history: Array<{ name: string; frets: Shape | null }>;
   chordMode: 'identify' | 'confirm';
-  chroma: number[];
+  confirm: { heard: number[]; wrong: number[]; ok: boolean };
   /** Exact pitches heard recently by the ML pass, for octave-accurate confirm. */
   mlRecent: Array<{ midi: number; t: number }>;
   // stream
@@ -83,6 +87,7 @@ const initial: State = {
   engine: engine.status,
   deviceId: '',
   level: 0,
+  levels: { floorDb: -80, peakDb: -100, gate: false, gainDb: 0 },
   tString: 5,
   auto: true,
   detected: null,
@@ -96,7 +101,7 @@ const initial: State = {
   heard: null,
   history: [],
   chordMode: 'identify',
-  chroma: [],
+  confirm: { heard: [], wrong: [], ok: false },
   mlRecent: [],
   buf: [],
   hoverSpan: null,
@@ -148,6 +153,11 @@ export async function hydrate() {
       }
     }
     if (s.pedals !== prev.pedals) engine.applyPedals(s.pedals);
+    if (s.frets !== prev.frets || s.baseFret !== prev.baseFret || s.setup !== prev.setup) {
+      shapeAt = engine.clock();
+      okSince = okUntil = 0;
+      wrongHits.fill(0);
+    }
     prev = s;
   });
   engine.applyPedals(get().pedals);
@@ -164,6 +174,7 @@ let lastVoicedAt = 0;
 let stIdx = -1;
 let stSince = 0;
 let lastLevel = 0;
+let lastLevelsAt = 0;
 
 function strings() {
   return openStrings(get().setup.offsets);
@@ -172,6 +183,10 @@ function strings() {
 export function attachEngine() {
   engine.on('status', (st) => set({ engine: st }));
   engine.on('looper', (v) => set({ looper: v }));
+  engine.on('cond', (v) => {
+    const l = get().levels;
+    if (Math.abs(v.gainDb - l.gainDb) > 0.5) set({ levels: { ...l, gainDb: v.gainDb } });
+  });
   engine.on('analysis', onAnalysis);
   engine.on('ml', onMl);
 }
@@ -182,15 +197,21 @@ function onAnalysis(a: Analysis) {
   const patch: Partial<State> = {};
   const now = performance.now();
 
-  // input meter (decays so peaks are visible)
+  // input meter (decays so peaks are visible) and the measured baseline, ~5×/s
   const lvl = Math.max(a.peak, lastLevel * 0.85);
   if (Math.abs(lvl - lastLevel) > 0.01) { lastLevel = lvl; if (s.setupOpen) patch.level = lvl; }
+  if (now - lastLevelsAt > 200) {
+    lastLevelsAt = now;
+    const l = a.levels;
+    if (Math.abs(l.floorDb - s.levels.floorDb) > 0.5 || Math.abs(l.peakDb - s.levels.peakDb) > 0.5 || l.gate !== s.levels.gate)
+      patch.levels = { ...s.levels, floorDb: l.floorDb, peakDb: l.peakDb, gate: l.gate };
+  }
 
-  // tuner: open strings only, measured against the tuned target
+  // tuner: only stable readings (gate open, clear pitch, agrees with the last few frames)
   const T = strings();
   let latest: { freq: number } | null = null;
   for (const f of a.frames) {
-    if (f.freq > 0 && f.clarity > 0.9 && f.freq > 50 && f.freq < 1200) {
+    if (f.stable && f.freq > 50 && f.freq < 1200) {
       latest = f;
       lastPitchPc = pcOf(69 + 12 * Math.log2(f.freq / 440));
       if (s.tab === 'tuner') {
@@ -211,7 +232,7 @@ function onAnalysis(a: Analysis) {
       else if (!ok) stSince = 0;
       else if (!stSince) stSince = now;
       if (stSince && now - stSince > 1500 && !s.tuned.includes(idx)) { patch.tuned = [...s.tuned, idx]; stSince = 0; }
-    } else if (s.voiced && now - lastVoicedAt > 450) patch.voiced = false;
+    } else if (s.voiced && (!a.levels.gate || now - lastVoicedAt > 450)) patch.voiced = false;
   }
 
   // chord: chroma decides fast, ML refines later
@@ -243,20 +264,32 @@ function targetString(freq: number, T: ReturnType<typeof openStrings>, auto: boo
 
 const trim = (b: TabNote[], clock: number) => (b.length && b[0].t < clock - BUF_SEC ? b.filter((n) => n.t > clock - BUF_SEC) : b);
 
-function chromaFrame(c: number[] | null, clock: number, patch: Partial<State>) {
+// Confirm keeps a short per-pitch hold (strings ring and flicker) that empties as soon as the
+// gate closes, so silence can never read as "heard".
+const pitchHold = new Float32Array(128).fill(NO_PITCH);
+let silentFrames = 0;
+let okSince = 0;
+let okUntil = 0;
+const wrongHits = new Array(6).fill(0);
+/** Listening clock when the confirm shape last changed: older ML notes belong to the previous shape. */
+let shapeAt = 0;
+
+function chromaFrame(cf: ChromaFrame | null, clock: number, patch: Partial<State>) {
   const s = get();
-  const confirm = s.chordMode === 'confirm' && s.tab === 'chords';
-  if (!c) {
+  const confirming = s.chordMode === 'confirm' && s.tab === 'chords';
+  if (!cf) {
     chCand = '';
-    if (confirm && s.chroma.length) patch.chroma = s.chroma.map((v) => v * 0.8).map((v) => (v < 0.05 ? 0 : v));
-    return;
+    if (++silentFrames >= 2) pitchHold.fill(NO_PITCH);
+  } else {
+    silentFrames = 0;
+    for (let m = 0; m < 128; m++) pitchHold[m] = Math.max(cf.pitch[m], pitchHold[m] - 3);
   }
-  // Strings ring and decay; hold each pitch class briefly so confirm doesn't flicker.
-  if (confirm) patch.chroma = c.map((v, i) => Math.max(v, (s.chroma[i] ?? 0) * 0.85));
+  if (confirming) updateConfirm(cf ? pitchHold : null, clock, patch);
+  if (!cf) return;
   // YIN only locks on when one pitch dominates, so a fresh clean reading means a single note is
   // ringing: name the note rather than reading its overtones as a chord.
   const mono = lastPitchPc >= 0 && performance.now() - lastVoicedAt < 150;
-  const r = mono ? nameSet([lastPitchPc], lastPitchPc, s.setup.offsets) : chordFromChroma(c, null, s.setup.offsets);
+  const r = mono ? nameSet([lastPitchPc], lastPitchPc, s.setup.offsets) : chordFromChroma(cf.chroma, null, s.setup.offsets);
   if (!r) {
     chCand = '';
     return;
@@ -266,6 +299,26 @@ function chromaFrame(c: number[] | null, clock: number, patch: Partial<State>) {
   if (chCount === 4) setHeard(r, clock, patch);
 }
 
+/**
+ * Confirmed means every string of the shape sounding and no muted string ringing, held for
+ * 200 ms. Once confirmed it stays green briefly through flicker, but drops the moment the
+ * strings stop or a wrong string rings. A wrong string must show in 2 of the last 3 frames.
+ */
+function updateConfirm(pitch: Float32Array | null, clock: number, patch: Partial<State>) {
+  const s = get();
+  const now = performance.now();
+  const f = confirmFrame({ frets: s.frets, baseFret: s.baseFret, setup: s.setup, pitch, mlRecent: pitch ? s.mlRecent.filter((m) => m.t >= shapeAt) : [], clock });
+  for (let i = 0; i < 6; i++) wrongHits[i] = Math.max(0, Math.min(3, wrongHits[i] + (f.wrong.includes(i) ? 1 : -1)));
+  const wrong = [0, 1, 2, 3, 4, 5].filter((i) => wrongHits[i] >= 2);
+  const full = f.played.length > 0 && f.heard.length === f.played.length && !wrong.length;
+  if (full) {
+    if (!okSince) okSince = now;
+    if (now - okSince >= 200) okUntil = now + 400;
+  } else okSince = 0;
+  const ok = !wrong.length && !!pitch && now < okUntil;
+  const prev = s.confirm;
+  if (prev.ok !== ok || !sameArr(prev.heard, f.heard) || !sameArr(prev.wrong, wrong)) patch.confirm = { heard: f.heard, wrong, ok };
+}
 function setHeard(r: ChordName, t: number, patch: Partial<State>) {
   const s = get();
   const cur = patch.heard ?? s.heard;
@@ -281,7 +334,8 @@ function onMl(m: MlNotes) {
   const r = mergeWindow(s.buf, m.from, m.to, m.notes, s.setup, mlHand);
   mlHand = r.hand;
   const patch: Partial<State> = { buf: trim(r.buf, m.to) };
-  const recent = [...s.mlRecent.filter((x) => x.t > m.to - 3), ...m.notes.map((n) => ({ midi: n.midi, t: n.t }))];
+  // Only notes that survived ghost cleanup count as evidence for Confirm.
+  const recent = [...s.mlRecent.filter((x) => x.t > m.to - 3), ...r.chords.flatMap((c) => c.midis.map((midi) => ({ midi, t: c.t })))];
   patch.mlRecent = recent;
   // The ML pass hears the actual voicing, bass included. It may refine the chroma decision for the
   // same strum (chroma decides ~0.25–0.5 s after the onset), or fill in a strum chroma missed, but

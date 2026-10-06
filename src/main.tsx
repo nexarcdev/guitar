@@ -25,4 +25,14 @@ async function boot() {
 }
 
 boot();
-registerSW({ immediate: true });
+// New builds install in the background; check on load, when the tab regains focus, and every
+// 30 minutes, then reload into the new version (autoUpdate) so nobody is stuck on an old build.
+registerSW({
+  immediate: true,
+  onRegisteredSW(_url, reg) {
+    if (!reg) return;
+    const check = () => reg.update().catch(() => {});
+    setInterval(check, 30 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && check());
+  },
+});

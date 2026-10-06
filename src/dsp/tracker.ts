@@ -27,6 +27,10 @@ export interface FastNote {
 export interface Levels {
   /** Measured noise floor, dBFS. */
   floorDb: number;
+  /** Gate threshold above the floor in use (dB). */
+  openDb: number;
+  /** Seconds since the last pick attack (Infinity if none yet). */
+  sinceAttack: number;
   /** Recent playing peak, dBFS (decays slowly). */
   peakDb: number;
   gate: boolean;
@@ -46,14 +50,20 @@ const FRAME = 2048;
 const CHROMA_N = 8192;
 const RING = 16384;
 const VOICED_CLARITY = 0.9;
-/** Gate thresholds above the floor (dB). */
+/** Default gate threshold above the floor (dB); the gate closes 6 dB lower. */
 export const OPEN_DB = 12;
-export const CLOSE_DB = 6;
+const HYSTERESIS_DB = 6;
+/** The level must clear the threshold this many frames in a row: guitar attacks do, clicks and crackle don't. */
+const OPEN_FRAMES = 2;
 /** Below this the input is digital silence regardless of the floor. */
 const ABS_MIN_DB = -90;
-/** Floor = rolling minimum of frame levels over this long, plus a small bias. */
-const FLOOR_SEC = 2.5;
-const FLOOR_BIAS_DB = 3;
+/**
+ * Floor = 20th percentile of frame levels over the last 5 s. A percentile, not the minimum: the
+ * single quietest moment of steady noise sits several dB below its typical level, and a floor
+ * that low lets ordinary noise open the gate during long pauses.
+ */
+const FLOOR_SEC = 5;
+const FLOOR_PCT = 0.2;
 const CAL_SEC = 0.4;
 /** Floor rise rates (dB/s) while playing and while idle. */
 const RISE_PLAYING = 0.2;
@@ -85,6 +95,9 @@ export class Tracker {
   private histI = 0;
   private floorDb = -80;
   private age = 0;
+  private openDb = OPEN_DB;
+  private above = 0;
+  private sorted: Float32Array;
   private peakDb = -100;
   private gate = false;
   private recent: number[] = [];
@@ -104,6 +117,12 @@ export class Tracker {
     this.hop = sampleRate >= 44100 ? 512 : 256;
     this.chromaEvery = Math.round(sampleRate * 0.06);
     this.hist = new Float32Array(Math.ceil((FLOOR_SEC * sampleRate) / this.hop));
+    this.sorted = new Float32Array(this.hist.length);
+  }
+
+  /** Noise gate margin above the floor: lower hears quieter playing, higher ignores more noise. */
+  setOpenDb(db: number) {
+    this.openDb = db;
   }
 
   /** Start a fresh baseline, e.g. after switching input device. */
@@ -115,7 +134,7 @@ export class Tracker {
   }
 
   levels(): Levels {
-    return { floorDb: this.floorDb, peakDb: this.peakDb, gate: this.gate };
+    return { floorDb: this.floorDb, openDb: this.openDb, sinceAttack: this.sinceAttack, peakDb: this.peakDb, gate: this.gate };
   }
 
   private copy(dst: Float32Array, endAbs: number) {
@@ -173,20 +192,20 @@ export class Tracker {
     h[this.histI] = level;
     this.histI = (this.histI + 1) % h.length;
     if (this.histN < h.length) this.histN++;
-    let min = Infinity;
-    for (let i = 0; i < this.histN; i++) if (h[i] < min) min = h[i];
-    const target = Math.max(-110, min + FLOOR_BIAS_DB);
+    const sv = this.sorted.subarray(0, this.histN);
+    sv.set(h.subarray(0, this.histN));
+    sv.sort();
+    const target = Math.max(-110, sv[Math.floor((this.histN - 1) * FLOOR_PCT)]);
     const dt = this.hop / this.sampleRate;
     this.age += dt;
-    // Calibrate from the first ~0.4 s. After that the floor drops instantly to any quieter
-    // moment but rises slowly, so minutes of continuous strumming can't lift it into the music.
+    // Calibrate from the first ~0.4 s. After that the floor drops at once to quieter noise but
+    // rises slowly, so minutes of continuous strumming can't lift it into the music.
     if (this.age < CAL_SEC || target < this.floorDb) this.floorDb = target;
     else this.floorDb += Math.min(target - this.floorDb, (this.gate ? RISE_PLAYING : RISE_IDLE) * dt);
 
-    const open = level > Math.max(this.floorDb + OPEN_DB, ABS_MIN_DB);
-    const close = level < this.floorDb + CLOSE_DB;
-    if (!this.gate && open) this.gate = true;
-    else if (this.gate && close) this.gate = false;
+    this.above = level > Math.max(this.floorDb + this.openDb, ABS_MIN_DB) ? this.above + 1 : 0;
+    if (!this.gate && this.above >= OPEN_FRAMES) this.gate = true;
+    else if (this.gate && level < this.floorDb + this.openDb - HYSTERESIS_DB) this.gate = false;
 
     if (this.gate) this.peakDb = Math.max(level, this.peakDb);
     else this.peakDb = Math.max(this.floorDb, this.peakDb - 0.02);

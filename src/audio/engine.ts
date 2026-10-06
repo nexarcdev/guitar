@@ -65,6 +65,13 @@ class AudioEngine {
   private cond: AudioWorkletNode | null = null;
   /** Mic was released because the tab went to the background; reopen when it comes back. */
   private releasedHidden = false;
+  private floorSentAt = 0;
+  private openDb = 12;
+  private mlEnabled = true;
+  private tap: AnalyserNode | null = null;
+  private tapBuf: Float32Array<ArrayBuffer> | null = null;
+  /** Everything audible goes through here: the amp path, the synth, and riff playback. */
+  private out!: GainNode;
   private stream: MediaStream | null = null;
   private src: MediaStreamAudioSourceNode | null = null;
   private pitchW: Worker | null = null;
@@ -92,12 +99,12 @@ class AudioEngine {
   }
 
   /** Creates the context and graph on first use. Safe to call from any click handler. */
-  context(): AudioContext {
+  context(sampleRate?: number): AudioContext {
     if (!this.ac) {
       const C = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       let ac: AudioContext;
       try {
-        ac = new C({ latencyHint: 'interactive' });
+        ac = new C({ latencyHint: 'interactive', ...(sampleRate ? { sampleRate } : {}) });
       } catch {
         ac = new C();
       }
@@ -106,7 +113,12 @@ class AudioEngine {
       this.chainOut = ac.createGain();
       this.master = ac.createGain();
       this.master.gain.value = this.output ? 1 : 0;
-      this.master.connect(ac.destination);
+      this.out = ac.createGain();
+      this.out.connect(ac.destination);
+      this.tap = ac.createAnalyser();
+      this.tap.fftSize = 2048;
+      this.out.connect(this.tap);
+      this.master.connect(this.out);
       this.chainOut.connect(this.master);
       ac.onstatechange = () => this.setStatus({ running: ac.state === 'running' });
       this.modules = Promise.all([captureUrl, looperUrl, conditionerUrl].map((u) => ac.audioWorklet.addModule(u))).then(() => {
@@ -134,13 +146,27 @@ class AudioEngine {
     this.pitchW = new Worker(new URL('../workers/pitch.worker.ts', import.meta.url), { type: 'module' });
     const pc = new MessageChannel();
     this.pitchW.postMessage({ type: 'init', sampleRate: ac.sampleRate, port: pc.port2 }, [pc.port2]);
-    this.capture.port.postMessage({ type: 'sink', port: pc.port1 }, [pc.port1]);
+    this.capture.port.postMessage({ type: 'sink', id: 'pitch', port: pc.port1 }, [pc.port1]);
+    this.pitchW.postMessage({ type: 'gate', openDb: this.openDb });
     this.pitchW.onmessage = (e) => {
       const a = e.data as Analysis;
       this.clockBase = a.clock;
       this.clockAt = performance.now();
+      // One noise floor for the whole app: share the tracker's with the auto level and the ML pass.
+      const now = performance.now();
+      if (now - this.floorSentAt > 200) {
+        this.floorSentAt = now;
+        const msg = { type: 'floor', floorDb: a.levels.floorDb, openDb: a.levels.openDb };
+        this.cond?.port.postMessage(msg);
+        this.mlW?.postMessage(msg);
+      }
       this.emit('analysis', a);
     };
+    if (this.mlEnabled) this.startMl(ac);
+  }
+
+  private startMl(ac: AudioContext) {
+    if (!this.capture || this.mlW) return;
 
     this.mlW = new Worker(new URL('../workers/ml.worker.ts', import.meta.url), { type: 'module' });
     const mc = new MessageChannel();
@@ -149,7 +175,7 @@ class AudioEngine {
       { type: 'init', sampleRate: ac.sampleRate, modelUrl: new URL(import.meta.env.BASE_URL + 'model/model.json', location.href).href, port: mc.port2 },
       [mc.port2],
     );
-    this.capture.port.postMessage({ type: 'sink', port: mc.port1 }, [mc.port1]);
+    this.capture.port.postMessage({ type: 'sink', id: 'ml', port: mc.port1 }, [mc.port1]);
     this.mlW.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'status') this.setStatus({ ml: m.status, mlBackend: m.backend ?? this.status.mlBackend });
@@ -178,7 +204,6 @@ class AudioEngine {
       this.setStatus({ mic: 'insecure' });
       return;
     }
-    const ac = this.context();
     this.setStatus({ mic: 'starting' });
     const constraints = (id: string): MediaStreamConstraints => ({
       audio: {
@@ -224,9 +249,13 @@ class AudioEngine {
       this.setStatus({ mic: 'idle' });
       return;
     }
-    await this.modules;
     const track = stream.getAudioTracks()[0];
     const settings = track.getSettings() as MediaTrackSettings & { latency?: number };
+    // Run the engine at the input's own sample rate when we can (the mic usually opens before any
+    // sound is played). Chrome then converts once, on the way to the speakers, instead of
+    // resampling the live input inside the graph.
+    const ac = this.context(settings.sampleRate);
+    await this.modules;
     const switched = settings.deviceId !== this.status.deviceId;
     this.closeInput();
     this.stream = stream;
@@ -263,6 +292,36 @@ class AudioEngine {
     }
   }
 
+  /** Noise gate margin above the floor, app-wide. */
+  setGate(openDb: number) {
+    this.openDb = openDb;
+    this.pitchW?.postMessage({ type: 'gate', openDb });
+  }
+
+  /** Chord detection (basic-pitch) on or off; off frees the GPU/CPU and leaves single-note tabs. */
+  setMl(on: boolean) {
+    this.mlEnabled = on;
+    if (!on && this.mlW) {
+      this.mlW.terminate();
+      this.mlW = null;
+      this.capture?.port.postMessage({ type: 'unsink', id: 'ml' });
+      this.setStatus({ ml: 'off' });
+    } else if (on && this.ac && this.capture && !this.mlW) this.startMl(this.ac);
+  }
+
+  /** What Fretline is sending to the speakers right now, dBFS (or 'NaN' if the graph is poisoned). */
+  outputDb(): number | 'NaN' {
+    if (!this.tap) return -120;
+    const b = (this.tapBuf ??= new Float32Array(this.tap.fftSize));
+    this.tap.getFloatTimeDomainData(b);
+    let sum = 0;
+    for (let i = 0; i < b.length; i++) {
+      if (Number.isNaN(b[i])) return 'NaN';
+      sum += b[i] * b[i];
+    }
+    return 20 * Math.log10(Math.sqrt(sum / b.length) + 1e-9);
+  }
+
   /** Snapshot for the Sound check panel. */
   diagnostics() {
     const ac = this.ac;
@@ -273,6 +332,8 @@ class AudioEngine {
       sampleRate: ac?.sampleRate ?? 0,
       outputMs: ac ? Math.round((((ac as AudioContext & { outputLatency?: number }).outputLatency || 0) + (ac.baseLatency || 0)) * 1000) : 0,
       inputRate: st?.sampleRate ?? 0,
+      ml: this.status.ml,
+      backend: this.status.mlBackend,
       inputLabel: t?.label ?? '',
       micOpen: !!t && t.readyState === 'live',
     };
@@ -384,18 +445,19 @@ class AudioEngine {
 
   pluck(freq: number, when = 0, d = 1.1): Voice {
     const ac = this.context();
-    return pluck(ac, freq, ac.currentTime + when, d);
+    return pluck(ac, freq, ac.currentTime + when, d, this.out);
   }
 
   reference(freq: number) {
-    referenceTone(this.context(), freq);
+    const ac = this.context();
+    referenceTone(ac, freq, this.out);
   }
 
   /** Schedules a list of notes from `from` seconds in. Returns the audio time that maps to t = 0. */
   playNotes(notes: Array<{ t: number; hz: number }>, from: number): { zero: number; voices: Voice[] } {
     const ac = this.context();
     const zero = ac.currentTime + 0.05 - from;
-    const voices = notes.filter((n) => n.t >= from).map((n) => pluck(ac, n.hz, zero + n.t, 0.7));
+    const voices = notes.filter((n) => n.t >= from).map((n) => pluck(ac, n.hz, zero + n.t, 0.7, this.out));
     return { zero, voices };
   }
 

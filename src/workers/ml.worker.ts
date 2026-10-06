@@ -25,8 +25,11 @@ const BLOCK = 1024;
 let floorDb = -60;
 let floorSet = false;
 
+let openDb = OPEN_DB;
+let extAt = -Infinity;
+
 function windowLevels(w: Float32Array) {
-  let maxDb = -Infinity, minDb = Infinity, peak = 0;
+  let maxDb = -Infinity, minDb = Infinity, peak = 0, run = 0, best = 0;
   for (let b = 0; b + BLOCK <= w.length; b += BLOCK) {
     let sum = 0;
     for (let i = b; i < b + BLOCK; i++) {
@@ -37,14 +40,17 @@ function windowLevels(w: Float32Array) {
     const d = 20 * Math.log10(Math.sqrt(sum / BLOCK) + 1e-12);
     if (d > maxDb) maxDb = d;
     if (d < minDb) minDb = d;
+    // Playing means consecutive blocks above the gate; a click lights up only one.
+    run = d > floorDb + openDb ? run + 1 : 0;
+    if (run > best) best = run;
   }
   // Zero padding at the very start of a session reads as -240 dB; ignore it for the floor.
-  if (minDb > -200) {
+  if (minDb > -200 && performance.now() - extAt > 3000) {
     const target = minDb + 3;
     if (!floorSet || target < floorDb) { floorDb = target; floorSet = true; }
     else floorDb = Math.min(target, floorDb + 0.5);
   }
-  return { maxDb, peak };
+  return { maxDb, peak, run: best };
 }
 
 const post = (m: unknown) => (self as unknown as Worker).postMessage(m);
@@ -128,7 +134,7 @@ async function pump() {
   // Skip windows that are only noise (normalizing silence makes the model hallucinate), and
   // bring quiet playing up to a consistent level so a weak cable transcribes like a hot one.
   const lv = windowLevels(win);
-  if (lv.maxDb < floorDb + OPEN_DB) {
+  if (lv.run < 2) {
     k++;
     busy = false;
     pump();
@@ -171,7 +177,13 @@ async function pump() {
 self.onmessage = (e: MessageEvent) => {
   const m = e.data;
   if (m.type === 'init') init(m.sampleRate, m.modelUrl, m.port);
-  else if (m.type === 'reset') {
+  else if (m.type === 'floor') {
+    // The app-wide floor from the analysis tracker.
+    floorDb = m.floorDb;
+    openDb = m.openDb;
+    floorSet = true;
+    extAt = performance.now();
+  } else if (m.type === 'reset') {
     // The listening clock jumped (new input device): start a fresh timeline.
     rs = null;
     ring = new Float32Array(RING);

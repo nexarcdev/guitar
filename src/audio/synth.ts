@@ -39,7 +39,7 @@ export function pluck(ac: AudioContext, freq: number, when = 0, d = 1.1, dest: A
   };
 }
 
-export function referenceTone(ac: AudioContext, freq: number) {
+export function referenceTone(ac: AudioContext, freq: number, dest: AudioNode = ac.destination) {
   const t = ac.currentTime;
   const o = ac.createOscillator();
   o.type = 'sine';
@@ -49,6 +49,6 @@ export function referenceTone(ac: AudioContext, freq: number) {
   g.gain.linearRampToValueAtTime(0.2, t + 0.02);
   g.gain.setValueAtTime(0.2, t + 1.2);
   g.gain.exponentialRampToValueAtTime(0.0001, t + 1.8);
-  o.connect(g); g.connect(ac.destination);
+  o.connect(g); g.connect(dest);
   o.start(t); o.stop(t + 1.85);
 }

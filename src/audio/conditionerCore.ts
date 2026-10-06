@@ -79,11 +79,18 @@ export class ConditionerCore {
     this.age += dt;
     if (this.age < CAL_SEC || target < this.floorDb) this.floorDb = target;
     else this.floorDb += Math.min(target - this.floorDb, (this.gate ? 0.2 : 1.5) * dt);
+    // Prefer the shared floor while it's fresh, so every part of the app agrees on what's noise.
+    let open = OPEN_DB, close = CLOSE_DB;
+    if (this.ext && (this.ext.age += dt) < 1) {
+      this.floorDb = this.ext.floorDb;
+      open = this.ext.openDb;
+      close = this.ext.openDb - (OPEN_DB - CLOSE_DB);
+    }
 
-    if (level > this.floorDb + OPEN_DB) {
+    if (level > this.floorDb + open) {
       this.gate = true;
       this.hold = 0.08;
-    } else if (level < this.floorDb + CLOSE_DB) {
+    } else if (level < this.floorDb + close) {
       this.hold -= dt;
       if (this.hold <= 0) this.gate = false;
     }
@@ -91,12 +98,18 @@ export class ConditionerCore {
     // Playing level: the recent peak while the gate is open, decaying 1 dB/s. It holds during
     // silence, so the boost doesn't creep up between songs and blast the next note.
     if (this.gate) this.peakDb = Math.max(peak, this.peakDb - dt);
-    else this.peakDb = Math.max(this.floorDb + OPEN_DB, this.peakDb);
+    else this.peakDb = Math.max(this.floorDb + open, this.peakDb);
 
     // Gain chases the target upward at 6 dB/s and backs off fast (30 dB/s) on loud hits.
     const want = Math.max(0, Math.min(MAX_GAIN_DB, TARGET_DB - this.peakDb));
     if (want > this.gainDb) this.gainDb = Math.min(want, this.gainDb + 6 * dt);
     else this.gainDb = Math.max(want, this.gainDb - 30 * dt);
+  }
+
+  /** App-wide floor and gate margin from the analysis tracker; overrides the local estimate. */
+  private ext: { floorDb: number; openDb: number; age: number } | null = null;
+  setFloor(floorDb: number, openDb: number) {
+    this.ext = { floorDb, openDb, age: 0 };
   }
 
   recalibrate() {

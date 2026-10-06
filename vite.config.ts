@@ -6,6 +6,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 // GitHub Pages serves a project site from /<repo>/; CI sets BASE_PATH accordingly.
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
+  // Shown in the app (Your guitar → About) so you can tell which build you're running.
+  define: {
+    __APP_VERSION__: JSON.stringify((process.env.GITHUB_SHA ?? 'dev').slice(0, 7)),
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     VitePWA({

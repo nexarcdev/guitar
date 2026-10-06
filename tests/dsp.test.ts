@@ -101,3 +101,28 @@ describe('conditioner (auto level + gate)', () => {
     expect(rms(out)).toBeGreaterThan(rms(quiet.subarray(0, 128)) * 8);
   });
 });
+
+describe('long silence (app-wide floor)', () => {
+  it('3 minutes of drifting hiss, hum and clicks never opens analysis', () => {
+    const tr = new Tracker(SR);
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647) * 2 - 1;
+    const N = 1024;
+    let opens = 0, chromaFrames = 0, notes = 0, stable = 0, wasOpen = false, t = 0;
+    for (let c = 0; c < (180 * SR) / N; c++) {
+      const x = new Float32Array(N);
+      for (let i = 0; i < N; i++, t++) {
+        const drift = Math.pow(10, (3 * Math.sin((2 * Math.PI * t) / (SR * 37))) / 20); // ±3 dB over ~37 s
+        x[i] = drift * (0.0006 * rnd() + 0.0004 * Math.sin((2 * Math.PI * 60 * t) / SR) + 0.0002 * Math.sin((2 * Math.PI * 180 * t) / SR));
+      }
+      if (rnd() > 0.995) x[Math.floor(((rnd() + 1) / 2) * (N - 1))] += 0.02 * rnd(); // isolated click
+      const o = tr.push(c * N, x);
+      if (o.levels.gate && !wasOpen) opens++;
+      wasOpen = o.levels.gate;
+      if (o.chroma) chromaFrames++;
+      notes += o.notes.length;
+      stable += o.frames.filter((f) => f.stable).length;
+    }
+    expect({ opens, chromaFrames, notes, stable }).toEqual({ opens: 0, chromaFrames: 0, notes: 0, stable: 0 });
+  });
+});

@@ -10,14 +10,18 @@ class CaptureProcessor extends AudioWorkletProcessor {
   private clock = 0;
   private buf = new Float32Array(CHUNK);
   private fill = 0;
-  private sinks: MessagePort[] = [];
+  private sinks: Array<{ id: string; port: MessagePort }> = [];
 
   constructor() {
     super();
     this.port.onmessage = (e: MessageEvent) => {
       const m = e.data;
       if (m.type === 'listening') this.listening = m.on;
-      else if (m.type === 'sink') this.sinks.push(m.port as MessagePort);
+      else if (m.type === 'sink') this.sinks.push({ id: m.id, port: m.port as MessagePort });
+      else if (m.type === 'unsink') {
+        this.sinks.filter((x) => x.id === m.id).forEach((x) => x.port.close());
+        this.sinks = this.sinks.filter((x) => x.id !== m.id);
+      }
     };
   }
 
@@ -36,9 +40,9 @@ class CaptureProcessor extends AudioWorkletProcessor {
       this.buf[this.fill++] = src[i];
       if (this.fill === CHUNK) {
         const t0 = this.clock + i + 1 - CHUNK;
-        this.sinks.forEach((p, k) => {
+        this.sinks.forEach((sk, k) => {
           const data = k === this.sinks.length - 1 ? this.buf : this.buf.slice();
-          p.postMessage({ t0, data }, [data.buffer]);
+          sk.port.postMessage({ t0, data }, [data.buffer]);
         });
         this.buf = new Float32Array(CHUNK);
         this.fill = 0;

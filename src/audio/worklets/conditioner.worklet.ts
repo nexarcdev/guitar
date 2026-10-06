@@ -11,6 +11,7 @@ class ConditionerProcessor extends AudioWorkletProcessor {
     super();
     this.port.onmessage = (e: MessageEvent) => {
       if (e.data?.type === 'recalibrate') this.core.recalibrate();
+      else if (e.data?.type === 'floor') this.core.setFloor(e.data.floorDb, e.data.openDb);
     };
   }
 

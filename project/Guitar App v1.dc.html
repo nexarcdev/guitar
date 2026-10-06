@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#140b0c;color:#f7efe8;font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#e9b949}a:hover{color:#f6d98a}
+button{font-family:inherit;cursor:pointer}
+input[type=range]{accent-color:#e9b949;width:100%;height:44px;margin:0;background:transparent}
+@keyframes ledPulse{0%,100%{box-shadow:0 0 6px 2px rgba(233,185,73,.6)}50%{box-shadow:0 0 14px 5px rgba(233,185,73,.9)}}
+@keyframes recPulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes listen{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.25);opacity:0}}
+</style>
+</helmet>
+<div style="min-height:100vh;background:radial-gradient(900px 600px at -10% -10%, rgba(224,64,64,.35), transparent 60%),radial-gradient(800px 600px at 110% 110%, rgba(233,185,73,.22), transparent 60%),linear-gradient(160deg,#1c0e10 0%,#140b0c 50%,#0f0a0b 100%);color:#f7efe8;font-family:'Outfit',system-ui,sans-serif;display:flex">
+  <sc-if value="{{ sideNav }}" hint-placeholder-val="{{ true }}">
+    <nav style="position:sticky;top:0;height:100vh;padding:20px 12px;display:flex;flex-direction:column;gap:8px;border-right:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);backdrop-filter:blur(20px);flex:none;width:{{ navWidth }}px">
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 10px 24px">
+        <div style="width:36px;height:36px;border-radius:12px;flex:none;background:linear-gradient(135deg,#e9b949,#e04040);box-shadow:0 6px 18px rgba(224,64,64,.4)"></div>
+        <sc-if value="{{ navLabels }}" hint-placeholder-val="{{ true }}"><div style="font-weight:700;letter-spacing:.14em;font-size:14px">FRETLINE</div></sc-if>
+      </div>
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="4">
+        <button onClick="{{ n.select }}" style="display:flex;align-items:center;gap:12px;height:48px;padding:0 12px;border-radius:14px;border:1px solid {{ n.border }};background:{{ n.bg }};color:{{ n.color }};font-size:15px;font-weight:500;text-align:left;width:100%" style-hover="background:rgba(255,255,255,.08)">
+          <span style="font-size:20px;width:24px;text-align:center;flex:none">{{ n.icon }}</span>
+          <sc-if value="{{ navLabels }}" hint-placeholder-val="{{ true }}"><span>{{ n.label }}</span></sc-if>
+        </button>
+      </sc-for>
+    </nav>
+  </sc-if>
+  <main style="flex:1;min-width:0;padding:20px clamp(16px,3vw,40px);padding-bottom:{{ mainPadBottom }}px;max-width:1200px;margin:0 auto;width:100%">
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}"><div style="width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#e9b949,#e04040);box-shadow:0 6px 18px rgba(224,64,64,.4)"></div></sc-if>
+        <div>
+          <div style="font-size:12px;letter-spacing:.18em;color:#b9a9a3;font-weight:500">FRETLINE</div>
+          <h1 style="margin:0;font-size:clamp(24px,3vw,32px);font-weight:600;line-height:1.1">{{ tabTitle }}</h1>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);font-size:13px;color:#b9a9a3;backdrop-filter:blur(12px)">
+        <span style="width:8px;height:8px;border-radius:50%;background:{{ audioDot }};flex:none"></span>{{ audioStatus }}
+      </div>
+    </header>
+
+    <sc-if value="{{ showTuner }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));align-items:start">
+        <section style="padding:28px 24px;border-radius:28px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(18px);box-shadow:0 10px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.15);text-align:center">
+          <div style="font-size:12px;letter-spacing:.18em;color:#b9a9a3;font-weight:500">{{ tunerModeLabel }}</div>
+          <div style="position:relative;width:240px;height:240px;margin:8px auto;display:grid;place-items:center">
+            <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,{{ glowColor }} 0%,transparent 70%);transition:background .3s"></div>
+            <sc-if value="{{ listening }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:20px;border-radius:50%;border:1px solid rgba(233,185,73,.6);animation:listen 2s ease-out infinite"></div></sc-if>
+            <div style="position:relative;width:170px;height:170px;border-radius:50%;background:rgba(20,11,12,.55);border:1px solid rgba(255,255,255,.16);display:flex;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(10px);box-shadow:inset 0 1px 0 rgba(255,255,255,.15)">
+              <div style="font-size:76px;font-weight:600;line-height:1;letter-spacing:-.02em">{{ noteName }}</div>
+              <div style="color:#b9a9a3;font-size:15px;margin-top:6px;font-variant-numeric:tabular-nums">{{ freqText }}</div>
+            </div>
+          </div>
+          <div style="position:relative;height:56px;margin:12px 8px 0">
+            <div style="position:absolute;left:0;right:0;top:22px;height:4px;border-radius:2px;background:linear-gradient(90deg,#e04040,rgba(255,255,255,.18) 40%,#e9b949 50%,rgba(255,255,255,.18) 60%,#e04040)"></div>
+            <div style="position:absolute;left:0;right:0;top:30px;display:flex;justify-content:space-between;padding:0 1px">
+              <sc-for list="{{ ticks }}" as="t" hint-placeholder-count="11">
+                <div style="width:1px;background:rgba(255,255,255,.3);height:{{ t.h }}px"></div>
+              </sc-for>
+            </div>
+            <div style="position:absolute;top:8px;width:4px;height:32px;border-radius:2px;background:#f7efe8;box-shadow:0 0 12px rgba(255,255,255,.7);transition:left .12s ease-out;left:calc({{ needlePct }}% - 2px)"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;color:#b9a9a3;font-size:12px;margin:4px 8px 0"><span>−50</span><span>0</span><span>+50</span></div>
+          <div style="margin-top:16px;font-size:20px;font-weight:600;color:{{ statusColor }}">{{ statusText }}</div>
+          <div style="color:#b9a9a3;font-size:14px;font-variant-numeric:tabular-nums">{{ centsText }}</div>
+        </section>
+        <section style="padding:24px;border-radius:28px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(18px);box-shadow:0 10px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.15);display:flex;flex-direction:column;gap:20px">
+          <div>
+            <div style="font-size:12px;letter-spacing:.18em;color:#b9a9a3;font-weight:500;margin-bottom:12px">STANDARD TUNING</div>
+            <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px">
+              <sc-for list="{{ tunerStrings }}" as="s" hint-placeholder-count="6">
+                <button onClick="{{ s.select }}" style="height:64px;border-radius:16px;border:1px solid {{ s.border }};background:{{ s.bg }};color:{{ s.color }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:600;font-size:20px;transition:all .2s" style-hover="background:rgba(255,255,255,.1)">
+                  <span>{{ s.note }}</span><span style="font-size:11px;font-weight:400;opacity:.8">{{ s.hz }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+            <button onClick="{{ toggleListen }}" style="height:52px;border-radius:16px;border:none;background:{{ listenBg }};color:{{ listenColor }};font-size:15px;font-weight:600;box-shadow:0 8px 24px rgba(224,64,64,.3);transition:all .2s" style-hover="filter:brightness(1.1)">{{ listenLabel }}</button>
+            <button onClick="{{ playRef }}" style="height:52px;border-radius:16px;border:1px solid rgba(233,185,73,.5);background:rgba(233,185,73,.12);color:#f6d98a;font-size:15px;font-weight:600;transition:all .2s" style-hover="background:rgba(233,185,73,.22)">Play reference</button>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.08)">
+            <div><div style="font-weight:500;font-size:15px">Auto-detect string</div><div style="color:#b9a9a3;font-size:13px">Snap to the nearest string while listening</div></div>
+            <button onClick="{{ toggleAuto }}" aria-label="Toggle auto-detect" style="width:52px;height:30px;border-radius:999px;border:none;flex:none;position:relative;background:{{ autoBg }};transition:background .2s"><span style="position:absolute;top:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .2s;left:{{ autoKnob }}px"></span></button>
+          </div>
+          <div style="color:#b9a9a3;font-size:13px;line-height:1.5">{{ tunerHint }}</div>
+        </section>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showChords }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));align-items:start">
+        <section style="padding:24px;border-radius:28px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(18px);box-shadow:0 10px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.15)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px">
+            <div style="font-size:12px;letter-spacing:.18em;color:#b9a9a3;font-weight:500">FRETBOARD</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <button onClick="{{ fretDown }}" style="width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#f7efe8;font-size:20px" style-hover="background:rgba(255,255,255,.12)">−</button>
+              <div style="min-width:64px;text-align:center;font-size:14px;color:#b9a9a3">fret {{ baseFret }}</div>
+              <button onClick="{{ fretUp }}" style="width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#f7efe8;font-size:20px" style-hover="background:rgba(255,255,255,.12)">+</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:48px repeat(5,minmax(0,1fr));gap:0 0;margin-bottom:6px">
+            <div></div>
+            <sc-for list="{{ fretLabels }}" as="f" hint-placeholder-count="5"><div style="text-align:center;font-size:12px;color:#b9a9a3">{{ f }}</div></sc-for>
+          </div>
+          <div style="border-radius:18px;overflow:hidden;background:linear-gradient(180deg,rgba(60,30,28,.7),rgba(30,16,16,.8));border:1px solid rgba(255,255,255,.1)">
+            <sc-for list="{{ fretRows }}" as="r" hint-placeholder-count="6">
+              <div style="display:grid;grid-template-columns:48px repeat(5,minmax(0,1fr));height:48px">
+                <button onClick="{{ r.nutClick }}" style="border:none;border-right:4px solid #e9b949;background:rgba(0,0,0,.25);color:{{ r.nutColor }};font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:4px" style-hover="background:rgba(255,255,255,.08)"><span style="font-size:11px;font-weight:400;color:#b9a9a3">{{ r.label }}</span>{{ r.nutText }}</button>
+                <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="5">
+                  <button onClick="{{ c.click }}" aria-label="fret" style="border:none;border-right:2px solid rgba(255,255,255,.18);background:linear-gradient(transparent 47%,rgba(255,255,255,.35) 47%,rgba(255,255,255,.35) 53%,transparent 53%);display:grid;place-items:center;padding:0" style-hover="background-color:rgba(255,255,255,.06)">
+                    <span style="width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f6d98a,#e9b949 50%,#b8862a);box-shadow:0 4px 12px rgba(0,0,0,.5);transition:all .15s;transform:scale({{ c.scale }});opacity:{{ c.opacity }}"></span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+            <button onClick="{{ strum }}" style="flex:1;min-width:140px;height:52px;border-radius:16px;border:none;background:linear-gradient(135deg,#e04040,#b3202a);color:#fff;font-size:15px;font-weight:600;box-shadow:0 8px 24px rgba(224,64,64,.35)" style-hover="filter:brightness(1.1)">Strum</button>
+            <button onClick="{{ clearFrets }}" style="height:52px;padding:0 20px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#f7efe8;font-size:15px;font-weight:500" style-hover="background:rgba(255,255,255,.12)">Clear</button>
+          </div>
+        </section>
+        <section style="display:flex;flex-direction:column;gap:20px">
+          <div style="padding:28px 24px;border-radius:28px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(18px);box-shadow:0 10px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.15);text-align:center">
+            <div style="font-size:12px;letter-spacing:.18em;color:#b9a9a3;font-weight:500">IDENTIFIED</div>
+            <div style="font-size:clamp(48px,8vw,72px);font-weight:600;line-height:1.05;margin:10px 0 4px;background:linear-gradient(135deg,#f6d98a,#e9b949 50%,#e04040);-webkit-background-clip:text;background-clip:text;color:transparent">{{ chordName }}</div>
+            <div style="color:#b9a9a3;font-size:15px;min-height:22px">{{ chordSub }}</div>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px">
+              <sc-for list="{{ chordNotes }}" as="n" hint-placeholder-count="3">
+                <span style="padding:8px 14px;border-radius:999px;font-size:14px;font-weight:600;background:{{ n.bg }};color:{{ n.color }};border:1px solid rgba(255,255,255,.12)">{{ n.name }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="padding:20px 24px;border-radius:28px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(18px);box-shadow:0 10px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.15)">
+            <div style="font-size:12px;letter-spacing:.18em;color:#b9a9a3;font-weight:500;margin-bottom:12px">QUICK SHAPES</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ presets }}" as="p" hint-placeholder-count="9">
+                <button onClick="{{ p.select }}" style="height:44px;padding:0 18px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#f7efe8;font-size:15px;font-weight:600" style-hover="background:rgba(233,185,73,.2);border-color:rgba(233,185,73,.5)">{{ p.name }}</button>
+              </sc-for>
+            </div>
+          </div>
+        </section>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showTabs }}" hint-placeholder-val="{{ false }}">
+      <div style="display:grid;gap:20px;align-items:start;grid-template-columns:{{ tabsGridCols }}">
+        <section style="padding:20px;border-radius:28px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(18px);box-shadow:0 10px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.15);order:{{ libOrder }}">
+          <div style="font-size:12px;letter-spacing:.18em;color:#b9a9a3;font-weight:500;margin-bottom:12px">STORED TABS</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ songs }}" as="s" hint-placeholder-count="4">
+              <button onClick="{{ s.select }}" style="display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:16px;border:1px solid {{ s.border }};background:{{ s.bg }};color:#f7efe8;text-align:left;width:100%;transition:all .2s" style-hover="background:rgba(255,255,255,.1)">
+                <div style="width:44px;height:44px;border-radius:12px;flex:none;display:grid;place-items:center;font-weight:700;font-size:16px;background:{{ s.markBg }};color:{{ s.markColor }}">{{ s.initial }}</div>
+                <div style="min-width:0;flex:1"><div style="font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.title }}</div><div style="color:#b9a9a3;font-size:13px">{{ s.meta }}</div></div>
+                <div style="font-size:12px;color:#b9a9a3;flex:none">{{ s.bars }} bars</div>
+              </button>
+            </sc-for>
+          </div>
+        </section>
+        <section style="padding:20px;border-radius:28px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(18px);box-shadow:0 10px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.15);min-width:0">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+            <div><div style="font-size:12px;letter-spacing:.18em;color:#b9a9a3;font-weight:500">NOW STREAMING</div><div style="font-size:22px;font-weight:600;margin-top:4px">{{ songTitle }}</div><div style="color:#b9a9a3;font-size:14px">{{ songMeta }}</div></div>
+            <div style="padding:8px 14px;border-radius:999px;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);font-size:13px;color:#f6d98a;font-variant-numeric:tabular-nums">{{ posText }}</div>
+          </div>
+          <div style="position:relative;overflow:hidden;border-radius:18px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);height:214px">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:36px;z-index:3;background:linear-gradient(90deg,rgba(20,11,12,.95),rgba(20,11,12,.7));display:flex;flex-direction:column;justify-content:center;gap:0;padding:0 0 0 10px">
+              <div style="height:28px;line-height:28px;font-size:13px;color:#e9b949;font-weight:600">e</div><div style="height:28px;line-height:28px;font-size:13px;color:#e9b949;font-weight:600">B</div><div style="height:28px;line-height:28px;font-size:13px;color:#e9b949;font-weight:600">G</div><div style="height:28px;line-height:28px;font-size:13px;color:#e9b949;font-weight:600">D</div><div style="height:28px;line-height:28px;font-size:13px;color:#e9b949;font-weight:600">A</div><div style="height:28px;line-height:28px;font-size:13px;color:#e9b949;font-weight:600">E</div>
+            </div>
+            <div style="position:absolute;top:0;bottom:0;left:120px;width:2px;background:#e9b949;box-shadow:0 0 14px rgba(233,185,73,.9);z-index:2"></div>
+            <div style="position:absolute;top:0;bottom:0;right:0;width:60px;z-index:2;background:linear-gradient(90deg,transparent,rgba(20,11,12,.9))"></div>
+            <div style="position:absolute;left:0;right:0;top:23px;height:168px;background:repeating-linear-gradient(180deg,rgba(255,255,255,.22) 0 1px,transparent 1px 28px);pointer-events:none"></div>
+            <div style="position:absolute;top:23px;left:0;display:flex;will-change:transform;transition:transform .08s linear;transform:translateX({{ tabShift }}px)">
+              <sc-for list="{{ tabCols }}" as="c" hint-placeholder-count="20">
+                <div style="width:40px;flex:none;display:flex;flex-direction:column;border-radius:8px;background:{{ c.bg }};transition:background .1s;border-left:{{ c.barLine }}">
+                  <sc-for list="{{ c.cells }}" as="x" hint-placeholder-count="6">
+                    <div style="height:28px;display:grid;place-items:center;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums"><span style="padding:0 4px;border-radius:6px;background:{{ x.bg }};color:{{ x.color }}">{{ x.text }}</span></div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap">
+            <button onClick="{{ togglePlay }}" style="width:64px;height:64px;border-radius:50%;border:none;flex:none;background:linear-gradient(135deg,#e04040,#b3202a);color:#fff;font-size:22px;box-shadow:0 10px 28px rgba(224,64,64,.4)" style-hover="filter:brightness(1.1)">{{ playGlyph }}</button>
+            <button onClick="{{ stopPlay }}" style="width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#f7efe8;font-size:16px;flex:none" style-hover="background:rgba(255,255,255,.12)">■</button>
+            <div style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:0">
+              <div style="display:flex;justify-content:space-between;font-size:13px;color:#b9a9a3"><span>Tempo</span><span style="color:#f7efe8;font-variant-numeric:tabular-nums">{{ bpm }} BPM</span></div>
+              <input type="range" min="50" max="180" value="{{ bpm }}" onChange="{{ setBpm }}" aria-label="Tempo">
+            </div>
+            <button onClick="{{ toggleLoop }}" style="height:44px;padding:0 16px;border-radius:12px;border:1px solid {{ loopBorder }};background:{{ loopBg }};color:{{ loopColor }};font-size:14px;font-weight:600" style-hover="filter:brightness(1.15)">Loop</button>
+            <button onClick="{{ toggleSound }}" style="height:44px;padding:0 16px;border-radius:12px;border:1px solid {{ soundBorder }};background:{{ soundBg }};color:{{ soundColor }};font-size:14px;font-weight:600" style-hover="filter:brightness(1.15)">{{ soundLabel }}</button>
+          </div>
+        </section>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showPedals }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <section style="padding:16px 20px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(18px);display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:60px">
+          <span style="font-size:12px;letter-spacing:.18em;color:#b9a9a3;font-weight:500">CHAIN</span>
+          <span style="padding:6px 12px;border-radius:999px;font-size:13px;background:rgba(0,0,0,.3);color:#b9a9a3;border:1px solid rgba(255,255,255,.1)">Guitar</span>
+          <sc-for list="{{ chain }}" as="c" hint-placeholder-count="2">
+            <span style="color:#b9a9a3">→</span><span style="padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(233,185,73,.18);color:#f6d98a;border:1px solid rgba(233,185,73,.4)">{{ c }}</span>
+          </sc-for>
+          <span style="color:#b9a9a3">→</span><span style="padding:6px 12px;border-radius:999px;font-size:13px;background:rgba(0,0,0,.3);color:#b9a9a3;border:1px solid rgba(255,255,255,.1)">Amp</span>
+        </section>
+        <div style="display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr))">
+          <sc-for list="{{ pedals }}" as="p" hint-placeholder-count="8">
+            <div style="padding:16px 14px 14px;border-radius:22px;background:rgba(255,255,255,.06);border:1px solid {{ p.border }};backdrop-filter:blur(18px);box-shadow:{{ p.shadow }};display:flex;flex-direction:column;align-items:center;gap:10px;transition:all .25s">
+              <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+                <span style="font-size:11px;letter-spacing:.12em;color:#b9a9a3;font-weight:500">{{ p.type }}</span>
+                <span style="width:10px;height:10px;border-radius:50%;background:{{ p.led }};animation:{{ p.ledAnim }};transition:background .2s"></span>
+              </div>
+              <div style="position:relative;width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#3a2626,#1a0f10);border:1px solid rgba(255,255,255,.18);box-shadow:0 6px 16px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.1);transform:rotate({{ p.rot }}deg);transition:transform .15s">
+                <span style="position:absolute;left:50%;top:6px;width:4px;height:18px;margin-left:-2px;border-radius:2px;background:{{ p.indicator }}"></span>
+              </div>
+              <div style="font-weight:700;font-size:16px;text-align:center">{{ p.name }}</div>
+              <input type="range" min="0" max="100" value="{{ p.level }}" onChange="{{ p.setLevel }}" aria-label="Level">
+              <button onClick="{{ p.toggle }}" aria-label="Toggle pedal" style="width:52px;height:52px;border-radius:50%;border:3px solid rgba(255,255,255,.2);background:{{ p.switchBg }};box-shadow:0 4px 12px rgba(0,0,0,.5),inset 0 2px 4px rgba(255,255,255,.2);transition:all .15s" style-hover="filter:brightness(1.15)" style-active="transform:scale(.94)"></button>
+            </div>
+          </sc-for>
+        </div>
+        <section>
+          <div style="font-size:12px;letter-spacing:.18em;color:#b9a9a3;font-weight:500;margin-bottom:12px">LOOPER</div>
+          <div style="display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))">
+            <sc-for list="{{ loops }}" as="l" hint-placeholder-count="4">
+              <div style="padding:18px;border-radius:22px;background:rgba(255,255,255,.06);border:1px solid {{ l.border }};backdrop-filter:blur(18px);box-shadow:0 10px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.15);display:flex;flex-direction:column;gap:12px;transition:border .2s">
+                <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;font-size:15px">Loop {{ l.n }}</span><span style="font-size:12px;font-weight:600;letter-spacing:.08em;color:{{ l.statusColor }};animation:{{ l.statusAnim }}">{{ l.status }}</span></div>
+                <div style="height:8px;border-radius:4px;background:rgba(0,0,0,.35);overflow:hidden"><div style="height:100%;border-radius:4px;background:{{ l.barBg }};width:{{ l.pct }}%"></div></div>
+                <div style="display:flex;gap:8px">
+                  <button onClick="{{ l.primary }}" style="flex:1;height:44px;border-radius:12px;border:none;font-size:14px;font-weight:600;background:{{ l.primaryBg }};color:{{ l.primaryColor }}" style-hover="filter:brightness(1.12)">{{ l.primaryLabel }}</button>
+                  <button onClick="{{ l.clear }}" style="width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#f7efe8;font-size:16px" style-hover="background:rgba(224,64,64,.3)">✕</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </div>
+    </sc-if>
+  </main>
+  <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+    <nav style="position:fixed;left:12px;right:12px;bottom:12px;z-index:10;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px;border-radius:24px;background:rgba(30,16,17,.75);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(24px);box-shadow:0 10px 40px rgba(0,0,0,.5)">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="4">
+        <button onClick="{{ n.select }}" style="height:56px;border-radius:18px;border:none;background:{{ n.bg }};color:{{ n.color }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:600;transition:all .2s"><span style="font-size:20px">{{ n.icon }}</span>{{ n.label }}</button>
+      </sc-for>
+    </nav>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;tuner&quot;,&quot;options&quot;:[&quot;tuner&quot;,&quot;chords&quot;,&quot;tabs&quot;,&quot;pedals&quot;],&quot;tsType&quot;:&quot;'tuner'|'chords'|'tabs'|'pedals'&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
+const NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const STR=[{note:'E',oct:2,hz:82.41,pc:4},{note:'A',oct:2,hz:110,pc:9},{note:'D',oct:3,hz:146.83,pc:2},{note:'G',oct:3,hz:196,pc:7},{note:'B',oct:3,hz:246.94,pc:11},{note:'E',oct:4,hz:329.63,pc:4}];
+const TEMPL=[['',[0,4,7]],['m',[0,3,7]],['5',[0,7]],['dim',[0,3,6]],['aug',[0,4,8]],['sus2',[0,2,7]],['sus4',[0,5,7]],['7',[0,4,7,10]],['maj7',[0,4,7,11]],['m7',[0,3,7,10]],['dim7',[0,3,6,9]],['m7b5',[0,3,6,10]],['6',[0,4,7,9]],['m6',[0,3,7,9]],['add9',[0,2,4,7]],['madd9',[0,2,3,7]],['7sus4',[0,5,7,10]],['9',[0,2,4,7,10]],['maj9',[0,2,4,7,11]],['m9',[0,2,3,7,10]],['mMaj7',[0,3,7,11]],['7#9',[0,3,4,7,10]],['7b9',[0,1,4,7,10]],['6/9',[0,2,4,7,9]],['7(no5)',[0,4,10]],['m7(no5)',[0,3,10]],['maj7(no5)',[0,4,11]]];
+const PRESETS={C:[-1,3,2,0,1,0],G:[3,2,0,0,0,3],D:[-1,-1,0,2,3,2],A:[-1,0,2,2,2,0],E:[0,2,2,1,0,0],Am:[-1,0,2,2,1,0],Em:[0,2,2,0,0,0],Dm:[-1,-1,0,2,3,1],F:[1,3,3,2,1,1],E7:[0,2,0,1,0,0],Cmaj7:[-1,3,2,0,0,0]};
+// Tab strings listed high e → low E
+const SONGS=[
+ {title:'Ember Road',meta:'Original · Riff in E minor · 92 BPM',bpm:92,lines:[
+ '----------------|----------------|----------------|----------------|',
+ '----------------|----------------|------8-8-------|----------------|',
+ '----------------|------7-7-------|----7-----7-----|------7-7-------|',
+ '------9-9-------|----9-----9-----|--9---------9---|----9-----9-----|',
+ '----7-----7-----|--7---------7---|7---------------|--7---------7---|',
+ '0-0---------0---|0-0-------------|----------------|0-0-------------|']},
+ {title:'Gold Coast Shuffle',meta:'Original · Blues in A · 120 BPM',bpm:120,lines:[
+ '----------------|----------------|----------------|----------------|',
+ '----------------|----------------|----------------|----------------|',
+ '----------------|----------------|----------------|----------------|',
+ '2-2-4-4-2-2-4-4-|----------------|2-2-4-4-2-2-4-4-|----------------|',
+ '0-0-0-0-0-0-0-0-|2-2-4-4-2-2-4-4-|0-0-0-0-0-0-0-0-|2-2-4-4-5-5-4-4-|',
+ '----------------|0-0-0-0-0-0-0-0-|----------------|0-0-0-0-0-0-0-0-|']},
+ {title:'Lantern Arpeggio',meta:'Original · Fingerstyle in G · 76 BPM',bpm:76,lines:[
+ '----3-------3---|----0-------0---|----3-------3---|----2-------2---|',
+ '--0---0---0---0-|--1---1---1---1-|--0---0---0---0-|--3---3---3---3-|',
+ '----------------|----------------|----------------|----------------|',
+ '------0-------0-|------2-------2-|------0-------0-|------0-------0-|',
+ '----------------|3-------3-------|----------------|----------------|',
+ '3-------3-------|----------------|3-------3-------|2-------2-------|']},
+ {title:'Scarlet Drive',meta:'Original · Power chords · 140 BPM',bpm:140,lines:[
+ '----------------|----------------|----------------|----------------|',
+ '----------------|----------------|----------------|----------------|',
+ '----------------|----------------|----------------|----------------|',
+ '2-2-2-2-5-5-5-5-|7-7-7-7---------|2-2-2-2-5-5-5-5-|4-4-4-4-2-2-----|',
+ '2-2-2-2-5-5-5-5-|7-7-7-7-5-5-5-5-|2-2-2-2-5-5-5-5-|4-4-4-4-2-2-----|',
+ '0-0-0-0-3-3-3-3-|5-5-5-5-3-3-3-3-|0-0-0-0-3-3-3-3-|2-2-2-2-0-0-----|']}
+];
+function parseSong(s){const cols=[];const L=s.lines[0].length;for(let i=0;i<L;i++){const ch=s.lines.map(l=>l[i]);if(ch[0]==='|'){cols.push({bar:true,cells:ch.map(()=>null)});continue}cols.push({bar:false,cells:ch.map(c=>c==='-'?null:+c)})}return cols}
+const PEDALS=[['Compressor','DYNAMICS',55],['Overdrive','GAIN',62],['Distortion','GAIN',70],['Fuzz','GAIN',48],['Chorus','MOD',40],['Phaser','MOD',35],['Delay','TIME',45],['Reverb','SPACE',58]];
+class Component extends DCLogic{
+ state={tab:this.props.startTab??'tuner',width:typeof window!=='undefined'?window.innerWidth:1200,tString:5,auto:true,listening:false,cents:0,freq:0,detected:null,mic:false,micErr:'',frets:[-1,3,2,0,1,0],baseFret:1,songIdx:0,pos:0,playing:false,bpm:92,loop:true,sound:true,pedals:PEDALS.map(([name,type,level],i)=>({name,type,level,on:i===1||i===6})),loops:[0,1,2,3].map(()=>({state:'empty',progress:0})),audioReady:false};
+ componentDidMount(){this.onResize=()=>this.setState({width:window.innerWidth});window.addEventListener('resize',this.onResize);this.simCents=28;this.simTimer=0;this.acc=0;this.last=performance.now();this.timer=setInterval(()=>this.tick(),50)}
+ componentWillUnmount(){window.removeEventListener('resize',this.onResize);clearInterval(this.timer);this.stopMic()}
+ ensureAudio(){if(!this.ac){const C=window.AudioContext||window.webkitAudioContext;this.ac=new C();this.setState({audioReady:true})}if(this.ac.state==='suspended')this.ac.resume();return this.ac}
+ pluck(freq,when=0,dur=1.1){try{const ac=this.ensureAudio(),t=ac.currentTime+when;const o=ac.createOscillator();o.type='triangle';o.frequency.value=freq;const o2=ac.createOscillator();o2.type='sawtooth';o2.frequency.value=freq;const g2=ac.createGain();g2.gain.value=.25;const f=ac.createBiquadFilter();f.type='lowpass';f.frequency.setValueAtTime(freq*7,t);f.frequency.exponentialRampToValueAtTime(freq*1.4,t+dur);const g=ac.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.16,t+.006);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(f);o2.connect(g2);g2.connect(f);f.connect(g);g.connect(ac.destination);o.start(t);o2.start(t);o.stop(t+dur+.05);o2.stop(t+dur+.05)}catch(e){}}
+ tick(){const now=performance.now(),dt=now-this.last;this.last=now;const s=this.state;const patch={};
+  if(s.listening&&!s.mic){this.simTimer+=dt;if(this.simTimer>7000){this.simTimer=0;this.simCents=(Math.random()-.5)*80}this.simCents+=(0-this.simCents)*.025+(Math.random()-.5)*2.4;const hz=STR[s.tString].hz*Math.pow(2,this.simCents/1200);patch.cents=this.simCents;patch.freq=hz;patch.detected=s.tString}
+  if(s.playing){const cols=this.cols();const step=60000/s.bpm/2;this.acc+=dt;let pos=s.pos,changed=false;while(this.acc>=step){this.acc-=step;pos++;changed=true;if(pos>=cols.length){if(s.loop)pos=0;else{pos=cols.length-1;patch.playing=false;break}}if(s.sound&&cols[pos]&&!cols[pos].bar)cols[pos].cells.forEach((f,i)=>{if(f!==null)this.pluck(STR[5-i].hz*Math.pow(2,f/12),0,.6)})}if(changed)patch.pos=pos}
+  const loopLen=8*60000/92;let lch=false;const loops=s.loops.map(l=>{if(l.state==='recording'){lch=true;const p=l.progress+dt/loopLen;return p>=1?{state:'playing',progress:0}:{state:'recording',progress:p}}if(l.state==='playing'){lch=true;return {state:'playing',progress:(l.progress+dt/loopLen)%1}}return l});if(lch)patch.loops=loops;
+  if(Object.keys(patch).length)this.setState(patch)}
+ cols(){if(this._songIdx!==this.state.songIdx){this._songIdx=this.state.songIdx;this._cols=parseSong(SONGS[this.state.songIdx])}return this._cols}
+ async startMic(){try{const ac=this.ensureAudio();const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});this.stream=stream;const src=ac.createMediaStreamSource(stream);this.an=ac.createAnalyser();this.an.fftSize=2048;src.connect(this.an);this.buf=new Float32Array(2048);this.setState({mic:true,micErr:''});this.lastDet=0;const loop=()=>{if(!this.an)return;this.raf=requestAnimationFrame(loop);const t=performance.now();if(t-this.lastDet<60)return;this.lastDet=t;this.an.getFloatTimeDomainData(this.buf);const f=this.autoCorrelate(this.buf,ac.sampleRate);if(f>60&&f<1200){let idx=this.state.tString;if(this.state.auto){let best=1e9;STR.forEach((st,i)=>{const d=Math.abs(1200*Math.log2(f/st.hz));if(d<best){best=d;idx=i}})}const c=Math.max(-50,Math.min(50,1200*Math.log2(f/STR[idx].hz)));this.setState({freq:f,cents:c,detected:idx})}};loop()}catch(e){this.setState({mic:false,micErr:'Microphone unavailable — running in demo mode.'})}}
+ stopMic(){if(this.raf)cancelAnimationFrame(this.raf);this.an=null;if(this.stream){this.stream.getTracks().forEach(t=>t.stop());this.stream=null}}
+ autoCorrelate(buf,sr){let n=buf.length,rms=0;for(let i=0;i<n;i++)rms+=buf[i]*buf[i];rms=Math.sqrt(rms/n);if(rms<.01)return -1;let r1=0,r2=n-1;const th=.2;for(let i=0;i<n/2;i++)if(Math.abs(buf[i])<th){r1=i;break}for(let i=1;i<n/2;i++)if(Math.abs(buf[n-i])<th){r2=n-i;break}buf=buf.slice(r1,r2);n=buf.length;const c=new Float32Array(n);for(let i=0;i<n;i++)for(let j=0;j<n-i;j++)c[i]+=buf[j]*buf[j+i];let d=0;while(d<n-1&&c[d]>c[d+1])d++;let mv=-1,mp=-1;for(let i=d;i<n;i++)if(c[i]>mv){mv=c[i];mp=i}if(mp<=0)return -1;let T=mp;const x1=c[T-1]||0,x2=c[T],x3=c[T+1]||0,a=(x1+x3-2*x2)/2,b=(x3-x1)/2;if(a)T=T-b/(2*a);return sr/T}
+ identify(frets,base){const pcs=[],bassIdx=frets.findIndex(f=>f>=0);frets.forEach((f,i)=>{if(f>=0)pcs.push((STR[i].pc+(f===0?0:f+base-1))%12)});const set=[...new Set(pcs)];if(set.length<2)return {name:set.length?NOTES[set[0]]:'—',sub:set.length?'Single note':'Tap frets to build a chord',notes:set};const bass=pcs[0];let best=null;set.forEach(root=>{const iv=[...new Set(set.map(p=>(p-root+12)%12))].sort((a,b)=>a-b);TEMPL.forEach(([suf,t])=>{if(t.length===iv.length&&t.every((v,i)=>v===iv[i])){const score=(root===bass?2:0)-t.length*.1;if(!best||score>best.score)best={score,root,suf}}})});if(!best)return {name:'?',sub:'Unrecognized voicing: '+set.map(p=>NOTES[p]).join(' '),notes:set,root:null};const slash=best.root!==bass?'/'+NOTES[bass]:'';const full={'':'major',m:'minor',5:'power chord',dim:'diminished',aug:'augmented'}[best.suf];return {name:NOTES[best.root]+best.suf+slash,sub:full?NOTES[best.root]+' '+full+(slash?' over '+NOTES[bass]:''):NOTES[best.root]+' '+best.suf+(slash?' over '+NOTES[bass]:''),notes:set,root:best.root}}
+ renderVals(){const s=this.state,W=s.width,isMobile=W<700,isTablet=W>=700&&W<1024;const gold='#e9b949',red='#e04040';
+  const set=p=>this.setState(p);
+  const navItems=[['tuner','Tuner','◎'],['chords','Chords','⌗'],['tabs','Tabs','≣'],['pedals','Pedals','▣']].map(([id,label,icon])=>{const a=s.tab===id;return {id,label,icon,select:()=>set({tab:id}),bg:a?'linear-gradient(135deg,rgba(224,64,64,.9),rgba(179,32,42,.9))':'transparent',color:a?'#fff':'#b9a9a3',border:a?'rgba(255,255,255,.15)':'transparent'}});
+  // tuner
+  const tIdx=s.detected??s.tString,st=STR[tIdx],cents=s.listening?s.cents:0,inTune=Math.abs(cents)<4;
+  const statusColor=!s.listening?'#b9a9a3':inTune?gold:red;
+  const ticks=Array.from({length:11},(_,i)=>({h:i===5?14:i%5===0?10:6}));
+  const tunerStrings=STR.map((x,i)=>{const a=i===s.tString;return {note:x.note+x.oct,hz:x.hz.toFixed(0)+' Hz',select:()=>{set({tString:i,detected:null,auto:false});this.simCents=(Math.random()-.5)*60},bg:a?'rgba(233,185,73,.2)':'rgba(255,255,255,.05)',border:a?'rgba(233,185,73,.6)':'rgba(255,255,255,.12)',color:a?'#f6d98a':'#f7efe8'}});
+  // chords
+  const ch=this.identify(s.frets,s.baseFret);
+  const fretRows=[5,4,3,2,1,0].map(i=>{const f=s.frets[i];return {label:STR[i].note,nutText:f===-1?'✕':f===0?'○':'',nutColor:f===-1?red:f===0?gold:'#b9a9a3',nutClick:()=>{const fr=[...s.frets];fr[i]=f===-1?0:-1;set({frets:fr})},cells:Array.from({length:5},(_,k)=>{const n=k+1,on=f===n;return {opacity:on?1:0,scale:on?1:.4,click:()=>{const fr=[...s.frets];fr[i]=on?0:n;set({frets:fr})}}})}});
+  const fretLabels=Array.from({length:5},(_,k)=>s.baseFret+k);
+  const presets=Object.keys(PRESETS).map(name=>({name,select:()=>set({frets:[...PRESETS[name]],baseFret:1})}));
+  const chordNotes=ch.notes.map(p=>({name:NOTES[p],bg:p===ch.root?'rgba(233,185,73,.25)':'rgba(255,255,255,.08)',color:p===ch.root?'#f6d98a':'#f7efe8'}));
+  // tabs
+  const cols=this.cols(),song=SONGS[s.songIdx];
+  const tabCols=cols.map((c,i)=>{const cur=i===s.pos;return {bg:cur?'rgba(233,185,73,.16)':'transparent',barLine:c.bar?'2px solid rgba(255,255,255,.35)':'2px solid transparent',cells:c.cells.map(f=>({text:f===null?'':String(f),bg:f===null?'transparent':cur?gold:'rgba(20,11,12,.95)',color:f===null?'transparent':cur?'#140b0c':'#f7efe8'}))}});
+  const songs=SONGS.map((x,i)=>{const a=i===s.songIdx;return {title:x.title,meta:x.meta,initial:x.title[0],bars:4,select:()=>{set({songIdx:i,pos:0,playing:false,bpm:x.bpm});this.acc=0},bg:a?'rgba(233,185,73,.12)':'rgba(255,255,255,.04)',border:a?'rgba(233,185,73,.5)':'rgba(255,255,255,.1)',markBg:a?'linear-gradient(135deg,#e9b949,#e04040)':'rgba(255,255,255,.08)',markColor:a?'#140b0c':'#f7efe8'}});
+  const barNo=Math.floor(s.pos/17)+1,beat=Math.floor((s.pos%17)/2)+1;
+  // pedals
+  const pedals=s.pedals.map((p,i)=>({...p,setLevel:e=>{const ps=s.pedals.map((q,k)=>k===i?{...q,level:+e.target.value}:q);set({pedals:ps})},toggle:()=>{const ps=s.pedals.map((q,k)=>k===i?{...q,on:!q.on}:q);set({pedals:ps});this.ensureAudio()},rot:-135+p.level*2.7,led:p.on?gold:'rgba(255,255,255,.15)',ledAnim:p.on?'ledPulse 2s ease-in-out infinite':'none',border:p.on?'rgba(233,185,73,.55)':'rgba(255,255,255,.12)',shadow:p.on?'0 10px 40px rgba(233,185,73,.18),inset 0 1px 0 rgba(255,255,255,.15)':'0 10px 40px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.15)',indicator:p.on?gold:'#b9a9a3',switchBg:p.on?'radial-gradient(circle at 40% 35%,#f0605a,#b3202a)':'radial-gradient(circle at 40% 35%,#4a3033,#241415)'}));
+  const chain=s.pedals.filter(p=>p.on).map(p=>p.name);
+  const loops=s.loops.map((l,i)=>{const upd=v=>set({loops:s.loops.map((q,k)=>k===i?v:q)});const rec=l.state==='recording',pl=l.state==='playing',em=l.state==='empty';return {n:i+1,status:em?'EMPTY':rec?'● REC':pl?'PLAYING':'STOPPED',statusColor:em?'#b9a9a3':rec?red:pl?gold:'#f7efe8',statusAnim:rec?'recPulse 1s ease-in-out infinite':'none',pct:Math.round(l.progress*100),barBg:rec?red:gold,border:rec?'rgba(224,64,64,.6)':pl?'rgba(233,185,73,.5)':'rgba(255,255,255,.12)',primaryLabel:em?'Record':rec?'Stop rec':pl?'Stop':'Play',primaryBg:em||rec?'linear-gradient(135deg,#e04040,#b3202a)':pl?'rgba(255,255,255,.1)':'linear-gradient(135deg,#e9b949,#c9952f)',primaryColor:pl?'#f7efe8':em||rec?'#fff':'#140b0c',primary:()=>{this.ensureAudio();if(em)upd({state:'recording',progress:0});else if(rec)upd({state:'playing',progress:0});else if(pl)upd({state:'stopped',progress:0});else upd({state:'playing',progress:0})},clear:()=>upd({state:'empty',progress:0})}});
+  return {isMobile,sideNav:!isMobile,navLabels:!isTablet,navWidth:isTablet?76:220,mainPadBottom:isMobile?110:32,navItems,
+   tabTitle:{tuner:'Tuner',chords:'Chord identifier',tabs:'Tablature stream',pedals:'Pedalboard'}[s.tab],
+   audioDot:s.audioReady?gold:'rgba(255,255,255,.3)',audioStatus:s.mic?'Mic live':s.audioReady?'Audio ready':'Audio idle',
+   showTuner:s.tab==='tuner',showChords:s.tab==='chords',showTabs:s.tab==='tabs',showPedals:s.tab==='pedals',
+   tunerModeLabel:!s.listening?'READY':s.mic?'LISTENING · MIC':'LISTENING · DEMO',listening:s.listening,
+   glowColor:!s.listening?'rgba(255,255,255,.06)':inTune?'rgba(233,185,73,.45)':'rgba(224,64,64,.35)',
+   noteName:st.note,freqText:s.listening?(s.freq||st.hz).toFixed(1)+' Hz':'target '+st.hz.toFixed(2)+' Hz',
+   needlePct:50+Math.max(-50,Math.min(50,cents)),ticks,statusColor,
+   statusText:!s.listening?'Pluck a string':inTune?'In tune':cents<0?'Tune up ↑':'Tune down ↓',
+   centsText:s.listening?(cents>0?'+':'')+cents.toFixed(1)+' cents':'Tap Listen to start',
+   tunerStrings,toggleListen:()=>{if(s.listening){this.stopMic();set({listening:false,mic:false,detected:null})}else{set({listening:true});this.ensureAudio();this.startMic()}},
+   listenLabel:s.listening?'Stop':'Listen',listenBg:s.listening?'rgba(255,255,255,.12)':'linear-gradient(135deg,#e04040,#b3202a)',listenColor:'#fff',
+   playRef:()=>{const ac=this.ensureAudio(),t=ac.currentTime;const o=ac.createOscillator();o.type='sine';o.frequency.value=STR[s.tString].hz;const g=ac.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.2,t+.02);g.gain.setValueAtTime(.2,t+1.2);g.gain.exponentialRampToValueAtTime(.0001,t+1.8);o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+1.85)},
+   toggleAuto:()=>set({auto:!s.auto}),autoBg:s.auto?gold:'rgba(255,255,255,.2)',autoKnob:s.auto?25:3,
+   tunerHint:s.micErr||(s.mic?'Microphone is live. Play one string at a time near the mic.':'Listen uses your microphone when allowed; otherwise a simulated signal demonstrates the meter.'),
+   fretDown:()=>set({baseFret:Math.max(1,s.baseFret-1)}),fretUp:()=>set({baseFret:Math.min(12,s.baseFret+1)}),baseFret:s.baseFret,fretLabels,fretRows,
+   strum:()=>{s.frets.forEach((f,i)=>{if(f>=0)this.pluck(STR[i].hz*Math.pow(2,(f===0?0:f+s.baseFret-1)/12),i*.045,1.6)})},clearFrets:()=>set({frets:[-1,-1,-1,-1,-1,-1]}),
+   chordName:ch.name,chordSub:ch.sub,chordNotes,presets,
+   tabsGridCols:isMobile?'1fr':'minmax(220px,1fr) 2.2fr',libOrder:isMobile?2:0,songs,songTitle:song.title,songMeta:song.meta,
+   posText:'Bar '+barNo+' · Beat '+beat,tabCols,tabShift:120-36-s.pos*40,
+   togglePlay:()=>{this.ensureAudio();this.acc=0;this.last=performance.now();set({playing:!s.playing})},stopPlay:()=>{set({playing:false,pos:0});this.acc=0},playGlyph:s.playing?'❚❚':'▶',
+   bpm:s.bpm,setBpm:e=>set({bpm:+e.target.value}),
+   toggleLoop:()=>set({loop:!s.loop}),loopBg:s.loop?'rgba(233,185,73,.18)':'rgba(255,255,255,.06)',loopBorder:s.loop?'rgba(233,185,73,.5)':'rgba(255,255,255,.14)',loopColor:s.loop?'#f6d98a':'#b9a9a3',
+   toggleSound:()=>set({sound:!s.sound}),soundLabel:s.sound?'Sound on':'Muted',soundBg:s.sound?'rgba(233,185,73,.18)':'rgba(255,255,255,.06)',soundBorder:s.sound?'rgba(233,185,73,.5)':'rgba(255,255,255,.14)',soundColor:s.sound?'#f6d98a':'#b9a9a3',
+   pedals,chain,loops}}}
+</script>
+</body>
+</html>

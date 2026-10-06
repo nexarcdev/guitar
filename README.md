@@ -15,6 +15,9 @@ npm test         # unit tests, including a real basic-pitch inference smoke test
 npm run build    # typecheck + production build with service worker
 ```
 
+Pushing to `main` deploys to GitHub Pages through `.github/workflows/pages.yml` (tests, then a build with
+`BASE_PATH=/<repo>/`). In the repo settings, set **Pages → Source** to **GitHub Actions** once.
+
 The microphone needs a secure context: `https://` or `localhost`. Use headphones when Output is on,
 otherwise the speakers feed back into the mic.
 

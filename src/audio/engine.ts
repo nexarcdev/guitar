@@ -1,0 +1,334 @@
+// The app is the amp. Signal flow:
+//   input ─┬─ capture worklet ──ports──▶ pitch worker, ML worker   (analysis, only while listening)
+//          └─ inBus ─▶ pedal chain ─▶ chainOut ─┬────────────────▶ master (output toggle) ─▶ speakers
+//                                               └─ looper worklet ─▶ master
+// Everything stateful lives here, outside React; the store subscribes to events.
+
+import captureUrl from './worklets/capture.worklet.ts?worker&url';
+import looperUrl from './worklets/looper.worklet.ts?worker&url';
+import { makeFx, type FxNode, type Pedal, type PedalName } from './pedals';
+import { pluck, referenceTone, type Voice } from './synth';
+import type { LooperView } from './looperCore';
+import type { TrackerOutput } from '../dsp/tracker';
+
+export type MicState = 'idle' | 'starting' | 'live' | 'denied' | 'nodevice' | 'insecure' | 'error';
+export type MlStatus = 'off' | 'loading' | 'ready' | 'slow' | 'unavailable';
+
+export interface InputDevice {
+  id: string;
+  label: string;
+}
+
+export interface EngineStatus {
+  mic: MicState;
+  /** AudioContext is running (browsers keep it suspended until the first tap). */
+  running: boolean;
+  ml: MlStatus;
+  mlBackend: string;
+  devices: InputDevice[];
+  /** Device actually in use. */
+  deviceId: string;
+}
+
+export interface Analysis extends TrackerOutput {
+  clock: number;
+}
+
+export interface MlNotes {
+  from: number;
+  to: number;
+  notes: Array<{ midi: number; t: number; dur: number; amp: number }>;
+}
+
+type Events = {
+  analysis: Analysis;
+  ml: MlNotes;
+  looper: LooperView;
+  status: EngineStatus;
+};
+type Listener<K extends keyof Events> = (v: Events[K]) => void;
+
+class AudioEngine {
+  private ac: AudioContext | null = null;
+  private modules: Promise<void> | null = null;
+  private inBus!: GainNode;
+  private chainOut!: GainNode;
+  private master!: GainNode;
+  private fx = new Map<PedalName, FxNode>();
+  private fxOrder = '';
+  private pedals: Pedal[] = [];
+  private capture: AudioWorkletNode | null = null;
+  private looper: AudioWorkletNode | null = null;
+  private stream: MediaStream | null = null;
+  private src: MediaStreamAudioSourceNode | null = null;
+  private pitchW: Worker | null = null;
+  private mlW: Worker | null = null;
+  private listeners: { [K in keyof Events]: Set<Listener<K>> } = { analysis: new Set(), ml: new Set(), looper: new Set(), status: new Set() };
+  private clockBase = 0;
+  private clockAt = 0;
+  private pending: Promise<void> | null = null;
+  private wantDevice = '';
+
+  listening = true;
+  output = false;
+  status: EngineStatus = { mic: 'idle', running: false, ml: 'off', mlBackend: '', devices: [], deviceId: '' };
+
+  on<K extends keyof Events>(k: K, fn: Listener<K>) {
+    this.listeners[k].add(fn);
+    return () => void this.listeners[k].delete(fn);
+  }
+  private emit<K extends keyof Events>(k: K, v: Events[K]) {
+    this.listeners[k].forEach((fn) => fn(v));
+  }
+  private setStatus(p: Partial<EngineStatus>) {
+    this.status = { ...this.status, ...p };
+    this.emit('status', this.status);
+  }
+
+  /** Creates the context and graph on first use. Safe to call from any click handler. */
+  context(): AudioContext {
+    if (!this.ac) {
+      const C = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      let ac: AudioContext;
+      try {
+        ac = new C({ latencyHint: 'interactive' });
+      } catch {
+        ac = new C();
+      }
+      this.ac = ac;
+      this.inBus = ac.createGain();
+      this.chainOut = ac.createGain();
+      this.master = ac.createGain();
+      this.master.gain.value = this.output ? 1 : 0;
+      this.master.connect(ac.destination);
+      this.chainOut.connect(this.master);
+      ac.onstatechange = () => this.setStatus({ running: ac.state === 'running' });
+      this.modules = Promise.all([ac.audioWorklet.addModule(captureUrl), ac.audioWorklet.addModule(looperUrl)]).then(() => {
+        this.capture = new AudioWorkletNode(ac, 'fretline-capture', { numberOfInputs: 1, numberOfOutputs: 0 });
+        this.capture.port.postMessage({ type: 'listening', on: this.listening });
+        this.looper = new AudioWorkletNode(ac, 'fretline-looper', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
+        this.looper.port.onmessage = (e) => this.emit('looper', e.data as LooperView);
+        this.chainOut.connect(this.looper);
+        this.looper.connect(this.master);
+        if (this.src) this.src.connect(this.capture);
+        this.startWorkers(ac);
+      });
+      this.applyPedals(this.pedals);
+    }
+    if (this.ac.state === 'suspended') this.ac.resume().catch(() => {});
+    this.setStatus({ running: this.ac.state === 'running' });
+    return this.ac;
+  }
+
+  private startWorkers(ac: AudioContext) {
+    if (!this.capture) return;
+    this.pitchW = new Worker(new URL('../workers/pitch.worker.ts', import.meta.url), { type: 'module' });
+    const pc = new MessageChannel();
+    this.pitchW.postMessage({ type: 'init', sampleRate: ac.sampleRate, port: pc.port2 }, [pc.port2]);
+    this.capture.port.postMessage({ type: 'sink', port: pc.port1 }, [pc.port1]);
+    this.pitchW.onmessage = (e) => {
+      const a = e.data as Analysis;
+      this.clockBase = a.clock;
+      this.clockAt = performance.now();
+      this.emit('analysis', a);
+    };
+
+    this.mlW = new Worker(new URL('../workers/ml.worker.ts', import.meta.url), { type: 'module' });
+    const mc = new MessageChannel();
+    this.setStatus({ ml: 'loading' });
+    this.mlW.postMessage(
+      { type: 'init', sampleRate: ac.sampleRate, modelUrl: new URL(import.meta.env.BASE_URL + 'model/model.json', location.href).href, port: mc.port2 },
+      [mc.port2],
+    );
+    this.capture.port.postMessage({ type: 'sink', port: mc.port1 }, [mc.port1]);
+    this.mlW.onmessage = (e) => {
+      const m = e.data;
+      if (m.type === 'status') this.setStatus({ ml: m.status, mlBackend: m.backend ?? this.status.mlBackend });
+      else if (m.type === 'notes') this.emit('ml', m as MlNotes);
+    };
+    this.mlW.onerror = () => this.setStatus({ ml: 'unavailable' });
+  }
+
+  /** Listening-clock seconds, extrapolated between analysis chunks so the stream moves smoothly. */
+  clock() {
+    if (!this.listening || this.status.mic !== 'live' || !this.status.running) return this.clockBase;
+    return this.clockBase + Math.min(0.25, (performance.now() - this.clockAt) / 1000);
+  }
+
+  // ---- input
+
+  async start(deviceId = this.wantDevice) {
+    this.wantDevice = deviceId;
+    if (this.pending) return this.pending;
+    this.pending = this.open(deviceId).finally(() => (this.pending = null));
+    return this.pending;
+  }
+
+  private async open(deviceId: string) {
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      this.setStatus({ mic: 'insecure' });
+      return;
+    }
+    const ac = this.context();
+    this.setStatus({ mic: 'starting' });
+    const constraints = (id: string): MediaStreamConstraints => ({
+      audio: {
+        ...(id ? { deviceId: { exact: id } } : {}),
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        channelCount: { ideal: 1 },
+      },
+    });
+    let stream: MediaStream;
+    try {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints(deviceId));
+      } catch (e) {
+        // A remembered interface that is unplugged should not lock the user out.
+        if (deviceId && (e as DOMException).name === 'OverconstrainedError') stream = await navigator.mediaDevices.getUserMedia(constraints(''));
+        else throw e;
+      }
+    } catch (e) {
+      const name = (e as DOMException).name;
+      this.setStatus({
+        mic: name === 'NotAllowedError' || name === 'SecurityError' ? 'denied' : name === 'NotFoundError' || name === 'OverconstrainedError' ? 'nodevice' : 'error',
+      });
+      return;
+    }
+    if (!(this.listening || this.output)) {
+      stream.getTracks().forEach((t) => t.stop());
+      this.setStatus({ mic: 'idle' });
+      return;
+    }
+    this.closeInput();
+    this.stream = stream;
+    this.src = ac.createMediaStreamSource(stream);
+    this.src.connect(this.inBus);
+    if (this.capture) this.src.connect(this.capture);
+    const track = stream.getAudioTracks()[0];
+    track.onended = () => this.setStatus({ mic: 'nodevice' });
+    const settings = track.getSettings() as MediaTrackSettings & { latency?: number };
+    const rt = (ac.baseLatency || 0) + ((ac as AudioContext & { outputLatency?: number }).outputLatency || 0) + (settings.latency ?? 0.01);
+    await this.modules;
+    this.looper?.port.postMessage({ type: 'latency', samples: rt * ac.sampleRate });
+    this.setStatus({ mic: 'live', deviceId: settings.deviceId ?? '' });
+    this.refreshDevices();
+    navigator.mediaDevices.ondevicechange = () => this.refreshDevices();
+  }
+
+  private closeInput() {
+    if (this.src) {
+      try { this.src.disconnect(); } catch { /* not connected */ }
+      this.src = null;
+    }
+    if (this.stream) {
+      this.stream.getTracks().forEach((t) => { t.onended = null; t.stop(); });
+      this.stream = null;
+    }
+  }
+
+  stop() {
+    this.closeInput();
+    this.setStatus({ mic: 'idle' });
+  }
+
+  async refreshDevices() {
+    try {
+      const all = await navigator.mediaDevices.enumerateDevices();
+      const devices = all
+        .filter((d) => d.kind === 'audioinput' && d.deviceId !== 'default' && d.deviceId !== 'communications')
+        .map((d, i) => ({ id: d.deviceId, label: d.label || 'Input ' + (i + 1) }));
+      this.setStatus({ devices });
+    } catch {
+      /* enumerate is best effort */
+    }
+  }
+
+  setListening(on: boolean) {
+    this.listening = on;
+    this.capture?.port.postMessage({ type: 'listening', on });
+    this.sync();
+  }
+
+  setOutput(on: boolean) {
+    this.output = on;
+    const ac = this.context();
+    this.master.gain.setTargetAtTime(on ? 1 : 0, ac.currentTime, 0.02);
+    this.sync();
+  }
+
+  /** Mic stays open while anything needs it: analysis (listening) or the amp (output). */
+  private sync() {
+    const need = this.listening || this.output;
+    if (need && !this.stream) {
+      if (this.status.mic !== 'denied' && this.status.mic !== 'insecure') this.start();
+    } else if (!need && this.stream) this.stop();
+  }
+
+  // ---- pedals
+
+  applyPedals(ps: Pedal[]) {
+    this.pedals = ps;
+    const ac = this.ac;
+    if (!ac) return;
+    for (const p of ps) if (!this.fx.has(p.name)) this.fx.set(p.name, makeFx(ac, p.name));
+    const order = ps.map((p) => p.name).join();
+    if (order !== this.fxOrder) {
+      this.fxOrder = order;
+      this.inBus.disconnect();
+      this.fx.forEach((n) => n.o.disconnect());
+      let prev: AudioNode = this.inBus;
+      for (const p of ps) {
+        const n = this.fx.get(p.name)!;
+        prev.connect(n.i);
+        prev = n.o;
+      }
+      prev.connect(this.chainOut);
+    }
+    const t = ac.currentTime;
+    for (const p of ps) {
+      const n = this.fx.get(p.name)!;
+      n.set(p.level);
+      n.dry.gain.setTargetAtTime(!p.on || n.mix ? 1 : 0, t, 0.01);
+      n.wet.gain.setTargetAtTime(!p.on ? 0 : n.mix ? n.mix(p.level) : 1, t, 0.01);
+    }
+  }
+
+  // ---- looper
+
+  loop(cmd: 'tap' | 'stop' | 'clear', slot: number) {
+    this.context();
+    this.modules?.then(() => this.looper?.port.postMessage({ type: cmd, slot }));
+  }
+
+  // ---- synth
+
+  pluck(freq: number, when = 0, d = 1.1): Voice {
+    const ac = this.context();
+    return pluck(ac, freq, ac.currentTime + when, d);
+  }
+
+  reference(freq: number) {
+    referenceTone(this.context(), freq);
+  }
+
+  /** Schedules a list of notes from `from` seconds in. Returns the audio time that maps to t = 0. */
+  playNotes(notes: Array<{ t: number; hz: number }>, from: number): { zero: number; voices: Voice[] } {
+    const ac = this.context();
+    const zero = ac.currentTime + 0.05 - from;
+    const voices = notes.filter((n) => n.t >= from).map((n) => pluck(ac, n.hz, zero + n.t, 0.7));
+    return { zero, voices };
+  }
+
+  now() {
+    return this.ac ? this.ac.currentTime : 0;
+  }
+
+  /** Browsers start contexts suspended; any tap may resume. */
+  resume() {
+    if (this.ac && this.ac.state !== 'running') this.ac.resume().catch(() => {});
+  }
+}
+
+export const engine = new AudioEngine();

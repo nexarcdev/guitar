@@ -1,0 +1,158 @@
+/* Design tokens from the Claude Design handoff (design/project/Guitar App.dc.html).
+   Three hues carry meaning: red = live/recording, gold = selected/on, green = confirmed. */
+:root {
+  --bg: #140b0c;
+  --bg-deep: #0f0a0b;
+  --ink: #f7efe8;
+  --muted: #b9a9a3;
+  --muted-2: #8f807b;
+  --gold: #e9b949;
+  --gold-hi: #f6d98a;
+  --gold-lo: #d9a030;
+  --gold-dk: #c9952f;
+  --red: #e04040;
+  --red-ink: #ffb3b3;
+  --green: #4ade80;
+  --on-gold: #1c0e10;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-2: rgba(255, 255, 255, 0.12);
+  --line-3: rgba(255, 255, 255, 0.14);
+  --fill: rgba(255, 255, 255, 0.05);
+  --fill-2: rgba(255, 255, 255, 0.1);
+  --well: rgba(0, 0, 0, 0.22);
+  --pill-well: rgba(0, 0, 0, 0.3);
+  --gold-fill: rgba(233, 185, 73, 0.2);
+  --gold-edge: rgba(233, 185, 73, 0.6);
+  --font: 'Outfit', system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+* {
+  box-sizing: border-box;
+}
+a {
+  color: var(--gold);
+}
+a:hover {
+  color: var(--gold-hi);
+}
+button,
+input,
+select {
+  font-family: inherit;
+}
+button {
+  cursor: pointer;
+}
+input::placeholder {
+  color: var(--muted-2);
+}
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+@keyframes noteHit {
+  0% { background: #e9b949; color: #140b0c; }
+  100% { background: #1d1112; color: #f7efe8; }
+}
+@keyframes recPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.kicker {
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Shared pill controls */
+.btn-gold {
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, var(--gold), var(--gold-lo));
+  color: var(--on-gold);
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.2s;
+  box-shadow: 0 8px 24px rgba(233, 185, 73, 0.3);
+}
+.btn-gold:hover {
+  filter: brightness(1.08);
+}
+.btn-ghost {
+  height: 48px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 1px solid var(--line-3);
+  background: var(--fill);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.btn-ghost:hover {
+  background: var(--fill-2);
+}
+.segmented {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--pill-well);
+  border: 1px solid var(--fill-2);
+  width: fit-content;
+}
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(233, 185, 73, 0.1);
+  border: 1px solid rgba(233, 185, 73, 0.35);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.notice > span {
+  flex: 1;
+  min-width: 200px;
+}
+.notice-btn {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dk));
+  color: var(--bg);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.notice-btn:hover {
+  filter: brightness(1.08);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

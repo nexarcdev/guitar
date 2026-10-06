@@ -36,10 +36,11 @@ export function SetupSheet() {
       <div className={s.sheet} role="dialog" aria-modal="true" aria-labelledby="setup-title" onClick={(e) => e.stopPropagation()}>
         <div className={s.top}>
           <div style={{ minWidth: 0 }}>
-            <div className="kicker">YOUR GUITAR</div>
+            <div className="kicker">SETTINGS · YOUR GUITAR</div>
             <div id="setup-title" className={s.title}>
               {tn + (setup.capo ? ', capo on ' + ord(setup.capo) + ' fret' : ', no capo')}
             </div>
+            <div className={s.version}>{'Fretline ' + __APP_VERSION__ + ' · built ' + BUILT}</div>
           </div>
           <button ref={doneRef} className={s.done} onClick={close}>
             Done
@@ -123,6 +124,8 @@ export function SetupSheet() {
 
         <SoundCheck />
 
+        <Detection />
+
         <div>
           <div className={s.secHead}>
             <div className="kicker">HEADSTOCK</div>
@@ -194,8 +197,11 @@ function SoundCheck() {
         <button className={s.opt} style={{ minHeight: 44 }} onClick={() => { engine.resume(); engine.reference(440); }}>
           <span className={s.optName}>Play a test tone</span>
         </button>
-        <span className={s.secNote}>{diag.micOpen ? 'Input: ' + diag.inputLabel : 'Input closed'}</span>
+        <span className={s.secNote}>
+          {(diag.micOpen ? 'Input: ' + diag.inputLabel + (diag.inputRate ? ' · ' + Math.round(diag.inputRate / 100) / 10 + ' kHz' : '') : 'Input closed')}
+        </span>
       </div>
+      <OutputMeter />
       {IS_WINDOWS && (
         <div className={s.help}>
           <div className={s.helpTitle}>Sound cutting out, or other apps going quiet?</div>
@@ -213,6 +219,89 @@ function SoundCheck() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const BUILT = (() => {
+  const d = new Date(__BUILD_TIME__);
+  return isNaN(+d) ? 'locally' : d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+})();
+
+/**
+ * What Fretline is actually sending to the speakers. If this moves while you hear nothing, the
+ * sound is being muted after it leaves the app (Windows, the device, the volume mixer). If it
+ * stays flat while a test tone plays, the problem is inside the app.
+ */
+function OutputMeter() {
+  const fill = useRef<HTMLDivElement>(null);
+  const label = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    let raf = 0;
+    let shown = -120;
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      const v = engine.outputDb();
+      if (v === 'NaN') {
+        if (label.current) label.current.textContent = 'Fault: the audio engine is producing invalid samples';
+        if (fill.current) fill.current.style.width = '0%';
+        return;
+      }
+      shown = Math.max(v, shown - 1.5);
+      if (fill.current) fill.current.style.width = Math.max(0, Math.min(100, ((shown + 90) / 90) * 100)) + '%';
+      if (label.current) label.current.textContent = shown < -85 ? 'Silent' : Math.round(shown) + ' dB';
+    };
+    tick();
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return (
+    <div className={s.outRow}>
+      <div className={s.secNote}>Sent to speakers</div>
+      <div className={s.meter} style={{ flex: 1, marginTop: 0 }} role="meter" aria-label="Output level">
+        <div ref={fill} className={s.meterFill} style={{ width: 0 }} />
+      </div>
+      <span ref={label} className={s.outLabel}>Silent</span>
+    </div>
+  );
+}
+
+function Detection() {
+  const { gateLevel, mlOn, ml, backend } = useStore(
+    useShallow((x) => ({ gateLevel: x.gateLevel, mlOn: x.mlOn, ml: x.engine.ml, backend: x.engine.mlBackend })),
+  );
+  const mlText = !mlOn
+    ? 'Off: tabs show single notes, chords are named from the spectrum only'
+    : ml === 'ready' ? 'On · running on ' + (backend === 'webgl' ? 'the GPU' : backend === 'wasm' ? 'the CPU (WASM)' : backend || 'this device')
+    : ml === 'loading' ? 'Loading'
+    : ml === 'slow' ? 'Paused: this device can’t keep up in real time'
+    : ml === 'unavailable' ? 'Not available in this browser'
+    : 'On';
+  return (
+    <div>
+      <div className={s.secHead}>
+        <div className="kicker">NOISE GATE</div>
+        <div className={s.secNote}>How loud something must be, above your measured noise, to count as playing</div>
+      </div>
+      <div className={s.tunings}>
+        {([['low', 'Low', 'Hears soft playing'], ['normal', 'Normal', 'Recommended'], ['high', 'High', 'Ignores noisy cables']] as const).map(([id, name, sub]) => (
+          <button key={id} className={s.opt} aria-pressed={gateLevel === id} onClick={() => useStore.setState({ gateLevel: id })}>
+            <span className={s.optName}>{name}</span>
+            <span className={s.optSub}>{sub}</span>
+          </button>
+        ))}
+      </div>
+      <div className={s.secHead} style={{ marginTop: 20 }}>
+        <div className="kicker">CHORD DETECTION</div>
+        <div className={s.secNote}>{mlText}</div>
+      </div>
+      <div className={s.tunings}>
+        {([[true, 'On', 'Full chords in the tab stream'], [false, 'Off', 'Lighter on older computers']] as const).map(([on, name, sub]) => (
+          <button key={name} className={s.opt} aria-pressed={mlOn === on} onClick={() => useStore.setState({ mlOn: on })}>
+            <span className={s.optName}>{name}</span>
+            <span className={s.optSub}>{sub}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

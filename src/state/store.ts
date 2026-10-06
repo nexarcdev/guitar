@@ -15,6 +15,9 @@ import { confirmFrame } from '../theory/confirm';
 import { NO_PITCH, type ChromaFrame } from '../dsp/chroma';
 
 export type TabId = 'tuner' | 'chords' | 'tabs' | 'pedals';
+export type GateLevel = 'low' | 'normal' | 'high';
+/** dB above the noise floor at which each gate setting opens. */
+export const GATE_DB: Record<GateLevel, number> = { low: 8, normal: 12, high: 18 };
 export const BUF_SEC = 60;
 
 export interface Heard extends ChordName {
@@ -49,6 +52,10 @@ export interface State {
   voiced: boolean;
   tuned: number[];
   headstock: 'split' | 'inline';
+  /** App-wide noise gate: how far above the measured noise floor counts as playing. */
+  gateLevel: GateLevel;
+  /** Chord detection (basic-pitch). Off leaves single-note tabs and chroma chord names. */
+  mlOn: boolean;
   // chords
   frets: Shape;
   baseFret: number;
@@ -96,6 +103,8 @@ const initial: State = {
   voiced: false,
   tuned: [],
   headstock: 'split',
+  gateLevel: 'normal',
+  mlOn: true,
   frets: [-1, 3, 2, 0, 1, 0],
   baseFret: 1,
   heard: null,
@@ -125,7 +134,7 @@ const set = useStore.setState;
 
 // ---------------------------------------------------------------- persistence
 
-const PERSIST: Array<keyof State> = ['tab', 'setup', 'pedals', 'timeSig', 'gapBeats', 'chordMode', 'deviceId', 'headstock'];
+const PERSIST: Array<keyof State> = ['tab', 'setup', 'pedals', 'timeSig', 'gapBeats', 'chordMode', 'deviceId', 'headstock', 'gateLevel', 'mlOn'];
 
 export async function hydrate() {
   try {
@@ -153,6 +162,8 @@ export async function hydrate() {
       }
     }
     if (s.pedals !== prev.pedals) engine.applyPedals(s.pedals);
+    if (s.gateLevel !== prev.gateLevel) engine.setGate(GATE_DB[s.gateLevel] ?? 12);
+    if (s.mlOn !== prev.mlOn) engine.setMl(s.mlOn);
     if (s.frets !== prev.frets || s.baseFret !== prev.baseFret || s.setup !== prev.setup) {
       shapeAt = engine.clock();
       okSince = okUntil = 0;
@@ -161,6 +172,8 @@ export async function hydrate() {
     prev = s;
   });
   engine.applyPedals(get().pedals);
+  engine.setGate(GATE_DB[get().gateLevel] ?? 12);
+  engine.setMl(get().mlOn);
 }
 
 // ---------------------------------------------------------------- engine wiring
@@ -236,6 +249,7 @@ function onAnalysis(a: Analysis) {
   }
 
   // chord: chroma decides fast, ML refines later
+  sinceAttack = a.levels.sinceAttack;
   if (a.chroma !== undefined) chromaFrame(a.chroma, a.clock, patch);
 
   // fast single notes onto the stream
@@ -273,6 +287,10 @@ let okUntil = 0;
 const wrongHits = new Array(6).fill(0);
 /** Listening clock when the confirm shape last changed: older ML notes belong to the previous shape. */
 let shapeAt = 0;
+/** Seconds since the tracker last heard a pick attack. */
+let sinceAttack = Infinity;
+/** Confirm only listens for this long after a real attack, so noise during a pause can't light it up. */
+const CONFIRM_AFTER_ATTACK = 6;
 
 function chromaFrame(cf: ChromaFrame | null, clock: number, patch: Partial<State>) {
   const s = get();
@@ -307,6 +325,7 @@ function chromaFrame(cf: ChromaFrame | null, clock: number, patch: Partial<State
 function updateConfirm(pitch: Float32Array | null, clock: number, patch: Partial<State>) {
   const s = get();
   const now = performance.now();
+  if (sinceAttack > CONFIRM_AFTER_ATTACK) pitch = null;
   const f = confirmFrame({ frets: s.frets, baseFret: s.baseFret, setup: s.setup, pitch, mlRecent: pitch ? s.mlRecent.filter((m) => m.t >= shapeAt) : [], clock });
   for (let i = 0; i < 6; i++) wrongHits[i] = Math.max(0, Math.min(3, wrongHits[i] + (f.wrong.includes(i) ? 1 : -1)));
   const wrong = [0, 1, 2, 3, 4, 5].filter((i) => wrongHits[i] >= 2);

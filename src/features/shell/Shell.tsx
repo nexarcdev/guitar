@@ -42,6 +42,10 @@ export function Shell() {
             <span className={s.navLabel}>{label}</span>
           </button>
         ))}
+        <button className={`${s.navBtn} ${s.settingsBtn}`} aria-label="Settings" onClick={() => useStore.setState({ setupOpen: true })}>
+          <span className={s.navIcon} aria-hidden>⚙</span>
+          <span className={s.navLabel}>Settings</span>
+        </button>
       </nav>
       <main className={s.main}>
         <header className={s.header}>
@@ -53,7 +57,10 @@ export function Shell() {
             </div>
           </div>
           <div className={s.chips}>
-            <button className={s.setupChip} onClick={() => useStore.setState({ setupOpen: true })}>
+            <button className={s.gearChip} aria-label="Settings" title="Settings" onClick={() => useStore.setState({ setupOpen: true })}>
+              ⚙
+            </button>
+            <button className={s.setupChip} title="Tuning and capo" onClick={() => useStore.setState({ setupOpen: true })}>
               <span style={{ fontSize: 15, lineHeight: 1 }} aria-hidden>♩</span>
               {setupStr(setup)}
             </button>

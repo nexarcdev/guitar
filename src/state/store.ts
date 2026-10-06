@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { engine, type EngineStatus, type Analysis, type MlNotes } from '../audio/engine';
+import { engine, type EngineStatus, type Analysis, type MlNotes, type LatencyMode } from '../audio/engine';
 import { DEFAULT_PEDALS, type Pedal } from '../audio/pedals';
 import type { LooperView } from '../audio/looperCore';
 import {
@@ -57,7 +57,7 @@ export interface State {
   /** Chord detection (basic-pitch). Off leaves single-note tabs and chroma chord names. */
   mlOn: boolean;
   /** Audio buffer size: 'interactive' (lowest delay) or 'playback' (larger, more robust). Applies on reload. */
-  latency: 'interactive' | 'playback';
+  latency: LatencyMode;
   // chords
   frets: Shape;
   baseFret: number;
@@ -107,7 +107,7 @@ const initial: State = {
   headstock: 'split',
   gateLevel: 'normal',
   mlOn: true,
-  latency: 'interactive',
+  latency: 'lowest',
   frets: [-1, 3, 2, 0, 1, 0],
   baseFret: 1,
   heard: null,
@@ -150,6 +150,12 @@ export async function hydrate() {
     // Pedal list must contain exactly the known pedals; anything else is a stale save.
     const names = (ps: Pedal[]) => ps.map((p) => p.name).sort().join();
     if (patch.pedals && (!Array.isArray(patch.pedals) || names(patch.pedals) !== names(DEFAULT_PEDALS))) delete patch.pedals;
+    if (!(await db.getKV('latencyV2'))) {
+      // Earlier builds could switch to Safe buffers automatically (and defaulted to 'interactive');
+      // start everyone on the new lowest-latency default once.
+      patch.latency = 'lowest';
+      db.setKV('latencyV2', true);
+    }
     set({ ...patch, hydrated: true });
   } catch {
     set({ hydrated: true });

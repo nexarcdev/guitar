@@ -70,13 +70,19 @@ export function diagnose(r: Partial<Record<StepId, Verdict>>): Diagnosis | null 
   if (r.closed === 'bad')
     return { kind: 'outside', text: 'The tone breaks up even with nothing else running, so the problem is outside Fretline: check the output device and volume mixer for Chrome.' };
   if (!r.closed || !r.open) return null;
-  if (r.open === 'bad' || r.graph === 'bad') {
-    if (!r.graphSafe) return null;
-    if (r.graphSafe === 'clear')
-      return { kind: 'safe', text: 'Larger audio buffers fix it on this computer. Fretline will use them (a few milliseconds more delay).' };
+  // With the input open but unused, nothing flows through Fretline: buffers can't be the cause.
+  if (r.open === 'bad')
     return {
       kind: 'device',
-      text: 'Opening your guitar input breaks Chrome’s audio output on this computer, even outside Fretline. That usually means the input and output run at different sample rates.',
+      text: 'Just opening your guitar input breaks the sound, before Fretline uses it at all. The usual cause is noise reduction on the input device: it puts the sound driver into a voice-call mode that cuts off steady sounds like a held note.',
+    };
+  if (r.graph === 'bad') {
+    if (!r.graphSafe) return null;
+    if (r.graphSafe === 'clear')
+      return { kind: 'safe', text: 'Larger audio buffers fix it on this computer. Fretline will use them, which adds roughly 50 ms of delay through Output.' };
+    return {
+      kind: 'device',
+      text: 'Opening your guitar input breaks Chrome’s audio output on this computer, even outside Fretline. The usual cause is noise reduction on the input device: it puts the sound driver into a voice-call mode that cuts off steady sounds like a held note.',
     };
   }
   if (!r.graph) return null;

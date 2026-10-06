@@ -89,3 +89,16 @@ describe('chord confirm (levels measured on a real guitar)', () => {
     expect(run(null).heard).toEqual([]);
   });
 });
+
+import { diagnose } from '../src/audio/soundTest';
+describe('sound test diagnosis', () => {
+  it('blames input processing as soon as an unused open input breaks the sound', () => {
+    expect(diagnose({ closed: 'clear', open: 'bad' })?.kind).toBe('device');
+  });
+  it('recommends larger buffers only when the live graph breaks and large buffers fix it', () => {
+    expect(diagnose({ closed: 'clear', open: 'clear', graph: 'bad' })).toBeNull();
+    expect(diagnose({ closed: 'clear', open: 'clear', graph: 'bad', graphSafe: 'clear' })?.kind).toBe('safe');
+    expect(diagnose({ closed: 'clear', open: 'clear', graph: 'clear' })?.kind).toBe('load');
+    expect(diagnose({ closed: 'bad' })?.kind).toBe('outside');
+  });
+});

@@ -206,18 +206,11 @@ function SoundCheck() {
       <SoundTest />
       {IS_WINDOWS && (
         <div className={s.help}>
-          <div className={s.helpTitle}>Sound cutting out, or other apps going quiet?</div>
+          <div className={s.helpTitle}>Sound cutting out after a moment, or sounding different, once the input is on?</div>
+          <InputEffectsSteps />
+          <div className={s.helpTitle} style={{ marginTop: 10 }}>Other apps going quieter?</div>
           <div>
-            Windows turns other audio down when it thinks you are on a call. Fretline opens your input in a way that should avoid this, but if it
-            still happens, switch it off once:
-          </div>
-          <ol className={s.steps}>
-            <li>Press <kbd>Win</kbd> + <kbd>R</kbd>, type <kbd>mmsys.cpl</kbd> and press <kbd>Enter</kbd>.</li>
-            <li>Open the <b>Communications</b> tab.</li>
-            <li>Choose <b>Do nothing</b>, then <b>OK</b>.</li>
-          </ol>
-          <div className={s.secNote}>
-            Or open <a href="ms-settings:sound">Windows Sound settings</a>, scroll to <b>More sound settings</b>, and use the same Communications tab.
+            Press <kbd>Win</kbd> + <kbd>R</kbd>, type <kbd>mmsys.cpl</kbd>, open the <b>Communications</b> tab and choose <b>Do nothing</b>.
           </div>
         </div>
       )}
@@ -416,14 +409,7 @@ function SoundTest() {
         <div className={s.help}>
           <div className={s.helpTitle}>{d ? 'Result' : 'All clear'}</div>
           <div>{d ? d.text : 'Every step sounded clean.'}</div>
-          {d?.kind === 'device' && (
-            <ol className={s.steps}>
-              <li>Press <kbd>Win</kbd> + <kbd>R</kbd>, type <kbd>mmsys.cpl</kbd>, press <kbd>Enter</kbd>.</li>
-              <li><b>Playback</b> tab: open your speakers → <b>Advanced</b>, note the <b>Default Format</b> (for example 48000 Hz).</li>
-              <li><b>Recording</b> tab: open your guitar cable → <b>Advanced</b>, set the same rate, and untick both <b>Exclusive mode</b> boxes.</li>
-              <li>Click OK, then reload Fretline.</li>
-            </ol>
-          )}
+          {d?.kind === 'device' && <InputEffectsSteps />}
           {d?.kind === 'safe' && <div style={{ marginTop: 8 }}><button className={s.testOk} onClick={() => location.reload()}>Reload to apply</button></div>}
           <div style={{ marginTop: 10 }}><button className={s.testBtn} onClick={finish}>Done</button></div>
         </div>
@@ -436,14 +422,19 @@ function SoundTest() {
 function LatencyChoice() {
   const latency = useStore((x) => x.latency);
   const [initial] = useState(latency);
+  const [delay, setDelay] = useState(() => engine.delayMs());
+  useEffect(() => {
+    const t = setInterval(() => setDelay(engine.delayMs()), 1000);
+    return () => clearInterval(t);
+  }, []);
   return (
     <div style={{ marginTop: 12 }}>
       <div className={s.secHead}>
         <div className="kicker">AUDIO BUFFERS</div>
-        <div className={s.secNote}>{latency !== initial ? 'Reload to apply' : latency === 'playback' ? 'Safe: more robust, a little more delay' : 'Low delay'}</div>
+        <div className={s.secNote}>{latency !== initial ? 'Reload to apply' : delay ? 'Delay through Output about ' + delay + ' ms' : ''}</div>
       </div>
       <div className={s.tunings}>
-        {([['interactive', 'Low delay', 'Best for playing through Output'], ['playback', 'Safe', 'If sound breaks up']] as const).map(([id, name, sub]) => (
+        {([['lowest', 'Lowest', 'Smallest delay for pedals'], ['interactive', 'Low', 'If Lowest crackles'], ['playback', 'Safe', 'If sound breaks up']] as const).map(([id, name, sub]) => (
           <button key={id} className={s.opt} aria-pressed={latency === id} onClick={() => useStore.setState({ latency: id })}>
             <span className={s.optName}>{name}</span>
             <span className={s.optSub}>{sub}</span>
@@ -456,5 +447,29 @@ function LatencyChoice() {
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * The fix that solved it on a real Windows gaming laptop: input "noise reduction" (Realtek AI
+ * noise reduction and friends) flips the driver into a call mode that chops steady tones.
+ */
+function InputEffectsSteps() {
+  return (
+    <>
+      <div style={{ marginTop: 6 }}>Turn off noise reduction on your guitar input:</div>
+      <ol className={s.steps}>
+        <li>
+          Open <b>Realtek Audio Console</b> (it comes preinstalled on many laptops). Select your guitar input, find <b>Microphone Effects</b>,
+          and turn off <b>AI noise reduction</b> (also Noise Suppression and Echo Cancellation if listed).
+        </li>
+        <li>Using Dolby Access, Sonic Studio or NVIDIA Broadcast? Turn off their noise removal for the input too.</li>
+        <li>
+          In Windows Settings → System → Sound, click your guitar input and set <b>Audio enhancements</b> to Off (and <b>Voice clarity</b> if
+          you see it).
+        </li>
+        <li>Still breaking up? Set the input and your speakers to the same rate (for example 48000 Hz) under <kbd>mmsys.cpl</kbd> → device → Advanced.</li>
+      </ol>
+    </>
   );
 }

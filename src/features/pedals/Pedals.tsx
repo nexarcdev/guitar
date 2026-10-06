@@ -23,7 +23,9 @@ export function Pedals() {
     <div className={s.page}>
       <div className={s.top}>
         <div className="kicker">{'SIGNAL CHAIN · ' + (mic === 'live' ? 'MIC' : 'NO INPUT') + ' → OUTPUT ' + (output ? 'ON' : 'OFF')}</div>
-        <div className={s.hint}>Drag the grip to reorder · drag a knob to adjust · tap the footswitch</div>
+        <div className={s.hint}>
+          {output && engine.delayMs() ? 'Delay through Output about ' + engine.delayMs() + ' ms · ' : ''}Drag the grip to reorder · drag a knob to adjust · tap the footswitch
+        </div>
       </div>
       {!output && (
         <div className="notice">

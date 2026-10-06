@@ -13,6 +13,8 @@ import { pluck, referenceTone, type Voice } from './synth';
 import type { LooperView } from './looperCore';
 import type { TrackerOutput } from '../dsp/tracker';
 
+export type LatencyMode = 'lowest' | 'interactive' | 'playback';
+
 export type MicState = 'idle' | 'starting' | 'live' | 'denied' | 'nodevice' | 'insecure' | 'error';
 export type MlStatus = 'off' | 'loading' | 'ready' | 'slow' | 'unavailable';
 
@@ -85,7 +87,7 @@ class AudioEngine {
   listening = true;
   output = false;
   /** Audio buffer size preference; 'playback' trades latency for robustness on struggling systems. */
-  latency: 'interactive' | 'playback' = 'interactive';
+  latency: LatencyMode = 'lowest';
   status: EngineStatus = { mic: 'idle', running: false, ml: 'off', mlBackend: '', devices: [], deviceId: '' };
 
   on<K extends keyof Events>(k: K, fn: Listener<K>) {
@@ -106,7 +108,10 @@ class AudioEngine {
       const C = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       let ac: AudioContext;
       try {
-        ac = new C({ latencyHint: this.latency, ...(sampleRate ? { sampleRate } : {}) });
+        // 'lowest' asks for the smallest buffer the device allows (a numeric hint of 0): in Chrome
+        // that's ~3 ms + ~8 ms of output buffering, versus ~10 + ~32 ms for 'interactive'.
+        const hint = this.latency === 'lowest' ? 0 : this.latency;
+        ac = new C({ latencyHint: hint, ...(sampleRate ? { sampleRate } : {}) });
       } catch {
         ac = new C();
       }
@@ -214,7 +219,9 @@ class AudioEngine {
         noiseSuppression: false,
         autoGainControl: false,
         channelCount: { ideal: 1 },
-      },
+        // Smallest capture buffer the device offers: every millisecond here is heard through Output.
+        latency: { ideal: 0 },
+      } as MediaTrackConstraints,
     });
     let stream: MediaStream;
     try {
@@ -337,6 +344,19 @@ class AudioEngine {
     return 20 * Math.log10(Math.sqrt(sum / b.length) + 1e-9);
   }
 
+  /**
+   * Estimated delay from string to speaker through Output: capture buffer + engine block +
+   * output buffer (+6 ms if the compressor's fixed look-ahead is in the chain).
+   */
+  delayMs(): number {
+    const ac = this.ac;
+    if (!ac) return 0;
+    const st = this.stream?.getAudioTracks()[0]?.getSettings() as (MediaTrackSettings & { latency?: number }) | undefined;
+    const out = ((ac as AudioContext & { outputLatency?: number }).outputLatency || 0) + (ac.baseLatency || 0);
+    const comp = this.pedals.some((p) => p.on && p.name === 'Compressor') ? 0.006 : 0;
+    return Math.round((out + (st?.latency ?? 0.01) + comp) * 1000);
+  }
+
   /** Snapshot for the Sound check panel. */
   diagnostics() {
     const ac = this.ac;
@@ -346,6 +366,7 @@ class AudioEngine {
       state: ac?.state ?? 'not started',
       sampleRate: ac?.sampleRate ?? 0,
       outputMs: ac ? Math.round((((ac as AudioContext & { outputLatency?: number }).outputLatency || 0) + (ac.baseLatency || 0)) * 1000) : 0,
+      inputMs: Math.round((st?.latency ?? 0) * 1000),
       inputRate: st?.sampleRate ?? 0,
       ml: this.status.ml,
       backend: this.status.mlBackend,

@@ -4,7 +4,7 @@
 //! quiet guitar cable works as well as a hot interface: the gate opens ~12 dB above the floor and
 //! closes ~6 dB above it, which also stops decaying strings and hum from producing readings.
 
-use crate::chroma::{Chroma, ChromaFrame, FRAME_N};
+use crate::chroma::{Chroma, ChromaFrame, FRAME_N, SHORT_N};
 use crate::floor::{FloorMode, NoiseFloor};
 use crate::yin::Yin;
 use serde::Serialize;
@@ -12,7 +12,8 @@ use std::collections::VecDeque;
 
 const FRAME: usize = 2048;
 /// Ring buffer length: a power of two no shorter than the chroma frame.
-const RING: usize = 16384;
+const RING: usize = 65536;
+const _: () = assert!(RING >= FRAME_N && RING.is_power_of_two());
 const VOICED_CLARITY: f64 = 0.9;
 /// Default gate threshold above the floor (dB); the gate closes 6 dB lower.
 pub const OPEN_DB: f32 = 12.0;
@@ -133,7 +134,9 @@ impl Tracker {
             ring: vec![0.0; RING],
             end: 0,
             next_frame: FRAME as u64,
-            next_chroma: FRAME_N as u64,
+            // The first chroma frame comes once the short band has data; the long band reads the
+            // cleared ring until it fills.
+            next_chroma: SHORT_N as u64,
             frame: vec![0.0; FRAME],
             cframe: vec![0.0; FRAME_N],
             floor: NoiseFloor::new(hop as f64 / sample_rate),
@@ -201,7 +204,7 @@ impl Tracker {
         if t0 != self.end {
             self.end = t0;
             self.next_frame = t0 + FRAME as u64;
-            self.next_chroma = t0 + FRAME_N as u64;
+            self.next_chroma = t0 + SHORT_N as u64;
             self.ring.fill(0.0);
             self.cand.clear();
             self.last_emit = -1;

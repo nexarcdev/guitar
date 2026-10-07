@@ -6,6 +6,14 @@
 //! amplitude would have, so the app can compare a note with the noise floor instead of with
 //! whatever happens to be loudest in the frame (which made a pick transient or a decaying string
 //! look like a chord).
+//!
+//! Two resolutions. Semitones get closer together going down (4.9 Hz apart at the guitar's low
+//! E, 3.9 Hz at drop C, 2.4 Hz at a bass's low E), so one FFT size cannot serve both a fast
+//! response and the low strings. A 171 ms frame (5.9 Hz bins) measures everything from 70 Hz up
+//! and decides the pitch from C3 up; a 683 ms frame (1.5 Hz bins) decides the pitch of B0 to B2.
+//! Below the crossover a note takes its pitch from the long band and the louder of the two
+//! bands' levels: the long frame still holds pre-attack silence for half a second after a strum,
+//! so its level would otherwise lag the partials the short band measures.
 
 use crate::fft::Fft;
 use serde::Serialize;
@@ -13,11 +21,28 @@ use serde::Serialize;
 pub const NO_PITCH: f32 = -120.0;
 /// Fundamentals reported per frame; the app caps to the instrument's string count.
 pub const MAX_FUNDAMENTALS: usize = 8;
-/// Samples the analysis frame covers: the short band's window.
-pub const FRAME_N: usize = SHORT_N;
+/// Samples the analysis frame covers: the long band's window; the short band reads its tail.
+pub const FRAME_N: usize = LONG_N;
+/// C3 (130.8 Hz) and up: 5.9 Hz bins at 48 kHz, 171 ms.
 pub const SHORT_N: usize = 8192;
-const F_LO: f64 = 70.0;
+/// B0 (30.9 Hz) to B2 (123.5 Hz): 1.46 Hz bins at 48 kHz, 683 ms.
+pub const LONG_N: usize = 32768;
+/// Between B2 and C3, so every semitone takes its pitch from exactly one band.
+const XOVER_HZ: f64 = 127.0;
+const F_LO: f64 = 30.0;
+/// Where the short band's levels become usable (its bins are half a semitone wide here).
+const SHORT_LO: f64 = 70.0;
 const F_HI: f64 = 1400.0;
+/// A short-band peak this close to a long-band pitch is the same note (half a short bin at 70 Hz).
+const SAME_NOTE_CENTS: f64 = 70.0;
+/// A long-band peak within this of a stronger long-band peak is the frame's spectral skirt, not
+/// a note: a re-struck bass note's phase jump spreads 20 dB skirts a few bins wide, and bass
+/// notes a semitone apart are not something a guitar chord has.
+const SKIRT_CENTS: f64 = 150.0;
+const SKIRT_DB: f32 = 10.0;
+/// A note that started within the long frame is still a broad peak there: its pitch is right to
+/// the semitone but not to the harmonic tolerance, so its partials are matched this loosely.
+const LONG_BAND_TOL_CENTS: f64 = 60.0;
 /// Peaks this far below the strongest one are leakage, not notes.
 const REL_KEEP_DB: f32 = -40.0;
 /// A peak counts as a note when it sits within this many semitones of one.
@@ -136,7 +161,9 @@ impl Band {
 
 pub struct Chroma {
     short: Band,
+    long: Band,
     peaks: Vec<(f64, f32)>,
+    low: Vec<(f64, f32)>,
     cands: Vec<Cand>,
 }
 
@@ -156,19 +183,44 @@ fn to_midi(hz: f64) -> f64 {
 impl Chroma {
     pub fn new(sample_rate: f64) -> Self {
         Self {
-            short: Band::new(SHORT_N, sample_rate, F_LO, F_HI),
+            short: Band::new(SHORT_N, sample_rate, SHORT_LO, F_HI),
+            long: Band::new(LONG_N, sample_rate, F_LO, XOVER_HZ),
             peaks: Vec::with_capacity(512),
+            low: Vec::with_capacity(128),
             cands: Vec::with_capacity(128),
         }
     }
 
     /// `x` is the last `FRAME_N` samples. Returns None when the frame is digital silence or has no
-    /// peaks on a semitone.
+    /// peaks on a semitone. The silence check uses the short band, which reflects the present.
     pub fn compute(&mut self, x: &[f32], gate: f64) -> Option<ChromaFrame> {
         debug_assert_eq!(x.len(), FRAME_N);
         self.peaks.clear();
         let mean = self.short.peaks(&x[x.len() - SHORT_N..], &mut self.peaks);
-        if mean < gate || self.peaks.is_empty() {
+        if mean < gate {
+            return None;
+        }
+        self.low.clear();
+        self.long.peaks(x, &mut self.low);
+        let skirts: Vec<bool> = self
+            .low
+            .iter()
+            .map(|&(hz, db)| self.low.iter().any(|&(qh, qd)| qd >= db + SKIRT_DB && (1200.0 * (qh / hz).log2()).abs() < SKIRT_CENTS))
+            .collect();
+        let mut k = 0;
+        self.low.retain(|_| {
+            k += 1;
+            !skirts[k - 1]
+        });
+        // Below the crossover the long band names the pitch; the level is the louder reading.
+        for &(hz, db) in &self.low {
+            let near = self.peaks.iter().filter(|p| p.0 < XOVER_HZ && (1200.0 * (p.0 / hz).log2()).abs() < SAME_NOTE_CENTS).map(|p| p.1).fold(f32::NEG_INFINITY, f32::max);
+            self.peaks.push((hz, db.max(near)));
+        }
+        // The short band's own low peaks were only there for their levels.
+        let low = &self.low;
+        self.peaks.retain(|p| p.0 >= XOVER_HZ || low.iter().any(|l| l.0 == p.0));
+        if self.peaks.is_empty() {
             return None;
         }
         let top_db = self.peaks.iter().map(|p| p.1).fold(f32::NEG_INFINITY, f32::max);
@@ -249,9 +301,10 @@ impl Chroma {
             out.push(Fundamental { midi: cands[i].midi, db: cands[i].db });
             // The series envelope: each claimed partial raises the bar the next one is judged by.
             let mut reference = cands[i].db;
+            let min_tol = if cf < XOVER_HZ { LONG_BAND_TOL_CENTS } else { 0.0 };
             for h in 2..=MAX_HARMONIC {
                 let target = cf * h as f64;
-                let tol = harmonic_tol_cents(h);
+                let tol = harmonic_tol_cents(h).max(min_tol);
                 for j in i + 1..cands.len() {
                     let c = &mut cands[j];
                     if c.explained || (1200.0 * (c.hz / target).log2()).abs() >= tol {

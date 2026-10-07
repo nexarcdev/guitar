@@ -97,6 +97,48 @@ fn six_string_e_chord_keeps_the_notes_that_are_not_harmonics() {
 }
 
 #[test]
+fn chroma_resolves_the_drop_c_low_string() {
+    // C2 G2 C3 E3: the low C (65.4 Hz) sits where 8192-sample bins are coarser than a semitone.
+    let f = Chroma::new(SR).compute(&tone(&[65.41, 98.0, 130.81, 164.81], FRAME_N, SR), 1e-12).unwrap();
+    let m: Vec<u8> = f.fundamentals.iter().map(|x| x.midi).collect();
+    assert!(m.contains(&36), "{:?}", f.fundamentals);
+    assert!(!m.contains(&35) && !m.contains(&37), "{:?}", f.fundamentals);
+    assert!(f.pitch[36] > -20.0 && f.pitch[35] < -30.0 && f.pitch[37] < -30.0, "C2 {} B1 {} C#2 {}", f.pitch[36], f.pitch[35], f.pitch[37]);
+}
+
+#[test]
+fn a_bass_low_e_is_one_fundamental() {
+    let f = Chroma::new(SR).compute(&tone(&[41.2], FRAME_N, SR), 1e-12).unwrap();
+    let m: Vec<u8> = f.fundamentals.iter().map(|x| x.midi).collect();
+    assert_eq!(m, vec![28], "{:?}", f.fundamentals);
+}
+
+#[test]
+fn a_low_e_is_one_fundamental_across_the_crossover() {
+    // E2 is analysed by the long band, its partials from E3 up by the short band.
+    let f = Chroma::new(SR).compute(&tone(&[82.41], FRAME_N, SR), 1e-12).unwrap();
+    let m: Vec<u8> = f.fundamentals.iter().map(|x| x.midi).collect();
+    assert_eq!(m, vec![40], "{:?}", f.fundamentals);
+    // Both bands are calibrated alike: the fundamental (amplitude 0.3, RMS -13.4 dBFS) and its
+    // octave read as the tone() levels.
+    assert!((f.top_db + 13.4).abs() < 1.0, "top {}", f.top_db);
+    assert!((f.pitch[52] + 6.0).abs() < 1.5, "E3 relative {}", f.pitch[52]);
+}
+
+#[test]
+fn chroma_compute_is_fast_enough_for_every_60_ms() {
+    let mut c = Chroma::new(SR);
+    let x = tone(&[82.41, 123.47, 164.81, 207.65, 246.94, 329.63], FRAME_N, SR);
+    c.compute(&x, 1e-12);
+    let t = std::time::Instant::now();
+    for _ in 0..20 {
+        c.compute(&x, 1e-12);
+    }
+    let per = t.elapsed().as_secs_f64() / 20.0;
+    assert!(per < 0.01, "{:.1} ms per frame", per * 1e3);
+}
+
+#[test]
 fn tracker_counts_attacks() {
     let mut tr = Tracker::new(SR);
     let n = (3.0 * SR) as usize;

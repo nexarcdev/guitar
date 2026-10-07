@@ -174,7 +174,15 @@ try {
     return s ? `mic ${s.engine.mic}, running ${s.engine.running}, listening ${s.listening}, studio ${s.setupOpen ? s.studioTab : 'closed'}, loaded ${Math.round(performance.now() / 1000)} s ago, in ${Math.round(window.__fretline.engine.levels.inDb)} dB` : 'no app';
   }).catch(() => 'page gone');
   const why = [...new Set(String(e).split('\n').filter((l) => /intercepts|not stable|outside|not visible|disabled|detached/.test(l)).map((l) => l.replace(/\x1b\[[0-9;]*m/g, '').trim()))].slice(-2).join(' / ');
-  const msg = `${String(e).split('\n')[0]} | after: ${lastOk} | ${waiting} | ${why} | ${state}`;
+  const calls = String(e).split('\n').map((l) => l.replace(/\x1b\[[0-9;]*m/g, '').trim()).filter((l) => l.startsWith('- ')).slice(-6).join(' / ');
+  const tabs = await currentPage?.evaluate(() =>
+    [...document.querySelectorAll('[role=tab]')].map((t) => {
+      const r = t.getBoundingClientRect();
+      const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return `${t.textContent} ${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)} hit=${top === t || t.contains(top) ? 'self' : top?.className || top?.tagName}`;
+    }).join('; ') + ` | vp ${innerWidth}x${innerHeight}`,
+  ).catch(() => '');
+  const msg = `${String(e).split('\n')[0]} | after: ${lastOk} | ${waiting} | ${why} | ${state} | calls: ${calls} | tabs: ${tabs}`;
   console.log(msg);
   if (process.env.GITHUB_ACTIONS) console.log(`::error title=exception::${msg.replace(/\x1b\[[0-9;]*m/g, '')}`);
 } finally {

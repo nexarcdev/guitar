@@ -4,13 +4,14 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "npm run wasm && vite",
+    "build": "npm run wasm && tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc -b",
     "prepare": "node scripts/copy-model.mjs",
-    "pretest": "node scripts/copy-model.mjs"
+    "pretest": "node scripts/copy-model.mjs && node scripts/build-wasm.mjs",
+    "wasm": "node scripts/build-wasm.mjs"
   },
   "dependencies": {
     "@spotify/basic-pitch": "^1.0.1",

@@ -3,8 +3,12 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+    # The web app builds Fretline's core (engine/core) to WebAssembly, so only engine-only
+    # changes skip a deploy.
     paths-ignore:
-      - 'engine/**'
+      - 'engine/fretline-engine/**'
+      - 'engine/installer/**'
+      - 'engine/tests/**'
       - '.github/workflows/engine.yml'
   workflow_dispatch:
 
@@ -22,6 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - run: rustup toolchain install stable --profile minimal && rustup default stable && rustup target add wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
       - uses: actions/setup-node@v7
         with:
           node-version: 24

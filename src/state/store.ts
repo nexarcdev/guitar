@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { engine, type EngineStatus, type Analysis, type MlNotes, type LatencyMode } from '../audio/engine';
-import { DEFAULT_PEDALS, type Pedal } from '../audio/pedals';
-import type { LooperView } from '../audio/looperCore';
+import { engine, type EngineStatus, type LatencyMode } from '../audio/engine';
+import { DEFAULT_PEDALS, toStates, withTypes, type Pedal } from '../audio/pedals';
+import { NO_PITCH, type Analysis, type ChromaFrame, type FloorSetting, type LooperView, type Notes, type SessionState, type StatePatch } from '../core/protocol';
 import {
   chordFromChroma, fretMidi, identifyMidi, nameSet, openStrings, pcOf, sameArr, shapeFor, STD_SETUP, TUNINGS,
   type ChordName, type Offsets, type Setup, type Shape,
@@ -12,12 +12,12 @@ import { riffDur, type SaveKind, type TabNote, type TimeSig } from '../theory/st
 import * as db from './db';
 import { trail } from './trail';
 import { confirmFrame } from '../theory/confirm';
-import { NO_PITCH, type ChromaFrame } from '../dsp/chroma';
 
 export type TabId = 'tuner' | 'chords' | 'tabs' | 'pedals';
 export type GateLevel = 'low' | 'normal' | 'high';
 /** dB above the noise floor at which each gate setting opens. */
 export const GATE_DB: Record<GateLevel, number> = { low: 8, normal: 12, high: 18 };
+export const gateLevelOf = (db: number): GateLevel => (db <= 10 ? 'low' : db >= 15 ? 'high' : 'normal');
 export const BUF_SEC = 60;
 
 export interface Heard extends ChordName {
@@ -37,12 +37,14 @@ export interface State {
   setup: Setup;
   setupOpen: boolean;
   listening: boolean;
+  /** Mirrors session.output (set at once on a local change). */
   output: boolean;
   engine: EngineStatus;
-  deviceId: string;
+  /** The active channel's shared settings (pedals, Output, gate, noise floor, ML, devices). */
+  session: SessionState | null;
   level: number;
-  /** Measured input baseline and the automatic level applied to it. */
-  levels: { floorDb: number; peakDb: number; gate: boolean; gainDb: number };
+  /** Measured input baseline, noise floor mode and the automatic level applied to the input. */
+  levels: { floorDb: number; measuredDb: number; floorMode: 'auto' | 'manual'; measuring: number | null; peakDb: number; gate: boolean; gainDb: number };
   // tuner
   tString: number;
   auto: boolean;
@@ -52,21 +54,10 @@ export interface State {
   voiced: boolean;
   tuned: number[];
   headstock: 'split' | 'inline';
-  /** App-wide noise gate: how far above the measured noise floor counts as playing. */
-  gateLevel: GateLevel;
-  /** Chord detection (basic-pitch). Off leaves single-note tabs and chroma chord names. */
-  mlOn: boolean;
-  /** Audio buffer size: 'interactive' (lowest delay) or 'playback' (larger, more robust). Applies on reload. */
+  /** Browser audio buffer size: 'lowest', 'interactive' or 'playback'. Applies on reload. */
   latency: LatencyMode;
-  /** Output device for all of Fretline's sound ('' = system default). */
-  outputId: string;
-  /** Use the native low-latency engine when it's running (opt-in: probing localhost can prompt). */
-  nativeOn: boolean;
-  /** Engine device ids ('' = Windows default); they differ from the browser's ids. */
-  nativeInput: string;
-  nativeOutput: string;
-  nativeExclusiveIn: boolean;
-  nativeExclusiveOut: boolean;
+  /** Use the native engine when it's running (opt-in: probing localhost can prompt). */
+  engineOn: boolean;
   // chords
   frets: Shape;
   baseFret: number;
@@ -103,9 +94,9 @@ const initial: State = {
   listening: true,
   output: false,
   engine: engine.status,
-  deviceId: '',
+  session: null,
   level: 0,
-  levels: { floorDb: -80, peakDb: -100, gate: false, gainDb: 0 },
+  levels: { floorDb: -80, measuredDb: -80, floorMode: 'auto', measuring: null, peakDb: -100, gate: false, gainDb: 0 },
   tString: 5,
   auto: true,
   detected: null,
@@ -114,15 +105,8 @@ const initial: State = {
   voiced: false,
   tuned: [],
   headstock: 'split',
-  gateLevel: 'normal',
-  mlOn: true,
   latency: 'lowest',
-  outputId: '',
-  nativeOn: false,
-  nativeInput: '',
-  nativeOutput: '',
-  nativeExclusiveIn: true,
-  nativeExclusiveOut: false,
+  engineOn: false,
   frets: [-1, 3, 2, 0, 1, 0],
   baseFret: 1,
   heard: null,
@@ -152,21 +136,35 @@ const set = useStore.setState;
 
 // ---------------------------------------------------------------- persistence
 
-const PERSIST: Array<keyof State> = ['tab', 'setup', 'pedals', 'timeSig', 'gapBeats', 'chordMode', 'deviceId', 'headstock', 'gateLevel', 'mlOn', 'latency', 'outputId', 'nativeOn', 'nativeInput', 'nativeOutput', 'nativeExclusiveIn', 'nativeExclusiveOut'];
+// Client preferences live here. Shared settings belong to the audio channel's session: the web
+// channel saves its own (key 'webSession'), the engine keeps its own on disk.
+const PERSIST: Array<keyof State> = ['tab', 'setup', 'timeSig', 'gapBeats', 'chordMode', 'headstock', 'latency', 'engineOn'];
+/** Keys from before the channel kept the session, read once to seed it. */
+const LEGACY = ['pedals', 'gateLevel', 'mlOn', 'deviceId', 'outputId', 'nativeOn'] as const;
 
-const nativePrefs = (s: State) => ({ on: s.nativeOn, input: s.nativeInput, output: s.nativeOutput, exclusiveInput: s.nativeExclusiveIn, exclusiveOutput: s.nativeExclusiveOut });
+let webSession: string | null = null;
+let legacy: StatePatch | undefined;
 
 export async function hydrate() {
   try {
     await db.migrateLegacy();
-    const [riffs, ...vals] = await Promise.all([db.loadRiffs(), ...PERSIST.map((k) => db.getKV(k))]);
+    const [riffs, saved, ...vals] = await Promise.all([db.loadRiffs(), db.getKV('webSession'), ...[...PERSIST, ...LEGACY].map((k) => db.getKV(k))]);
     const patch: Partial<State> = { riffs };
     PERSIST.forEach((k, i) => {
       if (vals[i] !== undefined) (patch as Record<string, unknown>)[k] = vals[i];
     });
-    // Pedal list must contain exactly the known pedals; anything else is a stale save.
-    const names = (ps: Pedal[]) => ps.map((p) => p.name).sort().join();
-    if (patch.pedals && (!Array.isArray(patch.pedals) || names(patch.pedals) !== names(DEFAULT_PEDALS))) delete patch.pedals;
+    const old = Object.fromEntries(LEGACY.map((k, i) => [k, vals[PERSIST.length + i]])) as Record<(typeof LEGACY)[number], unknown>;
+    if (typeof saved === 'string') webSession = saved;
+    else {
+      legacy = {};
+      const names = (ps: Pedal[]) => ps.map((p) => p.name).sort().join();
+      if (Array.isArray(old.pedals) && names(old.pedals as Pedal[]) === names(DEFAULT_PEDALS)) legacy.pedals = toStates(old.pedals as Pedal[]);
+      if (typeof old.gateLevel === 'string' && old.gateLevel in GATE_DB) legacy.gateDb = GATE_DB[old.gateLevel as GateLevel];
+      if (typeof old.mlOn === 'boolean') legacy.ml = old.mlOn;
+      if (typeof old.deviceId === 'string') legacy.inputId = old.deviceId;
+      if (typeof old.outputId === 'string') legacy.outputId = old.outputId;
+    }
+    if (patch.engineOn === undefined && old.nativeOn === true) patch.engineOn = true;
     if (!(await db.getKV('latencyV2'))) {
       // Earlier builds could switch to Safe buffers automatically (and defaulted to 'interactive');
       // start everyone on the new lowest-latency default once.
@@ -180,35 +178,38 @@ export async function hydrate() {
   let prev = get();
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   useStore.subscribe((s) => {
+    // Advance first: side effects below can update the store again (re-entering here).
+    const old = prev;
+    prev = s;
     for (const k of PERSIST) {
-      if (s[k] !== prev[k]) {
+      if (s[k] !== old[k]) {
         clearTimeout(timers.get(k));
         const v = s[k];
         timers.set(k, setTimeout(() => db.setKV(k, v), 250));
       }
     }
-    if (s.pedals !== prev.pedals) engine.applyPedals(s.pedals);
-    if (s.gateLevel !== prev.gateLevel) engine.setGate(GATE_DB[s.gateLevel] ?? 12);
-    if (s.mlOn !== prev.mlOn) engine.setMl(s.mlOn);
-    if (s.outputId !== prev.outputId) engine.setOutputDevice(s.outputId);
-    if (
-      s.nativeOn !== prev.nativeOn || s.nativeInput !== prev.nativeInput || s.nativeOutput !== prev.nativeOutput ||
-      s.nativeExclusiveIn !== prev.nativeExclusiveIn || s.nativeExclusiveOut !== prev.nativeExclusiveOut
-    )
-      engine.setNative(nativePrefs(s));
-    if (s.frets !== prev.frets || s.baseFret !== prev.baseFret || s.setup !== prev.setup) {
+    if (s.frets !== old.frets || s.baseFret !== old.baseFret || s.setup !== old.setup) {
       shapeAt = engine.clock();
       okSince = okUntil = 0;
       wrongHits.fill(0);
     }
-    prev = s;
+    if (s.engineOn !== old.engineOn) engine.setEngine(s.engineOn);
   });
-  engine.applyPedals(get().pedals);
-  engine.setGate(GATE_DB[get().gateLevel] ?? 12);
-  engine.setMl(get().mlOn);
-  engine.latency = get().latency;
-  engine.outputId = get().outputId;
-  engine.setNative(nativePrefs(get()));
+}
+
+/** Starts the audio channels (after hydrate and attachEngine). */
+export async function startAudio() {
+  let saveTimer: ReturnType<typeof setTimeout> | undefined;
+  await engine.init({
+    latency: get().latency,
+    saved: webSession,
+    legacy,
+    engineOn: get().engineOn,
+    onSave(json) {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => db.setKV('webSession', json), 250);
+    },
+  });
 }
 
 // ---------------------------------------------------------------- engine wiring
@@ -229,15 +230,23 @@ function strings() {
   return openStrings(get().setup.offsets);
 }
 
+/** Local edits win over echoes of older state for a moment (knob drags send many changes). */
+let pedalsEditedAt = 0;
+
 export function attachEngine() {
   engine.on('status', (st) => set({ engine: st }));
+  engine.on('state', (st) => {
+    const patch: Partial<State> = { session: st, output: st.output };
+    if (performance.now() - pedalsEditedAt > 400) patch.pedals = withTypes(st.pedals);
+    set(patch);
+  });
   engine.on('looper', (v) => set({ looper: v }));
   engine.on('cond', (v) => {
     const l = get().levels;
     if (Math.abs(v.gainDb - l.gainDb) > 0.5) set({ levels: { ...l, gainDb: v.gainDb } });
   });
   engine.on('analysis', onAnalysis);
-  engine.on('ml', onMl);
+  engine.on('notes', onNotes);
 }
 
 function onAnalysis(a: Analysis) {
@@ -252,8 +261,12 @@ function onAnalysis(a: Analysis) {
   if (now - lastLevelsAt > 200) {
     lastLevelsAt = now;
     const l = a.levels;
-    if (Math.abs(l.floorDb - s.levels.floorDb) > 0.5 || Math.abs(l.peakDb - s.levels.peakDb) > 0.5 || l.gate !== s.levels.gate)
-      patch.levels = { ...s.levels, floorDb: l.floorDb, peakDb: l.peakDb, gate: l.gate };
+    const o = s.levels;
+    if (
+      Math.abs(l.floorDb - o.floorDb) > 0.5 || Math.abs(l.measuredDb - o.measuredDb) > 0.5 || Math.abs(l.peakDb - o.peakDb) > 0.5 ||
+      l.gate !== o.gate || l.floorMode !== o.floorMode || (l.measuring == null) !== (o.measuring == null) || Math.abs((l.measuring ?? 0) - (o.measuring ?? 0)) > 0.05
+    )
+      patch.levels = { ...o, floorDb: l.floorDb, measuredDb: l.measuredDb, floorMode: l.floorMode, measuring: l.measuring, peakDb: l.peakDb, gate: l.gate };
   }
 
   // tuner: only stable readings (gate open, clear pitch, agrees with the last few frames)
@@ -361,7 +374,7 @@ function chromaFrame(cf: ChromaFrame | null, clock: number, patch: Partial<State
  * 200 ms. Once confirmed it stays green briefly through flicker, but drops the moment the
  * strings stop or a wrong string rings. A wrong string must show in 2 of the last 3 frames.
  */
-function updateConfirm(pitch: Float32Array | null, clock: number, patch: Partial<State>) {
+function updateConfirm(pitch: ArrayLike<number> | null, clock: number, patch: Partial<State>) {
   const s = get();
   const now = performance.now();
   if (sinceAttack > CONFIRM_AFTER_ATTACK) pitch = null;
@@ -386,7 +399,7 @@ function setHeard(r: ChordName, t: number, patch: Partial<State>) {
   if (r.root != null) patch.history = [{ name: r.name, frets }, ...(patch.history ?? s.history)].slice(0, 8);
 }
 
-function onMl(m: MlNotes) {
+function onNotes(m: Notes) {
   const s = get();
   if (!s.listening) return;
   const r = mergeWindow(s.buf, m.from, m.to, m.notes, s.setup, mlHand);
@@ -428,8 +441,18 @@ export const actions = {
     set({ listening: on, voiced: on && get().voiced });
   },
   setOutput(on: boolean) {
-    engine.setOutput(on);
+    engine.set({ output: on });
     set({ output: on });
+  },
+  /** Shared settings (go to the active audio channel, which echoes the new state). */
+  setSession(patch: StatePatch) {
+    engine.set(patch);
+  },
+  setFloor(floor: FloorSetting) {
+    engine.set({ floor });
+  },
+  recalibrate() {
+    engine.recalibrate();
   },
   saveSetup(p: Partial<Setup>) {
     const s = get();
@@ -439,8 +462,7 @@ export const actions = {
     actions.saveSetup({ offsets });
   },
   selectDevice(id: string) {
-    set({ deviceId: id });
-    engine.start(id);
+    engine.set({ inputId: id });
   },
   pluckString(i: number, offsets = get().setup.offsets) {
     engine.pluck(openStrings(offsets)[i].hz, 0, 1.4);
@@ -541,7 +563,7 @@ export const actions = {
     if (!r) return;
     const from = s.playAt >= riffDur(r.notes) ? 0 : s.playAt;
     const setup = r.setup ?? STD_SETUP;
-    const { zero, voices } = engine.playNotes(
+    const { zero, stop } = engine.playNotes(
       r.notes.map((n) => ({ t: n.t, hz: 440 * Math.pow(2, (fretMidi(n.s, n.f, setup) - 69) / 12) })),
       from,
     );
@@ -549,7 +571,7 @@ export const actions = {
       play = null;
       set({ rplaying: false, playAt: 0 });
     }, (riffDur(r.notes) + 0.3 - from) * 1000 + 50);
-    play = { zero, stop: () => { clearTimeout(end); voices.forEach((v) => v.stop()); } };
+    play = { zero, stop: () => { clearTimeout(end); stop(); } };
     set({ rplaying: true });
   },
   stopRiff() {
@@ -570,7 +592,13 @@ export const actions = {
   },
   // pedals
   setPedal(i: number, p: Partial<Pedal>) {
-    set({ pedals: get().pedals.map((q, k) => (k === i ? { ...q, ...p } : q)) });
+    actions.setPedals(get().pedals.map((q, k) => (k === i ? { ...q, ...p } : q)));
+  },
+  /** The whole board, in signal order (reorder, toggle, knob). */
+  setPedals(pedals: Pedal[]) {
+    pedalsEditedAt = performance.now();
+    set({ pedals });
+    engine.set({ pedals: toStates(pedals) });
   },
 };
 

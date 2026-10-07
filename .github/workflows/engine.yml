@@ -2,10 +2,12 @@ name: Engine
 
 on:
   push:
+    # The end-to-end test drives the web app against the engine, so web changes run it too.
     paths:
       - 'engine/**'
-      - 'src/audio/native.ts'
-      - 'src/audio/engine.ts'
+      - 'src/**'
+      - 'tests/**'
+      - 'package*.json'
       - '.github/workflows/engine.yml'
   workflow_dispatch:
 
@@ -24,7 +26,7 @@ jobs:
         working-directory: engine
     steps:
       - uses: actions/checkout@v7
-      - run: rustup toolchain install stable --profile minimal && rustup default stable
+      - run: rustup toolchain install stable --profile minimal && rustup default stable && rustup target add wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
@@ -35,10 +37,11 @@ jobs:
           node-version: 24
       - run: npm install --no-save --prefix tests ws
       - run: node tests/smoke.mjs target/release/fretline-engine
-      - name: Web app against the engine (headless Chromium)
+      - name: Web app on both channels (headless Chromium)
         run: |
           cd ..
           npm ci
+          npm test
           npm run build
           npx --yes playwright@1 install --with-deps chromium
           npm install --no-save --prefix engine/tests playwright@1

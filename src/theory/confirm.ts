@@ -19,7 +19,7 @@ export interface ConfirmInput {
   baseFret: number;
   setup: Setup;
   /** Held per-MIDI salience (dB relative to the strongest peak), or null when nothing is playing. */
-  pitch: Float32Array | null;
+  pitch: ArrayLike<number> | null;
   mlRecent: ReadonlyArray<{ midi: number; t: number }>;
   clock: number;
 }

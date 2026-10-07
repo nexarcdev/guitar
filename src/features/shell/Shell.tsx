@@ -111,10 +111,9 @@ function MicBanner() {
   const output = useStore((x) => x.output);
   const mic = useStore((x) => x.engine.mic);
   const running = useStore((x) => x.engine.running);
-  const deviceId = useStore((x) => x.deviceId);
   if (!(listening || output)) return null;
   if (mic === 'live' && running) return null;
-  const retry = () => engine.start(deviceId);
+  const retry = () => engine.retryInput();
   let text: string;
   let action: [string, () => void] | null = ['Try again', retry];
   switch (mic) {

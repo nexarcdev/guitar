@@ -10,9 +10,9 @@ The visual design comes from a Claude Design handoff, kept for reference in [`de
 
 ```sh
 npm install      # also copies the basic-pitch model into public/model
-npm run dev      # http://localhost:5173 (localhost counts as secure, so the mic works)
-npm test         # unit tests, including a real basic-pitch inference smoke test
-npm run build    # typecheck + production build with service worker
+npm run dev      # builds the core to WebAssembly, then http://localhost:5173
+npm test         # web tests (builds the core first)
+npm run build    # core + typecheck + production build with service worker
 ```
 
 Pushing to `main` deploys to GitHub Pages through `.github/workflows/pages.yml` (tests, then a build with
@@ -23,79 +23,105 @@ otherwise the speakers feed back into the mic.
 
 ## How it works
 
+Everything that hears or makes sound is one Rust core, [`engine/core`](engine/core), that runs in
+two **audio channels** speaking the same protocol:
+
+- the **web channel**: the core compiled to WebAssembly ([`engine/wasm`](engine/wasm)) inside this
+  browser;
+- the **engine channel**: the core compiled natively into Fretline Engine, a small Windows tray app
+  that owns the guitar input and speakers at a few milliseconds of latency.
+
 ```
-input ─┬─ capture worklet ──MessagePorts──▶ pitch worker (YIN, chroma, fast onsets)
-       │                                └─▶ ML worker (basic-pitch, polyphonic)
-       └─ inBus ─▶ pedal chain ─▶ chainOut ─┬───────────────▶ master (Output toggle) ─▶ speakers
-                                            └─ looper worklet ─▶ master
+            ControlMsg (set, listen, recalibrate, loop, play, stop)
+  app ─────────────────────────────────────────────────────────────▶ channel
+      ◀───────────────────────────────────────────────────────────── 
+            ChannelMsg (state, status, analysis, notes, ml, meters)
+
+  channel = Session (shared state)  +  AudioSide (conditioner → pedals → looper, + synth)
+          + Capture (listening clock) → TrackerSide (YIN, chroma, onsets, noise floor)
+                                      → MlSide (basic-pitch windows + note decoding)
 ```
 
-- **Listening clock.** The capture worklet counts samples only while listening and stamps every chunk.
-  Every note, chord and riff timestamp uses that clock, so pausing collapses cleanly. Audio goes from
-  the worklet straight to the workers; the main thread never touches raw samples.
-- **Baseline.** Every stage measures the input's noise floor (calibrated in the first 0.4 s, then
-  tracked: it drops instantly to any quieter moment and rises slowly). Gates open 12 dB above it and
-  close 6 dB above it, so a quiet guitar cable works as well as a hot interface and noise never reads
-  as pitch. The monitored signal gets an automatic level (up to +24 dB) behind a noise gate.
-- **Tuner.** YIN with an FFT-based difference function (`src/dsp/yin.ts`), about 94 readings/s. Its
-  pitch trail is drawn on a canvas, not through React.
-- **Chords.** Chroma uses interpolated spectral peaks with overtone suppression up to the 6th harmonic
-  (`src/dsp/chroma.ts`). Naming is cosine template matching (`chordFromChroma`). When YIN hears a clean
-  single pitch, the view names the note instead of reading its overtones as a chord.
-- **Tab stream (hybrid).** Single notes from the pitch worker appear immediately as provisional
-  (slightly dimmed). basic-pitch then runs on 2 s windows with a 1 s hop and trusts only onsets in the
-  middle second, so windows tile the timeline. Each result replaces the provisional notes in its range
-  (`src/theory/merge.ts`). The ML pass also refines the chord name for the same strum, bass included,
-  but never overrides a newer chord. A fingering solver (`src/theory/fingering.ts`) places notes on
-  strings and frets, keeping the hand compact and close to where it just was.
-- **ML backends.** WebGL, then WASM (SIMD), then CPU. If inference can't keep up with real time it
-  switches itself off and the stream says it is showing single notes only.
-- **Looper.** Four synced slots in an AudioWorklet (`src/audio/looperCore.ts`). The first recording sets
-  the loop length, and later slots record exactly one cycle. Tapping a playing slot overdubs, and
-  overdubs are written behind the playhead by the measured round-trip latency so they line up with what
-  you heard.
-- **Storage.** IndexedDB (`src/state/db.ts`) holds riffs, the deleted bin, guitar setup, pedalboard,
-  rhythm settings, input device and headstock style. Riffs export and import as JSON. On first run it
-  imports anything the prototype left in localStorage, except the prototype's two sample riffs.
+| Part | Web channel | Engine channel |
+| --- | --- | --- |
+| Session (state, persistence) | WASM, main thread; saved in IndexedDB | native; `%LOCALAPPDATA%\Fretline\session.json` |
+| AudioSide + Capture | WASM in an AudioWorklet | WASAPI render / analysis threads |
+| TrackerSide | WASM in the pitch worker | analysis thread |
+| basic-pitch network | TensorFlow.js (WebGL → WASM → CPU) | tract, model embedded |
+| Devices | getUserMedia / setSinkId | WASAPI (exclusive or low-latency shared) |
+
+The protocol is defined once in [`engine/core/src/protocol.rs`](engine/core/src/protocol.rs)
+(mirrored in [`src/core/protocol.ts`](src/core/protocol.ts)); the app ([`src/audio/engine.ts`](src/audio/engine.ts))
+never needs to know which channel it is talking to.
+
+- **Shared state.** Pedals, Output, gate, noise floor, chord detection and devices live in the
+  channel's Session and are broadcast whole, with a revision and edit time, on every change. Any
+  number of controllers can follow it (a tablet controlling a PC's engine is the planned next
+  step). When the app moves between channels, the most recently edited board, Output, gate and
+  detection settings win, so nothing set on either side is lost.
+- **Listening clock.** Capture counts samples only while someone listens and stamps every chunk.
+  Every note, chord and riff timestamp uses that clock; the app maps each channel's clock onto
+  one timeline, so pausing and switching channels never make timestamps jump.
+- **Noise floor.** One estimate per channel drives the tuner's gate, the auto level and gate on
+  Output, and silence skipping for basic-pitch. **Auto** tracks the 20th percentile of recent
+  levels (fast to learn, slow to rise); **Recalibrate** measures afresh for 1.5 s with the strings
+  muted (for when a string was ringing at start-up); **Manual** fixes it. The setting is
+  remembered per input device.
+- **Tuner and chords.** YIN through an FFT difference function, chroma from interpolated spectral
+  peaks with overtone suppression and octave-exact pitch salience (`engine/core/src/{yin,chroma,tracker}.rs`).
+- **Tab stream (hybrid).** Single notes from the tracker appear immediately as provisional;
+  basic-pitch runs on 2 s windows with a 1 s hop, trusts only onsets in the middle second, and its
+  results replace the provisional notes in their range (`src/theory/merge.ts`). A fingering
+  solver places notes on strings and frets.
+- **Looper.** Four synced slots in the AudioSide: the first recording sets the length, later
+  slots record one cycle, a playing slot overdubs, and overdubs are written behind the playhead by
+  the measured round-trip latency.
+- **Sounds.** Strums, string previews, reference tones and riff playback are the core's synth,
+  played by whichever channel is active (so they also go through the engine).
+- **Storage.** IndexedDB holds riffs, the deleted bin, the web channel's session and app
+  preferences. Riffs export and import as JSON.
+
+Parity with the code it replaced is tested: the Rust tracker matches the previous TypeScript
+tracker exactly on a mixed signal, and the basic-pitch decoder reproduces basic-pitch's own
+JavaScript output exactly on real model output (`engine/core/tests`).
 
 ## Low-latency engine (Windows)
 
 Chrome on Windows can't get under about 50 ms from string to speaker (most of it is Chrome's own
 output buffering, whatever the device), which is too slow to play through pedals. Fretline Engine
-is a small native tray app in [`engine/`](engine/) that takes over the guitar input and the
-speakers and runs the pedals and looper at a few milliseconds. The browser keeps doing all the
-listening: the engine streams the raw guitar back, so the tuner, chords and tabs are unchanged.
-
-```
-guitar ─▶ WASAPI capture ─┬─ monitor ring ─▶ drift reader ─▶ conditioner ─▶ pedals ─▶ looper ─▶ WASAPI render
-                          └─ analysis ring ─▶ ws://127.0.0.1:47831 ─▶ web app ─▶ pitch + ML workers
-web app ─ JSON (pedals, Output, looper, noise floor, devices) ─▶ engine
-```
+runs the engine channel natively.
 
 - **Use it.** Settings → Low-latency engine → Download for Windows, run the installer (per user, no
   admin; not code-signed yet, so SmartScreen asks: More info → Run anyway), then "I've installed it,
   connect". Chrome asks once to let the site reach devices on your network; that is the engine on
-  this computer. Fretline only looks for the engine after you opt in, and falls back to browser
-  audio whenever it isn't running.
+  this computer. Fretline only looks for the engine after you opt in, and falls back to the web
+  channel whenever it isn't running.
 - **Audio paths.** Each device opens exclusive (when chosen: the device's smallest period, no
-  Windows effects in the path), else low-latency shared mode (`IAudioClient3`, the smallest engine
-  period the driver allows), else regular shared mode. Exclusive input is the default: it bypasses
-  input "enhancements" such as Realtek AI noise reduction. Speakers default to shared so other apps
-  keep playing. The two devices' clocks are bridged by a small resampling buffer that holds a
-  constant backlog (`engine/dsp/src/drift.rs`) and grows only after an underrun.
+  Windows effects in the path), else low-latency shared mode (`IAudioClient3`), else regular
+  shared mode. Exclusive input is the default: it bypasses input "enhancements" such as Realtek AI
+  noise reduction. Speakers default to shared so other apps keep playing. The two devices' clocks
+  are bridged by a small resampling buffer that holds a constant backlog
+  (`engine/core/src/drift.rs`) and grows only after an underrun.
 - **Security.** The socket listens on 127.0.0.1 only and accepts Fretline's own origins
   (`https://nexarcdev.github.io`, `http://localhost:*`); any other page gets a 403.
-- **Protocol.** `engine/fretline-engine/src/protocol.rs` (engine side) and `src/audio/native.ts`
-  (web side). Binary frames carry mono f32 audio with the engine's sample index; the web app maps it
-  onto its own listening clock, so pausing and switching between engine and browser never jump.
-- **Build and test.** `cd engine && cargo test --release && cargo build --release`. Off Windows the
-  engine runs a device-free test backend (`--test`, `--test-wav FILE`, `--record FILE`):
-  `node engine/tests/smoke.mjs <binary>` checks the protocol, and `node engine/tests/e2e-web.mjs
-  <binary> <app url>` drives the real web app in headless Chromium against it. `--probe` writes what
-  WASAPI can see and open to `%LOCALAPPDATA%\Fretline\engine.log`.
-- **Releases.** `.github/workflows/engine.yml` builds and tests on Linux and Windows, builds the Inno
-  Setup installer, and on `main` publishes it as the `engine-v<version>` release, which the app links
-  to as `releases/latest/download/FretlineEngineSetup.exe`.
+
+## Build and test
+
+```sh
+npm run wasm     # core → src/core/fretline.wasm (needs Rust + the wasm32-unknown-unknown target)
+npm test         # web tests, including the core's WASM realms and real basic-pitch inference
+cd engine && cargo test --release     # core (DSP, detection, decoder parity, session) and engine
+```
+
+Off Windows the engine runs a device-free test backend (`--test`, `--test-wav FILE`, `--record
+FILE`, `--state FILE`). `node engine/tests/smoke.mjs <binary>` checks the engine over its socket;
+`node engine/tests/e2e-web.mjs <binary> <app url>` drives the real web app in headless Chromium on
+both channels, switching between them. `--probe` writes what WASAPI can see and open to
+`%LOCALAPPDATA%\Fretline\engine.log`.
+
+`.github/workflows/engine.yml` builds and tests on Linux and Windows, builds the Inno Setup
+installer, and on `main` publishes it as the `engine-v<version>` release, which the app links to as
+`releases/latest/download/FretlineEngineSetup.exe`.
 
 ## Changes from the prototype
 
@@ -128,3 +154,5 @@ under Your guitar → Sound check.
   practice and looping but not for playing through pedals; use the low-latency engine for that.
 - The engine's WASAPI paths are built and smoke-tested in CI on Windows, but CI runners have no sound
   card, so real-device behaviour (driver periods, exclusive formats) is verified on hardware only.
+- Building the app needs Rust with the `wasm32-unknown-unknown` target (`rustup target add
+  wasm32-unknown-unknown`), since the web channel is the core compiled to WebAssembly.

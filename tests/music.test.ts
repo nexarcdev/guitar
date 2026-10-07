@@ -64,7 +64,7 @@ describe('chordFromChroma', () => {
 });
 
 import { confirmFrame } from '../src/theory/confirm';
-import { NO_PITCH } from '../src/dsp/chroma';
+import { NO_PITCH } from '../src/core/protocol';
 describe('chord confirm (levels measured on a real guitar)', () => {
   const C: [number, number, number, number, number, number] = [-1, 3, 2, 0, 1, 0];
   const pitch = (lv: Record<number, number>) => {

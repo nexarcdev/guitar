@@ -439,3 +439,27 @@
   align-items: center;
   text-decoration: none;
 }
+.floorRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.floorRow input[type='range'] {
+  flex: 1;
+  min-width: 160px;
+  accent-color: var(--gold);
+}
+.floorDb {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--gold-hi);
+  min-width: 52px;
+}
+.measureFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--green);
+  transition: width 0.2s linear;
+}

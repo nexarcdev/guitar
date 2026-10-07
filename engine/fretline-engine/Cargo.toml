@@ -1,8 +1,8 @@
 [package]
 name = "fretline-engine"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "Fretline low-latency audio engine: guitar in → pedals → speakers at a few milliseconds, controlled by the Fretline web app over localhost."
+description = "Fretline engine: the native audio channel. Guitar in, pedals, looper and synth out at a few milliseconds, listening with the shared core, controlled by the Fretline app over localhost."
 license = "MIT"
 
 [dependencies]

@@ -2,12 +2,12 @@ import { useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore, actions } from '../../state/store';
 import { engine } from '../../audio/engine';
-import type { SlotView } from '../../audio/looperCore';
+import type { SlotView } from '../../core/protocol';
 import s from './Pedals.module.css';
 
 export function Pedals() {
   const { pedals, drag, output, mic, looper, native } = useStore(
-    useShallow((x) => ({ pedals: x.pedals, drag: x.drag, output: x.output, mic: x.engine.mic, looper: x.looper, native: x.engine.native === 'connected' })),
+    useShallow((x) => ({ pedals: x.pedals, drag: x.drag, output: x.output, mic: x.engine.mic, looper: x.looper, native: x.engine.channel === 'engine' })),
   );
   const knob = useRef<{ i: number; y: number; l: number } | null>(null);
 
@@ -16,7 +16,8 @@ export function Pedals() {
     const ps = [...useStore.getState().pedals];
     const [m] = ps.splice(from, 1);
     ps.splice(to, 0, m);
-    useStore.setState({ pedals: ps, drag: useStore.getState().drag === null ? null : to });
+    actions.setPedals(ps);
+    useStore.setState({ drag: useStore.getState().drag === null ? null : to });
   };
 
   return (
@@ -101,7 +102,7 @@ export function Pedals() {
               aria-label={p.name + (p.on ? ' on' : ' off')}
               aria-pressed={p.on}
               onClick={() => {
-                engine.context();
+                engine.resume();
                 actions.setPedal(i, { on: !p.on });
               }}
             />

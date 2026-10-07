@@ -4,3 +4,4 @@ dist
 .DS_Store
 public/model
 dist-share
+src/core/fretline.wasm

@@ -86,6 +86,12 @@ impl Chain {
     /// Processes a mono block in place: `buf` holds the guitar on entry, the speaker signal on exit.
     pub fn process(&mut self, buf: &mut [f32]) {
         self.cond.process(buf);
+        // Output off and faded out: nothing here is audible, so skip the pedals and looper.
+        // (The conditioner keeps running so the auto level is settled when Output comes on.)
+        if self.master.target == 0.0 && self.master.idle() {
+            buf.fill(0.0);
+            return;
+        }
         let sr = self.sr;
         for x in buf.iter_mut() {
             let mut y = *x;

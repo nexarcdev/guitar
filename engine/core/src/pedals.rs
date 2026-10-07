@@ -238,3 +238,16 @@ impl Freeverb {
         out * 3.0
     }
 }
+
+impl serde::Serialize for PedalKind {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(self.name())
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for PedalKind {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(d)?;
+        PedalKind::from_name(&s).ok_or_else(|| serde::de::Error::custom(format!("unknown pedal {s}")))
+    }
+}

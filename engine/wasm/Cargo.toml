@@ -1,0 +1,13 @@
+[package]
+name = "fretline-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "Fretline's core compiled for the browser: the web audio channel runs the same code as the engine."
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+fretline-core = { path = "../core" }
+serde_json = "1"

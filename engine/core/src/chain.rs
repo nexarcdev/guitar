@@ -7,7 +7,7 @@ use crate::looper::{Looper, LooperView};
 use crate::pedals::{Pedal, PedalKind};
 use crate::util::{soft_clip, Ramp};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct PedalSetting {
     pub kind: PedalKind,
     pub on: bool,

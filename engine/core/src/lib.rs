@@ -9,6 +9,7 @@ pub mod drift;
 pub mod fft;
 pub mod floor;
 pub mod looper;
+pub mod ml;
 pub mod pedals;
 pub mod resample;
 pub mod synth;

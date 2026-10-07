@@ -1,6 +1,6 @@
 # Fretline
 
-A guitar web app: tuner, chord identifier, tab stream and pedalboard with a looper. It listens to a real
+A guitar web app: tuner, chords, tab stream and pedalboard with a looper. It listens to a real
 microphone or audio interface, runs all analysis in the browser, and works offline as an installable PWA.
 
 The visual design comes from a Claude Design handoff, kept for reference in [`design/`](design/)
@@ -64,11 +64,24 @@ never needs to know which channel it is talking to.
   one timeline, so pausing and switching channels never make timestamps jump.
 - **Noise floor.** One estimate per channel drives the tuner's gate, the auto level and gate on
   Output, and silence skipping for basic-pitch. **Auto** tracks the 20th percentile of recent
-  levels (fast to learn, slow to rise); **Recalibrate** measures afresh for 1.5 s with the strings
-  muted (for when a string was ringing at start-up); **Manual** fixes it. The setting is
-  remembered per input device.
-- **Tuner and chords.** YIN through an FFT difference function, chroma from interpolated spectral
-  peaks with overtone suppression and octave-exact pitch salience (`engine/core/src/{yin,chroma,tracker}.rs`).
+  levels (fast to learn, slow to rise while a struck note still sounds); frames of digital
+  silence never enter it, so a stream's silent head cannot leave it far below the room.
+  **Recalibrate** measures afresh for 1.5 s with the strings muted (for when a string was ringing
+  at start-up); **Manual** fixes it. The setting is remembered per input device.
+- **Tuner.** YIN through an FFT difference function (`engine/core/src/yin.rs`).
+- **Chords.** Two spectral bands (`engine/core/src/chroma.rs`): a 171 ms frame from 70 Hz up
+  and a 683 ms frame for B0 to B2, so drop C and bass registers resolve to the semitone. Every
+  peak is calibrated to absolute dBFS, the 2nd to 16th partials are attributed to the notes
+  below them, and the frame reports its fundamentals plus an octave-exact salience array. The
+  tracker counts pick attacks; the app judges each strum once, in a window 150 to 600 ms after
+  the attack, voting notes that clear the noise floor and were struck rather than left ringing
+  (`src/state/strum.ts`, thresholds in `src/theory/levels.ts`). Following, the fretboard snaps
+  to the voicing played; locked, the strum is judged against the board by the pitches it
+  sounded, with the fix named per string ("Fret the B string"). Alternates come from a voicing
+  enumerator with a hand model (`src/theory/voicings.ts`, `alternates.ts`). A phone recording
+  of real chords and open strings (`engine/core/tests/fixtures/strums.wav`) is the calibration
+  record: `engine/core/tests/strums.rs` and `tests/strums.test.ts` replay it through both
+  channels' code.
 - **Tab stream (hybrid).** Single notes from the tracker appear immediately as provisional;
   basic-pitch runs on 2 s windows with a 1 s hop, trusts only onsets in the middle second, and its
   results replace the provisional notes in their range (`src/theory/merge.ts`). A fingering

@@ -58,7 +58,8 @@ const level = (page) => app(page, () => window.__fretline.engine.levels.inDb);
 
 try {
   for (const [name, viewport] of [['desktop', { width: 1280, height: 860 }], ['phone', { width: 390, height: 844 }]]) {
-    const page = await browser.newPage({ viewport });
+    // No service worker: its auto-update reload would restart the page mid-test.
+    const page = await browser.newPage({ viewport, serviceWorkers: 'block' });
     currentPage = page;
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(appUrl + '?debug');
@@ -170,7 +171,7 @@ try {
   const waiting = (String(e).match(/waiting for [^\n]*/) ?? [''])[0];
   const state = await currentPage?.evaluate(() => {
     const s = window.__fretline?.useStore.getState();
-    return s ? `mic ${s.engine.mic}, running ${s.engine.running}, listening ${s.listening}, in ${Math.round(window.__fretline.engine.levels.inDb)} dB` : 'no app';
+    return s ? `mic ${s.engine.mic}, running ${s.engine.running}, listening ${s.listening}, studio ${s.setupOpen ? s.studioTab : 'closed'}, loaded ${Math.round(performance.now() / 1000)} s ago, in ${Math.round(window.__fretline.engine.levels.inDb)} dB` : 'no app';
   }).catch(() => 'page gone');
   const why = [...new Set(String(e).split('\n').filter((l) => /intercepts|not stable|outside|not visible|disabled|detached/.test(l)).map((l) => l.replace(/\x1b\[[0-9;]*m/g, '').trim()))].slice(-2).join(' / ');
   const msg = `${String(e).split('\n')[0]} | after: ${lastOk} | ${waiting} | ${why} | ${state}`;

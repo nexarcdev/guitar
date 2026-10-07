@@ -69,6 +69,8 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({
   viewport: { width: 1280, height: 900 },
+  // No service worker: its auto-update reload would restart the page mid-test.
+  serviceWorkers: 'block',
   // The engine panel is offered on Windows.
   userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
 });

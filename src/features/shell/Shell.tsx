@@ -16,7 +16,7 @@ const NAV: Array<[TabId, string, string]> = [
   ['tabs', 'Tabs', '≣'],
   ['pedals', 'Pedals', '▣'],
 ];
-const TITLES: Record<TabId, string> = { tuner: 'Tuner', chords: 'Chord identifier', tabs: 'Tab stream', pedals: 'Pedalboard' };
+const TITLES: Record<TabId, string> = { tuner: 'Tuner', chords: 'Chords', tabs: 'Tab stream', pedals: 'Pedalboard' };
 
 export function Shell() {
   const tab = useStore((x) => x.tab);

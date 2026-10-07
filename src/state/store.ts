@@ -456,13 +456,17 @@ function onNotes(m: Notes) {
   const r = mergeWindow(s.buf, m.from, m.to, m.notes, s.setup, mlHand);
   mlHand = r.hand;
   const patch: Partial<State> = { buf: trim(r.buf, m.to) };
-  // The ML pass hears the actual voicing, bass included, 1–2 s late. While following it may
-  // rename the strum it belongs to; it never overrides a newer one or a locked target.
+  // The ML pass hears the actual voicing 1–2 s late and sometimes a note that was not there. While
+  // following it may refine the strum it belongs to, but only by adding to what the spectrum heard:
+  // same bass, every heard note still in it. It never overrides a newer strum or a locked target.
   const last = r.chords.filter((c) => new Set(c.midis.map(pcOf)).size >= 3).pop();
   const entry = s.progression[s.progression.length - 1];
   if (last && !s.locked && entry && entry.source !== 'tapped' && Math.abs(entry.t - last.t) < 0.8 && s.heard?.t === entry.t) {
     const name = identifyMidi(last.midis, s.setup.offsets);
-    if (name.root != null && name.name !== entry.name.name) {
+    const mlPcs = new Set(last.midis.map(pcOf));
+    const heardMidis = s.heard.heard;
+    const consistent = heardMidis.length > 0 && heardMidis.every((m) => mlPcs.has(pcOf(m))) && pcOf(Math.min(...last.midis)) === pcOf(Math.min(...heardMidis));
+    if (consistent && name.root != null && name.name !== entry.name.name) {
       const d: Decided = { t: entry.t, heard: last.midis.map((midi) => ({ midi, db: 0 })), peaks: new Set(last.midis), topDb: 0, floorDb: -100, chroma: [], quiet: false };
       const voicing = heardVoicing(name, d, s.setup) ?? entry.voicing;
       patch.progression = [...s.progression.slice(0, -1), { ...entry, name, voicing, source: 'ml' }];

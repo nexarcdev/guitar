@@ -6,7 +6,7 @@ pub mod test_backend;
 #[cfg(windows)]
 pub mod wasapi;
 
-use crate::protocol::{DeviceInfo, StreamInfo};
+use fretline_core::protocol::{DeviceInfo, StreamInfo};
 
 /// Called on the capture thread with each block of guitar samples.
 pub type InputFn = Box<dyn FnMut(&[f32]) + Send>;

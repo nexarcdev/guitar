@@ -3,7 +3,7 @@
 //! real-time clock that can record what they were given to a WAV file.
 
 use super::{Backend, ErrorFn, MakeInput, MakeOutput, Stream};
-use crate::protocol::{DeviceInfo, StreamInfo};
+use fretline_core::protocol::{DeviceInfo, StreamInfo};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

@@ -8,11 +8,21 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 static SINK: Mutex<Option<File>> = Mutex::new(None);
 
+/// Where the engine keeps its log and saved session (%LOCALAPPDATA%\\Fretline on Windows).
+pub fn data_dir() -> Option<std::path::PathBuf> {
+    #[cfg(windows)]
+    {
+        let dir = std::path::PathBuf::from(std::env::var_os("LOCALAPPDATA")?).join("Fretline");
+        let _ = std::fs::create_dir_all(&dir);
+        Some(dir)
+    }
+    #[cfg(not(windows))]
+    None
+}
+
 pub fn init() {
     #[cfg(windows)]
-    if let Some(dir) = std::env::var_os("LOCALAPPDATA") {
-        let dir = std::path::PathBuf::from(dir).join("Fretline");
-        let _ = std::fs::create_dir_all(&dir);
+    if let Some(dir) = data_dir() {
         let path = dir.join("engine.log");
         // Keep one previous log; never let it grow without bound.
         if std::fs::metadata(&path).map(|m| m.len() > 1 << 20).unwrap_or(false) {

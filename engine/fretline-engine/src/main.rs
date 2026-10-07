@@ -1,18 +1,22 @@
-//! Fretline low-latency engine. Owns the guitar input and the speakers, runs the pedalboard at a
-//! few milliseconds of latency, and streams the guitar to the Fretline web app (which keeps doing
-//! all the listening: tuner, chords, tabs) over ws://127.0.0.1:47831.
+//! Fretline engine: the native channel. Owns the guitar input and the speakers, plays the
+//! pedalboard and the app's sounds a few milliseconds from the strings, listens (tuner, chords,
+//! tabs) with the same core the browser runs, and talks to the Fretline app over
+//! ws://127.0.0.1:47831.
 //!
 //! Usage: fretline-engine [--port N] [--test] [--test-wav FILE] [--record FILE]
 //!   --test          use the device-free test backend (default off Windows)
 //!   --test-wav      play FILE as the guitar (implies --test)
 //!   --record        write what the speakers would play to FILE (test backend)
 //!   --probe         log the audio devices and try opening the defaults, then exit
+//!   --state FILE    where to keep the session (default: %LOCALAPPDATA%\\Fretline\\session.json
+//!                   on Windows, nowhere elsewhere)
 
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod audio;
 mod engine;
 mod logging;
+mod model;
 mod protocol;
 mod server;
 #[cfg(windows)]
@@ -30,10 +34,11 @@ struct Args {
     wav: Option<PathBuf>,
     record: Option<PathBuf>,
     probe: bool,
+    state: Option<PathBuf>,
 }
 
 fn args() -> Args {
-    let mut a = Args { port: protocol::DEFAULT_PORT, test: !cfg!(windows), wav: None, record: None, probe: false };
+    let mut a = Args { port: protocol::DEFAULT_PORT, test: !cfg!(windows), wav: None, record: None, probe: false, state: logging::data_dir().map(|d| d.join("session.json")) };
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
         match arg.as_str() {
@@ -45,6 +50,7 @@ fn args() -> Args {
             }
             "--record" => a.record = it.next().map(PathBuf::from),
             "--probe" => a.probe = true,
+            "--state" => a.state = it.next().map(PathBuf::from),
             _ => log!("ignoring argument {arg}"),
         }
     }
@@ -80,9 +86,9 @@ fn main() {
     let clients = Arc::new(Mutex::new(Vec::new()));
     let tray_status = Arc::new(Mutex::new("Waiting for Fretline".to_string()));
     let (tx, rx) = crossbeam_channel::unbounded();
-    let (sup, pump) = engine::Supervisor::new(backend, clients, tx.clone(), tray_status.clone());
+    let (sup, analysis) = engine::Supervisor::new(backend, clients, tx.clone(), tray_status.clone(), a.state);
     std::thread::Builder::new().name("supervisor".into()).spawn(move || sup.run(rx)).unwrap();
-    std::thread::Builder::new().name("pump".into()).spawn(move || pump.run()).unwrap();
+    std::thread::Builder::new().name("analysis".into()).spawn(move || analysis.run()).unwrap();
     std::thread::Builder::new().name("server".into()).spawn(move || server::serve(listener, tx)).unwrap();
     log!("listening on 127.0.0.1:{}", a.port);
 

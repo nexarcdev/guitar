@@ -12,7 +12,7 @@
 
 use super::{Backend, ErrorFn, InputFn, MakeInput, MakeOutput, OutputFn, Stream};
 use crate::log;
-use crate::protocol::{DeviceInfo, StreamInfo};
+use fretline_core::protocol::{DeviceInfo, StreamInfo};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::JoinHandle;

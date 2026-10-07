@@ -1,15 +1,19 @@
-// End-to-end smoke test of a built engine binary on the device-free test backend.
+// End-to-end smoke test of a built engine binary on the device-free test backend, which plays a
+// looping plucked phrase (A2, D3, G3, then an A major chord, every 6 s) as the guitar.
 // Usage: node smoke.mjs <path-to-fretline-engine> (needs the `ws` package)
 import { spawn } from 'node:child_process';
-import { readFileSync, mkdtempSync } from 'node:fs';
+import { readFileSync, mkdtempSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import WebSocket from 'ws';
 
 const bin = process.argv[2];
 const port = 47899;
-const record = join(mkdtempSync(join(tmpdir(), 'fretline-')), 'out.wav');
-const engine = spawn(bin, ['--test', '--port', String(port), '--record', record], { stdio: 'inherit' });
+const dir = mkdtempSync(join(tmpdir(), 'fretline-'));
+const record = join(dir, 'out.wav');
+const state = join(dir, 'session.json');
+let engine = null;
+const start = (rec = record) => (engine = spawn(bin, ['--test', '--port', String(port), '--record', rec, '--state', state], { stdio: 'inherit' }));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const failures = [];
 const check = (ok, what) => {
@@ -30,81 +34,114 @@ async function connect(origin) {
   return { error: 'engine never started' };
 }
 
+function collect(ws) {
+  const c = { status: null, state: null, ml: null, analysis: 0, clocks: [], notes: [], heard: new Set(), meters: [], levels: null };
+  ws.on('message', (data) => {
+    const m = JSON.parse(data.toString());
+    if (m.type === 'status') c.status = m;
+    else if (m.type === 'state') c.state = m;
+    else if (m.type === 'ml') c.ml = m;
+    else if (m.type === 'meters') c.meters.push(m);
+    else if (m.type === 'notes') c.notes.push(...m.notes.map((n) => n.midi));
+    else if (m.type === 'analysis') {
+      c.analysis++;
+      c.clocks.push(m.clock);
+      c.levels = m.levels;
+      for (const f of m.frames) if (f.stable) c.heard.add(Math.round(69 + 12 * Math.log2(f.freq / 440)));
+    }
+  });
+  return c;
+}
+
 try {
+  start();
   const evil = await connect('https://evil.example');
   check(!evil.ws && /403/.test(evil.error ?? ''), `foreign origin refused (${evil.error})`);
 
-  const { ws, error } = await connect('https://nexarcdev.github.io');
+  let { ws, error } = await connect('https://nexarcdev.github.io');
   check(!!ws, `Fretline origin accepted ${error ?? ''}`);
   if (!ws) throw new Error('no connection');
-
-  let status = null;
-  let meters = 0;
-  let frames = 0;
-  let gaps = 0;
-  let rate = 0;
-  let lastT0 = -1;
-  let lastMeters = null;
-  ws.on('message', (data, binary) => {
-    if (binary) {
-      const b = Buffer.from(data);
-      if (b.toString('latin1', 0, 4) !== 'FLA1') return gaps++;
-      rate = b.readUInt32LE(4);
-      const t0 = b.readDoubleLE(8);
-      if (lastT0 >= 0 && t0 !== lastT0 + (b.length - 16) / 4) gaps++;
-      lastT0 = t0;
-      frames++;
-    } else {
-      const m = JSON.parse(data.toString());
-      if (m.type === 'status') status = m;
-      if (m.type === 'meters') (meters++, (lastMeters = m));
-    }
-  });
+  let c = collect(ws);
   const send = (m) => ws.send(JSON.stringify(m));
   send({ type: 'hello', client: 'smoke', version: 'ci' });
-  send({ type: 'pedals', pedals: [{ name: 'Overdrive', on: true, level: 60 }, { name: 'Delay', on: true, level: 40 }] });
-  send({ type: 'output', on: true });
-  const floor = setInterval(() => send({ type: 'floor', floorDb: -70, openDb: 12 }), 300);
+  await sleep(500);
+  check(c.state?.rev === 0 && c.state.pedals.length === 8, `fresh session state (rev ${c.state?.rev})`);
+  check(c.ml?.status === 'ready' && c.ml.backend === 'native', `native basic-pitch ${c.ml?.status}`);
+
+  // Detection runs in the engine: the tuner hears the phrase, basic-pitch transcribes it.
+  await sleep(7000);
+  check(c.analysis > 280, `analysis messages ${c.analysis} in ~7.5 s`);
+  const steps = c.clocks.slice(1).map((t, i) => t - c.clocks[i]);
+  check(steps.every((d) => Math.abs(d - 1024 / 48000) < 1e-9), 'listening clock advances one chunk per message');
+  check([45, 50, 55].every((m) => c.heard.has(m)), `tuner heard A2 D3 G3 (${[...c.heard].sort((a, b) => a - b).join(' ')})`);
+  const pcs = new Set(c.notes.map((m) => m % 12));
+  check([9, 1, 4].every((pc) => pcs.has(pc)), `basic-pitch transcribed the A major chord (midi ${[...new Set(c.notes)].sort((a, b) => a - b).join(' ')})`);
+
+  // Shared state: changes come back to everyone as a new revision, and drive the audio.
+  send({ type: 'set', state: { pedals: [{ name: 'Overdrive', on: true, level: 60 }, { name: 'Delay', on: true, level: 40 }], output: true, gateDb: 15 } });
+  await sleep(300);
+  check(c.state.rev === 1 && c.state.output && c.state.gateDb === 15 && c.state.pedals[0].name === 'Overdrive', `state rev ${c.state.rev}, output ${c.state.output}`);
   send({ type: 'loop', cmd: 'tap', slot: 0 });
   await sleep(1000);
   send({ type: 'loop', cmd: 'tap', slot: 0 });
-  await sleep(2000);
-  clearInterval(floor);
+  await sleep(1500);
+  const lm = c.meters.at(-1);
+  check(lm.looper.slots[0].state === 'playing' && Math.abs(lm.looper.len / 48000 - 1) < 0.1, `loop ${lm.looper.slots[0].state}, ${(lm.looper.len / 48000).toFixed(2)} s`);
+  check(c.meters.slice(-20).some((m) => m.outDb > -40), 'guitar through the pedals reaches the speakers');
+  check(c.status.latency?.totalMs > 0 && c.status.latency.totalMs < 30, `latency estimate ${c.status.latency?.totalMs?.toFixed(1)} ms`);
 
-  const expected = Math.floor((3 * 48000) / 1024);
-  check(frames >= expected * 0.8, `analysis frames ${frames} of ~${expected}`);
-  check(gaps === 0, `listening clock has no gaps (${gaps})`);
-  check(rate === 48000, `frame rate ${rate}`);
-  check(meters >= 60, `meters at ~30 Hz (${meters} in 3 s)`);
-  check(!!status?.input && !!status?.output, 'status reports both streams');
-  check(status?.outputOn === true, 'status reports Output on');
-  check(status?.latency?.totalMs > 0 && status.latency.totalMs < 30, `latency estimate ${status?.latency?.totalMs?.toFixed(1)} ms`);
-  check(lastMeters?.slots?.[0]?.state === 'playing', `loop slot 1 playing (${lastMeters?.slots?.[0]?.state})`);
-  check(lastMeters?.looperLen > 40000 && lastMeters.looperLen < 56000, `loop length ${lastMeters?.looperLen} ≈ 1 s`);
-  check(lastMeters?.outDb > -40, `output level ${lastMeters?.outDb?.toFixed(1)} dBFS`);
+  // The synth plays through the engine even with Output off.
+  send({ type: 'set', state: { output: false } });
+  send({ type: 'loop', cmd: 'clear', slot: 0 });
+  await sleep(400);
+  c.meters.length = 0;
+  send({ type: 'play', group: 1, notes: [{ at: 0, hz: 440, dur: 1.2, voice: 'reference' }] });
+  await sleep(600);
+  const synthPeak = Math.max(...c.meters.map((m) => m.outDb));
+  check(synthPeak > -20, `reference tone through the engine (${synthPeak.toFixed(1)} dBFS)`);
+  send({ type: 'stop' });
+  await sleep(200);
+  c.meters.length = 0;
+  await sleep(300);
+  check(Math.max(...c.meters.map((m) => m.outDb)) < -60, 'stop silences the synth');
 
-  send({ type: 'output', on: false });
+  // Recalibrate: progress shows while it measures. Manual floor applies.
+  send({ type: 'recalibrate' });
+  await sleep(500);
+  check(c.levels?.measuring > 0 && c.levels.measuring < 1, `recalibrating (${c.levels?.measuring?.toFixed(2)})`);
+  send({ type: 'set', state: { floor: { mode: 'manual', manualDb: -50 } } });
+  await sleep(1500);
+  check(c.levels.floorMode === 'manual' && c.levels.floorDb === -50, `manual floor ${c.levels.floorDb}`);
+
+  // Listen off: no analysis for this client.
   send({ type: 'listen', on: false });
+  await sleep(300);
+  const before = c.analysis;
   await sleep(500);
-  const before = frames;
-  await sleep(500);
-  check(frames === before, 'no analysis frames after listen off');
+  check(c.analysis === before, 'no analysis after listen off');
   ws.close();
-  await sleep(500);
+  await sleep(1200);
 
+  // Restart: the session survives.
+  engine.kill();
+  await sleep(500);
+  check(existsSync(state), 'session saved to disk');
+  start(join(dir, 'second.wav'));
+  ({ ws } = await connect('http://localhost:5173'));
+  c = collect(ws);
+  await sleep(500);
+  check(c.state?.gateDb === 15 && c.state.floor.mode === 'manual' && c.state.pedals[0].name === 'Overdrive', `session restored (rev ${c.state?.rev})`);
+  ws.close();
+  await sleep(300);
   engine.kill();
   await sleep(500);
   const wav = readFileSync(record);
-  const data = wav.indexOf('data');
-  const n = (wav.length - data - 8) / 4;
-  let peak = 0;
-  for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(wav.readFloatLE(data + 8 + i * 4)));
-  check(n > 48000 * 2 && peak > 0.05 && peak <= 1, `speakers got ${(n / 48000).toFixed(1)} s, peak ${peak.toFixed(2)}`);
+  check(wav.length > 48000 * 4, `speakers recorded ${(wav.length / 4 / 48000).toFixed(1)} s`);
 } catch (e) {
   failures.push(String(e));
   console.error(e);
 } finally {
-  engine.kill();
+  engine?.kill();
 }
 console.log(failures.length ? `\n${failures.length} failed` : '\nall passed');
 process.exit(failures.length ? 1 : 0);

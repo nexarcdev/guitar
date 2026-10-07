@@ -1,84 +1,97 @@
-//! The engine core. Three kinds of threads meet here:
+//! The engine: one channel of the shared core, hosted natively. Threads:
 //!
-//! * the backend's capture thread pushes the raw guitar into two lock-free rings: one to the
-//!   speakers (monitor) and one to the web app (analysis);
-//! * the backend's render thread drains the monitor ring through a drift-compensating reader,
-//!   applies queued commands, runs the pedal chain and fills the speaker buffer;
-//! * the supervisor thread owns all decisions: which devices are open in which mode, what the
-//!   board looks like, who is connected. It reacts to client messages and stream errors and
-//!   tells clients the resulting status. A pump thread ships analysis audio and meters.
+//! * capture (backend): pushes the raw guitar into two lock-free rings, monitor and analysis;
+//! * render (backend): drift-compensates the monitor ring and runs the core's AudioSide
+//!   (conditioner, pedals, looper, synth) into the speakers;
+//! * analysis: the core's Capture (listening clock), TrackerSide and MlSide; sends analysis,
+//!   notes and meters to clients;
+//! * ml: basic-pitch inference (model.rs) for windows the MlSide hands it;
+//! * supervisor: the core's Session (shared state, persistence), client bookkeeping, and which
+//!   devices are open in which mode.
 //!
-//! The audio threads never block on the supervisor: commands go through a queue they take with
-//! `try_lock`, meters come back the same way, and the chain mutex is only contended while a
-//! stream is being opened.
+//! Audio threads never wait on the others: commands reach the render thread through a queue it
+//! takes with `try_lock`, the noise floor through atomics, meters come back the same way.
 
 use crate::audio::{Backend, Stream};
 use crate::log;
-use crate::protocol::{self, ClientMsg, DeviceInfo, Latency, Meters, PedalMsg, ServerMsg, SlotView, Status, StreamInfo};
+use crate::model::Model;
 use crossbeam_channel::{Receiver, Sender};
 use fretline_core::drift::DriftReader;
-use fretline_core::looper::SLOTS;
-use fretline_core::{Chain, Command, PedalKind, PedalSetting};
-use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
+use fretline_core::ml::MlWindow;
+use fretline_core::protocol::{ChannelMsg, ControlMsg, DeviceInfo, Latency, Meters, MlState, MlStatus, Status, StreamInfo, PROTOCOL};
+use fretline_core::session::Session;
+use fretline_core::sides::{AudioCmd, AudioSide, Capture, ListenCmd, MlSide, TrackerSide};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-/// Samples per binary analysis frame.
-const FRAME: usize = 1024;
-
-pub enum Out {
-    Text(String),
-    Binary(Vec<u8>),
-}
 
 pub enum Event {
-    Connected { id: u64, tx: Sender<Out> },
+    Connected { id: u64, tx: Sender<String> },
     Disconnected(u64),
-    Msg(u64, ClientMsg),
+    Msg(u64, ControlMsg),
     StreamError { output: bool, msg: String },
 }
 
 pub struct Client {
     pub id: u64,
-    pub tx: Sender<Out>,
+    pub tx: Sender<String>,
     pub listen: bool,
 }
 
 pub type Clients = Arc<Mutex<Vec<Client>>>;
 
-fn send(c: &Client, m: Out) {
-    // A client that can't keep up loses frames rather than stalling everyone.
-    let _ = c.tx.try_send(m);
+fn json(m: &ChannelMsg) -> String {
+    serde_json::to_string(m).unwrap_or_default()
 }
 
-/// State the audio threads share with the supervisor and the pump.
+/// Sends to every client (or only listening ones). A client that can't keep up loses messages
+/// rather than stalling everyone.
+fn broadcast(clients: &Clients, text: &str, listening_only: bool) {
+    for c in clients.lock().unwrap().iter().filter(|c| c.listen || !listening_only) {
+        let _ = c.tx.try_send(text.to_string());
+    }
+}
+
+fn now_ms() -> f64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs_f64() * 1000.0).unwrap_or(0.0)
+}
+
+/// State the audio threads share with the supervisor and the analysis thread.
 struct Shared {
     mon_tx: Mutex<rtrb::Producer<f32>>,
     mon_rx: Mutex<rtrb::Consumer<f32>>,
     ana_tx: Mutex<rtrb::Producer<f32>>,
-    /// Analysis samples the capture thread could not queue (keeps the listening clock honest).
-    ana_dropped: AtomicU64,
-    in_rate: AtomicU32,
     /// Current monitor backlog target, input samples.
     buffer: AtomicUsize,
     underruns: AtomicU64,
-    chain: Mutex<Option<(u32, Chain)>>,
-    pending: Mutex<Vec<Command>>,
+    audio: Mutex<Option<AudioSide>>,
+    pending: Mutex<Vec<AudioCmd>>,
     meters: Mutex<Meters>,
+    synth_active: AtomicBool,
+    /// The tracker's noise floor and gate margin (f32 bits), for the monitored path.
+    floor_db: AtomicU32,
+    open_db: AtomicU32,
 }
 
-/// Pushes as much of `block` as fits; returns how many samples did not fit.
-fn push_ring(p: &mut rtrb::Producer<f32>, block: &[f32]) -> usize {
+/// Pushes as much of `block` as fits.
+fn push_ring(p: &mut rtrb::Producer<f32>, block: &[f32]) {
     let n = p.slots().min(block.len());
     if let Ok(chunk) = p.write_chunk_uninit(n) {
         chunk.fill_from_iter(block[..n].iter().copied());
     }
-    block.len() - n
 }
 
-fn db(x: f32) -> f32 {
-    20.0 * x.max(1e-9).log10()
+/// Messages from the supervisor to the analysis thread.
+enum AnaMsg {
+    /// A new input stream at this rate.
+    Input(u32),
+    Cmd(ListenCmd),
+    Listening(bool),
+    /// Tell everyone the current ML status (a client connected).
+    Resend,
 }
 
 pub struct Supervisor {
@@ -86,15 +99,11 @@ pub struct Supervisor {
     shared: Arc<Shared>,
     clients: Clients,
     events: Sender<Event>,
+    ana: Sender<AnaMsg>,
     tray: Arc<Mutex<String>>,
-    // Desired state, as last set by any client.
-    pedals: Vec<PedalSetting>,
-    output_on: bool,
-    input_id: String,
-    output_id: String,
-    exclusive_input: bool,
-    exclusive_output: bool,
-    // Actual state.
+    session: Session,
+    session_path: Option<PathBuf>,
+    session_dirty: bool,
     inputs: Vec<DeviceInfo>,
     outputs: Vec<DeviceInfo>,
     input: Option<Box<dyn Stream>>,
@@ -105,44 +114,50 @@ pub struct Supervisor {
     /// browser hadn't released it yet): try once more a moment later.
     input_upgrade: Option<Instant>,
     output_upgrade: Option<Instant>,
-    /// That one retry has been spent (reset when the user changes device or mode).
+    /// That one retry has been spent (reset when the player changes device or mode).
     input_upgrade_tried: bool,
     output_upgrade_tried: bool,
+    /// Keep the output open until then for synth notes (matters for exclusive output).
+    synth_until: Instant,
+    listening: bool,
     error: Option<String>,
     last_status: Option<Status>,
 }
 
 impl Supervisor {
-    pub fn new(backend: Box<dyn Backend>, clients: Clients, events: Sender<Event>, tray: Arc<Mutex<String>>) -> (Self, Pump) {
+    pub fn new(backend: Box<dyn Backend>, clients: Clients, events: Sender<Event>, tray: Arc<Mutex<String>>, session_path: Option<PathBuf>) -> (Self, Analysis) {
         let (mon_tx, mon_rx) = rtrb::RingBuffer::new(96000);
         let (ana_tx, ana_rx) = rtrb::RingBuffer::new(192000);
-        let meters = Meters { slots: vec![SlotView { state: "empty", progress: 0.0 }; SLOTS], out_db: -120.0, ..Default::default() };
         let shared = Arc::new(Shared {
             mon_tx: Mutex::new(mon_tx),
             mon_rx: Mutex::new(mon_rx),
             ana_tx: Mutex::new(ana_tx),
-            ana_dropped: AtomicU64::new(0),
-            in_rate: AtomicU32::new(0),
             buffer: AtomicUsize::new(0),
             underruns: AtomicU64::new(0),
-            chain: Mutex::new(None),
+            audio: Mutex::new(None),
             pending: Mutex::new(Vec::new()),
-            meters: Mutex::new(meters),
+            meters: Mutex::new(Meters { out_db: -120.0, ..Default::default() }),
+            synth_active: AtomicBool::new(false),
+            floor_db: AtomicU32::new((-80.0f32).to_bits()),
+            open_db: AtomicU32::new(12.0f32.to_bits()),
         });
-        let pump = Pump { shared: shared.clone(), clients: clients.clone(), rx: ana_rx };
+        let session = match session_path.as_ref().and_then(|p| std::fs::read_to_string(p).ok()) {
+            Some(s) => Session::load(&s),
+            None => Session::default(),
+        };
+        let (ana, ana_rx_msgs) = crossbeam_channel::unbounded();
+        let analysis = Analysis { shared: shared.clone(), clients: clients.clone(), rx: ana_rx, msgs: ana_rx_msgs, initial: session.initial().listen };
         let now = Instant::now();
         let sup = Self {
             backend,
             shared,
             clients,
             events,
+            ana,
             tray,
-            pedals: PedalKind::ALL.iter().map(|&kind| PedalSetting { kind, on: false, level: 50.0 }).collect(),
-            output_on: false,
-            input_id: String::new(),
-            output_id: String::new(),
-            exclusive_input: true,
-            exclusive_output: false,
+            session,
+            session_path,
+            session_dirty: false,
             inputs: Vec::new(),
             outputs: Vec::new(),
             input: None,
@@ -153,15 +168,18 @@ impl Supervisor {
             output_upgrade: None,
             input_upgrade_tried: false,
             output_upgrade_tried: false,
+            synth_until: now,
+            listening: false,
             error: None,
             last_status: None,
         };
-        (sup, pump)
+        (sup, analysis)
     }
 
     pub fn run(mut self, rx: Receiver<Event>) {
         self.refresh_devices();
         let mut last_scan = Instant::now();
+        let mut last_save = Instant::now();
         loop {
             match rx.recv_timeout(Duration::from_millis(250)) {
                 Ok(ev) => self.handle(ev),
@@ -177,8 +195,22 @@ impl Supervisor {
                 last_scan = Instant::now();
                 self.refresh_devices();
             }
+            // Knob drags change state many times a second; save at most once a second.
+            if self.session_dirty && last_save.elapsed() > Duration::from_secs(1) {
+                last_save = Instant::now();
+                self.save();
+            }
             self.reconcile();
             self.publish(false);
+        }
+    }
+
+    fn save(&mut self) {
+        self.session_dirty = false;
+        if let Some(p) = &self.session_path {
+            if let Err(e) = std::fs::write(p, self.session.save()) {
+                log!("could not save session: {e}");
+            }
         }
     }
 
@@ -186,14 +218,18 @@ impl Supervisor {
         match ev {
             Event::Connected { id, tx } => {
                 log!("client {id} connected");
+                let _ = tx.try_send(json(&ChannelMsg::State(self.session.state.clone())));
                 self.clients.lock().unwrap().push(Client { id, tx, listen: true });
                 self.refresh_devices();
+                self.update_listening();
+                let _ = self.ana.send(AnaMsg::Resend);
                 self.reconcile();
                 self.publish(true);
             }
             Event::Disconnected(id) => {
                 log!("client {id} disconnected");
                 self.clients.lock().unwrap().retain(|c| c.id != id);
+                self.update_listening();
             }
             Event::StreamError { output, msg } => {
                 log!("{} stream error: {msg}", if output { "output" } else { "input" });
@@ -211,80 +247,58 @@ impl Supervisor {
         }
     }
 
-    fn message(&mut self, id: u64, msg: ClientMsg) {
-        match msg {
-            ClientMsg::Hello { client, version } => {
-                log!("client {id} is {client} {}", version.unwrap_or_default());
-                self.publish(true);
+    fn message(&mut self, id: u64, msg: ControlMsg) {
+        match &msg {
+            ControlMsg::Hello { client, version } => {
+                log!("client {id} is {client} {}", version.clone().unwrap_or_default());
             }
-            ClientMsg::Pedals { pedals } => {
-                self.pedals = to_settings(&pedals);
-                self.command(Command::Pedals(self.pedals.clone()));
-            }
-            ClientMsg::Output { on } => {
-                self.output_on = on;
-                self.command(Command::Output(on));
-            }
-            ClientMsg::Listen { on } => {
+            ControlMsg::Listen { on } => {
                 if let Some(c) = self.clients.lock().unwrap().iter_mut().find(|c| c.id == id) {
-                    c.listen = on;
+                    c.listen = *on;
                 }
+                self.update_listening();
             }
-            ClientMsg::Loop { cmd, slot } => {
-                let c = match cmd.as_str() {
-                    "tap" => Command::LoopTap(slot),
-                    "stop" => Command::LoopStop(slot),
-                    "clear" => Command::LoopClear(slot),
-                    _ => return,
-                };
-                if self.output.is_some() {
-                    self.command(c);
-                }
+            ControlMsg::Play { notes, lead, .. } => {
+                let end = notes.iter().map(|n| n.at + n.dur).fold(0.0, f64::max) + lead.unwrap_or(0.05) + 0.5;
+                self.synth_until = self.synth_until.max(Instant::now() + Duration::from_secs_f64(end.min(600.0)));
             }
-            ClientMsg::Floor { floor_db, open_db } => {
-                if self.output.is_some() {
-                    self.command(Command::Floor { floor_db, open_db });
-                }
+            _ => {}
+        }
+        let before = self.session.state.clone();
+        let fx = self.session.apply(&msg, now_ms());
+        if !fx.audio.is_empty() {
+            self.shared.pending.lock().unwrap().extend(fx.audio);
+        }
+        for c in fx.listen {
+            let _ = self.ana.send(AnaMsg::Cmd(c));
+        }
+        if let Some(st) = fx.state {
+            self.session_dirty = true;
+            broadcast(&self.clients, &json(&ChannelMsg::State(st)), false);
+        }
+        if fx.devices {
+            let s = &self.session.state;
+            let input_changed = s.input_id != before.input_id || s.exclusive_input != before.exclusive_input;
+            let output_changed = s.output_id != before.output_id || s.exclusive_output != before.exclusive_output;
+            if input_changed {
+                self.input_upgrade_tried = false;
+                self.close_input();
             }
-            ClientMsg::Devices { input, output } => {
-                if let Some(i) = input {
-                    if i != self.input_id {
-                        self.input_id = i;
-                        self.input_upgrade_tried = false;
-                        self.close_input();
-                    }
-                }
-                if let Some(o) = output {
-                    if o != self.output_id {
-                        self.output_id = o;
-                        self.output_upgrade_tried = false;
-                        self.output = None;
-                    }
-                }
-            }
-            ClientMsg::Exclusive { input, output } => {
-                if let Some(i) = input {
-                    if i != self.exclusive_input {
-                        self.exclusive_input = i;
-                        self.input_upgrade_tried = false;
-                        self.close_input();
-                    }
-                }
-                if let Some(o) = output {
-                    if o != self.exclusive_output {
-                        self.exclusive_output = o;
-                        self.output_upgrade_tried = false;
-                        self.output = None;
-                    }
-                }
+            if output_changed {
+                self.output_upgrade_tried = false;
+                self.output = None;
             }
         }
         self.reconcile();
         self.publish(false);
     }
 
-    fn command(&self, c: Command) {
-        self.shared.pending.lock().unwrap().push(c);
+    fn update_listening(&mut self) {
+        let any = self.clients.lock().unwrap().iter().any(|c| c.listen);
+        if any != self.listening {
+            self.listening = any;
+            let _ = self.ana.send(AnaMsg::Listening(any));
+        }
     }
 
     fn close_input(&mut self) {
@@ -299,15 +313,15 @@ impl Supervisor {
 
     /// Opens or closes streams to match what clients need.
     fn reconcile(&mut self) {
-        let (active, listening) = {
-            let c = self.clients.lock().unwrap();
-            (!c.is_empty(), c.iter().any(|c| c.listen))
-        };
-        let want_in = active && (listening || self.output_on);
-        // Shared output stays open while connected so Output and the looper answer instantly;
-        // exclusive output only while it is actually in use, so other apps get the device back.
-        let want_out = active && (self.output_on || (!self.exclusive_output && want_in));
+        let active = !self.clients.lock().unwrap().is_empty();
+        let output_on = self.session.state.output;
+        let exclusive_output = self.session.state.exclusive_output;
         let now = Instant::now();
+        let synth = now < self.synth_until || self.shared.synth_active.load(Ordering::Relaxed);
+        let want_in = active && (self.listening || output_on);
+        // Shared output stays open while connected so Output, the looper and the synth answer
+        // instantly; exclusive output only while in use, so other apps get the device back.
+        let want_out = active && (output_on || synth || (!exclusive_output && want_in));
 
         if !want_in && self.input.is_some() {
             log!("closing input");
@@ -337,8 +351,12 @@ impl Supervisor {
             match self.open_input() {
                 Ok(s) => {
                     log!("input open: {:?}", s.info());
-                    let missed = self.exclusive_input && s.info().mode != "exclusive" && s.info().mode != "test";
+                    let missed = self.session.state.exclusive_input && s.info().mode != "exclusive" && s.info().mode != "test";
                     self.input_upgrade = (missed && !self.input_upgrade_tried).then(|| now + Duration::from_secs(3));
+                    let _ = self.ana.send(AnaMsg::Input(s.info().rate));
+                    for c in self.session.initial().listen {
+                        let _ = self.ana.send(AnaMsg::Cmd(c));
+                    }
                     self.input = Some(s);
                     self.error = None;
                     // The monitor resampler depends on the input's rate and period.
@@ -355,7 +373,7 @@ impl Supervisor {
             match self.open_output() {
                 Ok(s) => {
                     log!("output open: {:?}", s.info());
-                    let missed = self.exclusive_output && s.info().mode != "exclusive" && s.info().mode != "test";
+                    let missed = exclusive_output && s.info().mode != "exclusive" && s.info().mode != "test";
                     self.output_upgrade = (missed && !self.output_upgrade_tried).then(|| now + Duration::from_secs(3));
                     self.output = Some(s);
                     if self.error.as_deref().is_some_and(|e| e.starts_with("Speakers")) {
@@ -363,7 +381,8 @@ impl Supervisor {
                     }
                     if let Some(l) = self.latency() {
                         let rate = self.output.as_ref().unwrap().info().rate as f32;
-                        self.command(Command::Latency((l.total_ms / 1000.0 * rate).round() as usize));
+                        let samples = (l.total_ms / 1000.0 * rate).round() as usize;
+                        self.shared.pending.lock().unwrap().push(AudioCmd::Latency { samples });
                     }
                 }
                 Err(e) => {
@@ -377,17 +396,13 @@ impl Supervisor {
 
     fn open_input(&mut self) -> Result<Box<dyn Stream>, String> {
         let shared = self.shared.clone();
-        let make = Box::new(move |info: &StreamInfo| -> crate::audio::InputFn {
-            shared.in_rate.store(info.rate, Ordering::Relaxed);
+        let make = Box::new(move |_: &StreamInfo| -> crate::audio::InputFn {
             Box::new(move |block: &[f32]| {
                 if let Ok(mut p) = shared.mon_tx.try_lock() {
                     push_ring(&mut p, block);
                 }
                 if let Ok(mut p) = shared.ana_tx.try_lock() {
-                    let lost = push_ring(&mut p, block);
-                    if lost > 0 {
-                        shared.ana_dropped.fetch_add(lost as u64, Ordering::Relaxed);
-                    }
+                    push_ring(&mut p, block);
                 }
             })
         });
@@ -395,15 +410,15 @@ impl Supervisor {
         let on_error = Box::new(move |msg: String| {
             let _ = tx.send(Event::StreamError { output: false, msg });
         });
-        let id = self.input_id.clone();
-        self.backend.open_input(&id, self.exclusive_input, make, on_error)
+        let s = &self.session.state;
+        let (id, exclusive) = (s.input_id.clone(), s.exclusive_input);
+        self.backend.open_input(&id, exclusive, make, on_error)
     }
 
     fn open_output(&mut self) -> Result<Box<dyn Stream>, String> {
         let shared = self.shared.clone();
         let input = self.input.as_ref().map(|s| (s.info().rate, s.info().period_ms));
-        let init = vec![Command::Pedals(self.pedals.clone()), Command::Output(self.output_on)];
-        shared.pending.lock().unwrap().clear();
+        let init = self.session.initial().audio;
         let make = Box::new(move |info: &StreamInfo| -> crate::audio::OutputFn {
             let rout = info.rate;
             let (rin, in_ms) = input.unwrap_or((rout, 0.0));
@@ -414,13 +429,15 @@ impl Supervisor {
             reader.allow_growth(in_frames * 4 + out_in_frames + 256);
             shared.buffer.store(target, Ordering::Relaxed);
             {
-                let mut slot = shared.chain.lock().unwrap();
-                if slot.as_ref().map(|(r, _)| *r) != Some(rout) {
-                    *slot = Some((rout, Chain::new(rout as f32)));
+                // The AudioSide outlives output streams (loops keep playing across a device
+                // change) unless the rate changes.
+                let mut slot = shared.audio.lock().unwrap();
+                if slot.as_ref().map(|a| a.sample_rate()) != Some(rout as f32) {
+                    *slot = Some(AudioSide::new(rout as f32));
                 }
-                let chain = &mut slot.as_mut().unwrap().1;
+                let side = slot.as_mut().unwrap();
                 for c in init {
-                    chain.apply(c);
+                    side.apply(c);
                 }
             }
             // Drop whatever piled up while nothing was reading.
@@ -430,11 +447,11 @@ impl Supervisor {
                     chunk.commit_all();
                 }
             }
-            let mut local: Vec<Command> = Vec::with_capacity(64);
-            let mut peak = 0.0f32;
+            let mut local: Vec<AudioCmd> = Vec::with_capacity(64);
             let mut since_meter = 0usize;
             let meter_every = (rout / 100) as usize;
             let mut last_underruns = 0;
+            let mut level = (0u32, 0u32);
             Box::new(move |out: &mut [f32]| {
                 if let Ok(mut c) = shared.mon_rx.try_lock() {
                     let n = c.slots();
@@ -455,34 +472,24 @@ impl Supervisor {
                         std::mem::swap(&mut *q, &mut local);
                     }
                 }
-                let Ok(mut slot) = shared.chain.lock() else { return };
-                let Some((_, chain)) = slot.as_mut() else { return };
+                let Ok(mut slot) = shared.audio.lock() else { return };
+                let Some(side) = slot.as_mut() else { return };
                 for c in local.drain(..) {
-                    chain.apply(c);
+                    side.apply(c);
                 }
-                chain.process(out);
-                for &v in out.iter() {
-                    peak = peak.max(v.abs());
+                let now = (shared.floor_db.load(Ordering::Relaxed), shared.open_db.load(Ordering::Relaxed));
+                if now != level {
+                    level = now;
+                    side.apply(AudioCmd::Level { floor_db: f32::from_bits(now.0), open_db: f32::from_bits(now.1) });
                 }
+                side.process(out);
                 since_meter += out.len();
                 if since_meter >= meter_every {
                     if let Ok(mut m) = shared.meters.try_lock() {
-                        let cv = chain.conditioner();
-                        let lv = chain.looper();
-                        m.gain_db = cv.gain_db;
-                        m.floor_db = cv.floor_db;
-                        m.gate = cv.gate;
-                        m.out_db = m.out_db.max(db(peak));
-                        m.looper_len = lv.len;
-                        m.looper_free = lv.free;
-                        m.looper_rate = lv.rate;
-                        for (s, (state, progress)) in m.slots.iter_mut().zip(lv.slots.iter()) {
-                            s.state = state.name();
-                            s.progress = *progress;
-                        }
+                        side.meters_into(&mut m);
                         since_meter = 0;
-                        peak = 0.0;
                     }
+                    shared.synth_active.store(side.synth_active(), Ordering::Relaxed);
                 }
             })
         });
@@ -490,8 +497,9 @@ impl Supervisor {
         let on_error = Box::new(move |msg: String| {
             let _ = tx.send(Event::StreamError { output: true, msg });
         });
-        let id = self.output_id.clone();
-        self.backend.open_output(&id, self.exclusive_output, make, on_error)
+        let s = &self.session.state;
+        let (id, exclusive) = (s.output_id.clone(), s.exclusive_output);
+        self.backend.open_output(&id, exclusive, make, on_error)
     }
 
     fn latency(&self) -> Option<Latency> {
@@ -505,16 +513,14 @@ impl Supervisor {
 
     fn status(&self) -> Status {
         Status {
-            protocol: protocol::PROTOCOL,
+            protocol: PROTOCOL,
             version: VERSION.into(),
+            kind: "engine".into(),
             inputs: self.inputs.clone(),
             outputs: self.outputs.clone(),
             input: self.input.as_ref().map(|s| s.info().clone()),
             output: self.output.as_ref().map(|s| s.info().clone()),
             latency: self.latency(),
-            output_on: self.output_on,
-            exclusive_input: self.exclusive_input,
-            exclusive_output: self.exclusive_output,
             error: self.error.clone(),
         }
     }
@@ -525,10 +531,7 @@ impl Supervisor {
         if !force && self.last_status.as_ref() == Some(&s) {
             return;
         }
-        let text = serde_json::to_string(&ServerMsg::Status(s.clone())).unwrap_or_default();
-        for c in self.clients.lock().unwrap().iter() {
-            send(c, Out::Text(text.clone()));
-        }
+        broadcast(&self.clients, &json(&ChannelMsg::Status(s.clone())), false);
         let tray = match (&s.error, &s.latency, self.clients.lock().unwrap().len()) {
             (Some(e), _, _) => format!("Problem: {e}"),
             (None, _, 0) => "Waiting for Fretline".to_string(),
@@ -540,33 +543,99 @@ impl Supervisor {
     }
 }
 
-fn to_settings(pedals: &[PedalMsg]) -> Vec<PedalSetting> {
-    pedals
-        .iter()
-        .filter_map(|p| PedalKind::from_name(&p.name).map(|kind| PedalSetting { kind, on: p.on, level: p.level }))
-        .collect()
-}
-
-/// Ships the raw guitar to listening clients in fixed frames, and meters to everyone at 30 Hz.
-pub struct Pump {
+/// The listening half: tracker and basic-pitch over the raw guitar, results to clients.
+pub struct Analysis {
     shared: Arc<Shared>,
     clients: Clients,
     rx: rtrb::Consumer<f32>,
+    msgs: Receiver<AnaMsg>,
+    /// Settings to apply when the sides are (re)created before the supervisor's own arrive.
+    initial: Vec<ListenCmd>,
 }
 
-impl Pump {
+impl Analysis {
     pub fn run(mut self) {
-        let mut acc: Vec<f32> = Vec::with_capacity(FRAME * 4);
-        let mut clock: u64 = 0;
-        let mut rate = 0u32;
+        let mut capture = Capture::default();
+        capture.listening = false;
+        let mut sides: Option<(TrackerSide, MlSide)> = None;
+        let mut cmds: Vec<ListenCmd> = std::mem::take(&mut self.initial);
+        let mut acc: Vec<f32> = Vec::with_capacity(8192);
         let mut last_meters = Instant::now();
+        let mut last_level = Instant::now();
+
+        // ML runs on its own thread with at most one window in flight. The model loads at start
+        // (~0.1 s) so clients see "ready" or "unavailable" straight away.
+        let (win_tx, win_rx) = crossbeam_channel::bounded::<MlWindow>(1);
+        let (res_tx, res_rx) = crossbeam_channel::unbounded::<(MlWindow, Result<(Vec<f32>, Vec<f32>, f64), String>)>();
+        let ml = Arc::new(Mutex::new(MlView { on: true, model: MlState::Loading, sent: None }));
+        {
+            let ml = ml.clone();
+            let clients = self.clients.clone();
+            std::thread::Builder::new()
+                .name("ml".into())
+                .spawn(move || {
+                    let model = Model::load();
+                    match &model {
+                        Ok(_) => log!("ML model ready"),
+                        Err(e) => log!("ML unavailable: {e}"),
+                    }
+                    ml.lock().unwrap().model = if model.is_ok() { MlState::Ready } else { MlState::Unavailable };
+                    publish_ml(&ml, &clients, false);
+                    for w in win_rx {
+                        let r = match &model {
+                            Ok(m) => {
+                                let t = Instant::now();
+                                let (mut f, mut o) = (Vec::new(), Vec::new());
+                                m.run(&w.audio, &mut f, &mut o).map(|_| (f, o, t.elapsed().as_secs_f64()))
+                            }
+                            Err(e) => Err(e.clone()),
+                        };
+                        if res_tx.send((w, r)).is_err() {
+                            return;
+                        }
+                    }
+                })
+                .unwrap();
+        }
+        let mut busy = false;
+
         loop {
-            std::thread::sleep(Duration::from_millis(5));
-            let r = self.shared.in_rate.load(Ordering::Relaxed);
-            if r != rate {
-                rate = r;
-                acc.clear();
+            // Messages from the supervisor.
+            loop {
+                match self.msgs.try_recv() {
+                    Ok(AnaMsg::Input(rate)) => {
+                        let mut t = TrackerSide::new(rate as f64);
+                        let mut m = MlSide::new(rate as f64);
+                        for c in &cmds {
+                            t.apply(c);
+                            m.apply(c);
+                        }
+                        sides = Some((t, m));
+                        acc.clear();
+                    }
+                    Ok(AnaMsg::Cmd(c)) => {
+                        if let ListenCmd::Ml { on } = c {
+                            ml.lock().unwrap().on = on;
+                            publish_ml(&ml, &self.clients, false);
+                        }
+                        if let Some((t, m)) = sides.as_mut() {
+                            t.apply(&c);
+                            m.apply(&c);
+                        }
+                        // Remember settings (not one-off actions) for sides created later.
+                        if !matches!(c, ListenCmd::Recalibrate { .. } | ListenCmd::Reset) {
+                            cmds.retain(|x| std::mem::discriminant(x) != std::mem::discriminant(&c));
+                            cmds.push(c);
+                        }
+                    }
+                    Ok(AnaMsg::Listening(on)) => capture.listening = on,
+                    Ok(AnaMsg::Resend) => publish_ml(&ml, &self.clients, true),
+                    Err(crossbeam_channel::TryRecvError::Empty) => break,
+                    Err(_) => return,
+                }
             }
+
+            // New audio → listening clock → tracker and ML.
             let n = self.rx.slots();
             if let Ok(chunk) = self.rx.read_chunk(n) {
                 let (a, b) = chunk.as_slices();
@@ -574,36 +643,81 @@ impl Pump {
                 acc.extend_from_slice(b);
                 chunk.commit_all();
             }
-            clock += self.shared.ana_dropped.swap(0, Ordering::Relaxed);
-            let mut sent = 0;
-            while acc.len() - sent >= FRAME {
-                let frame = protocol::audio_frame(rate, clock as f64, &acc[sent..sent + FRAME]);
-                for c in self.clients.lock().unwrap().iter().filter(|c| c.listen) {
-                    send(c, Out::Binary(frame.clone()));
+            if let Some((tracker, side)) = sides.as_mut() {
+                let clients = &self.clients;
+                capture.push(&acc, |t0, data| {
+                    let a = tracker.push(t0, data);
+                    broadcast(clients, &json(&ChannelMsg::Analysis(a)), true);
+                    side.push(t0, data);
+                });
+                if last_level.elapsed() >= Duration::from_millis(100) {
+                    last_level = Instant::now();
+                    let (floor, open) = tracker.level();
+                    side.set_floor(floor, open);
+                    self.shared.floor_db.store(floor.to_bits(), Ordering::Relaxed);
+                    self.shared.open_db.store(open.to_bits(), Ordering::Relaxed);
                 }
-                clock += FRAME as u64;
-                sent += FRAME;
+                // Results back from the ML thread.
+                while let Ok((w, r)) = res_rx.try_recv() {
+                    busy = false;
+                    match r {
+                        Ok((f, o, secs)) => {
+                            broadcast(clients, &json(&ChannelMsg::Notes(side.decode(&w, &f, &o))), true);
+                            if side.note_inference(secs) {
+                                log!("ML too slow ({secs:.2} s per window); pausing it");
+                                side.on = false;
+                                ml.lock().unwrap().model = MlState::Slow;
+                                publish_ml(&ml, clients, false);
+                            }
+                        }
+                        Err(e) => {
+                            log!("ML failed: {e}");
+                            side.on = false;
+                        }
+                    }
+                }
+                if !busy && ml.lock().unwrap().model == MlState::Ready {
+                    if let Some(w) = side.next_window() {
+                        busy = win_tx.try_send(w).is_ok();
+                    }
+                }
             }
-            acc.drain(..sent);
+            acc.clear();
 
             if last_meters.elapsed() >= Duration::from_millis(33) {
                 last_meters = Instant::now();
-                let clients = self.clients.lock().unwrap();
-                if clients.is_empty() {
-                    continue;
-                }
-                let m = {
-                    let mut m = self.shared.meters.lock().unwrap();
-                    let snap = m.clone();
-                    m.out_db = -120.0;
-                    snap
-                };
-                let m = Meters { underruns: self.shared.underruns.load(Ordering::Relaxed), ..m };
-                let text = serde_json::to_string(&ServerMsg::Meters(m)).unwrap_or_default();
-                for c in clients.iter() {
-                    send(c, Out::Text(text.clone()));
+                if !self.clients.lock().unwrap().is_empty() {
+                    let m = {
+                        let mut m = self.shared.meters.lock().unwrap();
+                        let snap = m.clone();
+                        m.out_db = -120.0;
+                        snap
+                    };
+                    let m = Meters { underruns: self.shared.underruns.load(Ordering::Relaxed), ..m };
+                    broadcast(&self.clients, &json(&ChannelMsg::Meters(m)), false);
                 }
             }
+            std::thread::sleep(Duration::from_millis(4));
         }
     }
+}
+
+/// What clients see of ML: the player's switch combined with the model's state.
+struct MlView {
+    on: bool,
+    model: MlState,
+    sent: Option<MlState>,
+}
+
+fn publish_ml(ml: &Mutex<MlView>, clients: &Clients, force: bool) {
+    let status = {
+        let mut v = ml.lock().unwrap();
+        let s = if v.on { v.model } else { MlState::Off };
+        if !force && v.sent == Some(s) {
+            return;
+        }
+        v.sent = Some(s);
+        s
+    };
+    broadcast(clients, &json(&ChannelMsg::Ml(MlStatus { status, backend: "native".into() })), false);
 }

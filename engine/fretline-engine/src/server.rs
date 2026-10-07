@@ -2,9 +2,10 @@
 //! supervisor and drains that client's outbound queue. Only Fretline's own origins are accepted:
 //! any web page can try to open ws://127.0.0.1, and this one can hear the guitar.
 
-use crate::engine::{Event, Out};
+use crate::engine::Event;
 use crate::log;
-use crate::protocol::{origin_allowed, ClientMsg};
+use crate::protocol::origin_allowed;
+use fretline_core::protocol::ControlMsg;
 use crossbeam_channel::{RecvTimeoutError, Sender};
 use std::io::ErrorKind;
 use std::net::{TcpListener, TcpStream};
@@ -48,14 +49,14 @@ fn client(id: u64, stream: TcpStream, events: &Sender<Event>) -> Result<(), Stri
     let mut ws = tungstenite::accept_hdr_with_config(stream, check, Some(config)).map_err(|e| format!("handshake: {e}"))?;
     ws.get_mut().set_nonblocking(true).map_err(|e| e.to_string())?;
 
-    let (tx, rx) = crossbeam_channel::bounded::<Out>(256);
+    let (tx, rx) = crossbeam_channel::bounded::<String>(256);
     events.send(Event::Connected { id, tx }).map_err(|e| e.to_string())?;
     let result = (|| -> Result<(), String> {
         loop {
             // Inbound: everything that's ready.
             loop {
                 match ws.read() {
-                    Ok(Message::Text(t)) => match serde_json::from_str::<ClientMsg>(t.as_str()) {
+                    Ok(Message::Text(t)) => match serde_json::from_str::<ControlMsg>(t.as_str()) {
                         Ok(m) => events.send(Event::Msg(id, m)).map_err(|e| e.to_string())?,
                         Err(e) => log!("client {id}: bad message {e}: {}", t.as_str()),
                     },
@@ -75,11 +76,7 @@ fn client(id: u64, stream: TcpStream, events: &Sender<Event>) -> Result<(), Stri
                 Err(RecvTimeoutError::Disconnected) => return Ok(()),
             };
             for m in first.into_iter().chain(rx.try_iter()) {
-                let msg = match m {
-                    Out::Text(t) => Message::text(t),
-                    Out::Binary(b) => Message::binary(b),
-                };
-                match ws.write(msg) {
+                match ws.write(Message::text(m)) {
                     Ok(()) => {}
                     // Queued; the socket is just busy.
                     Err(Error::Io(e)) if e.kind() == ErrorKind::WouldBlock => {}

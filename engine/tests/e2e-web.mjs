@@ -157,11 +157,12 @@ try {
   await page.getByRole('button', { name: 'Chords' }).first().click();
   s = await waitFor((x) => x.heardName === 'A', 9500);
   check(s.heardName === 'A' && s.progression?.includes('A') && !s.locked, `web: followed the A strum (${s.progression?.join(' ') || 'nothing heard'})`);
+  // The phrase's single plucks get verdicts too; the ones that matter here are on the A strum.
   await call('actions.setTarget', [-1, 0, 2, 2, 2, 0], 1);
-  s = await waitFor((x) => x.verdict != null, 9500);
-  check(s.locked && (s.verdict === 'exact' || s.verdict === 'sameName'), `web: open A judged against an A target (${s.verdict})`);
+  s = await waitFor((x) => x.verdict != null && x.heardName === 'A', 9500);
+  check(s.locked && (s.verdict === 'exact' || s.verdict === 'sameName'), `web: open A judged against an A target (${s.verdict}, heard ${s.heardName})`);
   await call('actions.setTarget', [-1, 0, 2, 2, 1, 0], 1);
-  s = await waitFor((x) => x.verdict != null, 9500);
+  s = await waitFor((x) => x.verdict != null && x.heardName === 'A', 9500);
   check(s.verdict === 'different' && s.heardName === 'A', `web: A against an Am target is different, heard ${s.heardName}${s.fixes?.length ? ' (' + s.fixes.join(', ') + ')' : ''}`);
   await page.getByRole('button', { name: /^Locked/ }).click();
   s = await waitFor((x) => !x.locked, 1500);

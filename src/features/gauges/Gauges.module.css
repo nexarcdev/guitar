@@ -1,0 +1,234 @@
+/* Gauges: quiet (ink) below the playing threshold, gold above it, red in the top 6 dB.
+   The gate light is green when the guitar counts as playing. */
+
+.bar {
+  position: relative;
+  width: 100%;
+}
+.track {
+  position: relative;
+  border-radius: 999px;
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+.mini .track {
+  height: 6px;
+}
+.large .track {
+  height: 22px;
+  border-radius: 8px;
+}
+.fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  clip-path: inset(0 100% 0 0);
+}
+.peak {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ink);
+  opacity: 0;
+}
+.floor {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--muted-2);
+}
+.thr {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--gold);
+}
+.handle {
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  width: 18px;
+  margin-left: -9px;
+  border-radius: 6px;
+  background: transparent;
+}
+.handle::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--gold);
+}
+.handle::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: -2px;
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--gold);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.handle:focus-visible {
+  outline: 2px solid var(--gold-hi);
+  outline-offset: 2px;
+}
+.barHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  height: 18px;
+}
+.barLabel {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.readout {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--ink);
+  min-width: 56px;
+  text-align: right;
+}
+.led {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--fill-2);
+  border: 1px solid var(--line-3);
+}
+.led[data-on='true'] {
+  background: var(--green);
+  border-color: var(--green);
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+}
+.scale {
+  position: relative;
+  height: 16px;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+}
+.scale span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+.scale span:first-child {
+  transform: none;
+}
+.scale span:last-child {
+  transform: translateX(-100%);
+}
+
+/* Header pair */
+.minis {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 112px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--fill);
+}
+.minis:hover {
+  background: var(--fill-2);
+}
+.miniRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.miniLabel {
+  width: 22px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-align: left;
+}
+
+/* VU gauge */
+.vu {
+  margin: 0;
+  min-width: 0;
+  padding: 10px 12px 6px;
+  border-radius: 16px;
+  background: radial-gradient(120% 100% at 50% 100%, #2a1b16 0%, #1a100f 70%);
+  border: 1px solid var(--line-2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.vu svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.vuDim,
+.vuGold,
+.vuRed {
+  fill: none;
+  stroke-width: 6;
+}
+.vuDim {
+  stroke: rgba(247, 239, 232, 0.18);
+}
+.vuGold {
+  stroke: var(--gold);
+}
+.vuRed {
+  stroke: var(--red);
+}
+.vuTick {
+  stroke: var(--muted);
+  stroke-width: 1.2;
+}
+.vuNum {
+  fill: var(--muted-2);
+  font-size: 8px;
+  text-anchor: middle;
+  font-family: var(--font);
+}
+.vuFloor {
+  stroke: var(--muted);
+  stroke-width: 2;
+}
+.vuThr {
+  stroke: var(--gold-hi);
+  stroke-width: 2.5;
+}
+.vuNeedle {
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.vuPivot {
+  fill: var(--gold-dk);
+}
+.vuName {
+  fill: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  font-family: var(--font);
+}
+.vuRead {
+  fill: var(--ink);
+  font-size: 11px;
+  text-anchor: end;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font);
+}

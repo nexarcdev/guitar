@@ -1,0 +1,47 @@
+name: Channels
+
+# The web app on both audio channels in headless Chromium: the web channel, then the native
+# engine (built for Linux with its device-free test backend), switching between them. Runs
+# alongside deploys; it never blocks the site or releases anything.
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'engine/core/**'
+      - 'engine/wasm/**'
+      - 'engine/fretline-engine/**'
+      - 'package*.json'
+      - '.github/workflows/channels.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: channels-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup toolchain install stable --profile minimal && rustup default stable && rustup target add wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+      - run: cargo build --release -p fretline-engine
+        working-directory: engine
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci && npm run build
+      - name: Install Chromium
+        run: |
+          npx --yes playwright@1 install --with-deps chromium
+          npm install --no-save --prefix tests/e2e playwright@1
+      - name: Web app on both channels
+        run: |
+          (npx vite preview --port 4180 --strictPort &)
+          sleep 3
+          node tests/e2e/channels.mjs engine/target/release/fretline-engine http://localhost:4180/

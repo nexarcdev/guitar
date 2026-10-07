@@ -2,12 +2,9 @@ name: Engine
 
 on:
   push:
-    # The end-to-end test drives the web app against the engine, so web changes run it too.
+    # The native engine only: site changes never trigger this (see pages.yml, channels.yml).
     paths:
       - 'engine/**'
-      - 'src/**'
-      - 'tests/**'
-      - 'package*.json'
       - '.github/workflows/engine.yml'
   workflow_dispatch:
 
@@ -26,7 +23,7 @@ jobs:
         working-directory: engine
     steps:
       - uses: actions/checkout@v7
-      - run: rustup toolchain install stable --profile minimal && rustup default stable && rustup target add wasm32-unknown-unknown
+      - run: rustup toolchain install stable --profile minimal && rustup default stable
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
@@ -37,23 +34,6 @@ jobs:
           node-version: 24
       - run: npm install --no-save --prefix tests ws
       - run: node tests/smoke.mjs target/release/fretline-engine
-      - name: Web tests
-        working-directory: .
-        run: npm ci && npm test
-      - name: Build web app
-        working-directory: .
-        run: npm run build
-      - name: Install Chromium
-        working-directory: .
-        run: |
-          npx --yes playwright@1 install --with-deps chromium
-          npm install --no-save --prefix engine/tests playwright@1
-      - name: Web app on both channels (headless Chromium)
-        working-directory: .
-        run: |
-          (npx vite preview --port 4180 --strictPort &)
-          sleep 3
-          node engine/tests/e2e-web.mjs engine/target/release/fretline-engine http://localhost:4180/
 
   windows:
     runs-on: windows-latest
@@ -109,8 +89,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="engine-v$ENGINE_VERSION"
+          # A release is a version: ship engine changes by bumping fretline-engine's version.
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" target/installer/FretlineEngineSetup.exe --clobber
+            echo "$tag is already released; bump the version in engine/fretline-engine/Cargo.toml to publish."
           else
             gh release create "$tag" target/installer/FretlineEngineSetup.exe \
               --target "$GITHUB_SHA" --latest \

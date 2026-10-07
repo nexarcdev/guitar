@@ -3,7 +3,7 @@
 // device-free test backend), switching back and forth the way a player would. Both "guitars" play
 // the same looping phrase: A2, D3, G3, then an A major chord, then a rest, every 8 s.
 //
-// Usage: node e2e-web.mjs <fretline-engine binary> <app url, e.g. http://localhost:4180/>
+// Usage: node tests/e2e/channels.mjs <fretline-engine binary> <app url, e.g. http://localhost:4180/>
 // Needs Playwright (PLAYWRIGHT_MODULE overrides where it is imported from; CHROMIUM the browser).
 import { spawn } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
@@ -152,16 +152,21 @@ try {
   s = await waitFor((x) => x.outDb > -25, 1500);
   check(s.outDb > -25, `web: reference tone from the core synth (${s.outDb.toFixed(1)} dBFS)`);
 
-  // Noise floor controls (Settings UI).
-  await page.getByRole('button', { name: 'Settings', exact: true }).filter({ visible: true }).first().click();
-  await page.getByRole('button', { name: 'Recalibrate' }).click();
+  // Noise floor through the Studio: fixed floor, keyboard on the threshold, back to following.
+  await page.getByRole('button', { name: 'Studio', exact: true }).filter({ visible: true }).first().click();
+  await page.getByRole('tab', { name: 'Input' }).filter({ visible: true }).first().click();
+  await page.getByRole('button', { name: /^Fixed/ }).click();
+  s = await waitFor((x) => x.session?.floor.mode === 'manual' && x.levels.floorMode === 'manual', 3000);
+  const fixedAt = s.session.floor.manualDb;
+  check(s.session.floor.mode === 'manual' && s.levels.floorMode === 'manual', `web: fixed noise floor at ${fixedAt} dB`);
+  await page.getByRole('slider', { name: 'Playing threshold' }).focus();
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowLeft');
+  s = await waitFor((x) => x.session.floor.manualDb === fixedAt - 3, 2000);
+  check(s.session.floor.manualDb === fixedAt - 3, `web: threshold moved the fixed floor (${fixedAt} → ${s.session.floor.manualDb} dB)`);
+  await page.getByRole('button', { name: /^Follow noise/ }).click();
+  await call('engine.recalibrate');
   s = await waitFor((x) => x.levels.measuring != null, 1500);
-  check(s.levels.measuring != null, `web: recalibrating (${s.levels.measuring?.toFixed(2)})`);
-  await page.getByRole('button', { name: 'Manual You set the level' }).click();
-  await page.getByRole('slider', { name: 'Noise floor' }).fill('-45');
-  s = await waitFor((x) => x.levels.floorMode === 'manual' && x.levels.floorDb === -45, 2000);
-  check(s.session.floor.mode === 'manual' && s.levels.floorDb === -45, `web: manual floor ${s.levels.floorDb} dB`);
-  await page.getByRole('button', { name: 'Auto Follows your setup' }).click();
+  check(s.session.floor.mode === 'auto' && s.levels.measuring != null, 'web: following the noise again, recalibrating');
   // A board change made on the web channel, newer than anything the engine has.
   await call('actions.setPedal', 0, { on: true, level: 77 });
   await sleep(300);
@@ -169,6 +174,7 @@ try {
 
   // ---------------- engine channel
   startEngine();
+  await page.getByRole('tab', { name: 'Engine' }).filter({ visible: true }).first().click();
   await page.getByRole('button', { name: "I've installed it, connect" }).click();
   s = await waitFor((x) => x.channel === 'engine' && x.mic === 'live' && x.micOpen === false, 8000);
   check(s.channel === 'engine' && s.st?.kind === 'engine', `switched to the engine (${s.channel})`);

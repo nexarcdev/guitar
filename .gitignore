@@ -5,3 +5,4 @@ dist
 public/model
 dist-share
 src/core/fretline.wasm
+tests/e2e/node_modules

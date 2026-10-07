@@ -3,7 +3,8 @@ import { useStore, actions, type TabId } from '../../state/store';
 import { engine } from '../../audio/engine';
 import { setupStr } from '../../theory/music';
 import { Tuner } from '../tuner/Tuner';
-import { SetupSheet } from '../setup/SetupSheet';
+import { Studio } from '../studio/Studio';
+import { MiniGauges } from '../gauges/Gauges';
 import s from './Shell.module.css';
 
 const Chords = lazy(() => import('../chords/Chords').then((m) => ({ default: m.Chords })));
@@ -42,9 +43,9 @@ export function Shell() {
             <span className={s.navLabel}>{label}</span>
           </button>
         ))}
-        <button className={`${s.navBtn} ${s.settingsBtn}`} aria-label="Settings" onClick={() => useStore.setState({ setupOpen: true })}>
+        <button className={`${s.navBtn} ${s.settingsBtn}`} aria-label="Studio" onClick={() => actions.openStudio()}>
           <span className={s.navIcon} aria-hidden>⚙</span>
-          <span className={s.navLabel}>Settings</span>
+          <span className={s.navLabel}>Studio</span>
         </button>
       </nav>
       <main className={s.main}>
@@ -57,15 +58,18 @@ export function Shell() {
             </div>
           </div>
           <div className={s.chips}>
-            <button className={s.gearChip} aria-label="Settings" title="Settings" onClick={() => useStore.setState({ setupOpen: true })}>
+            <span className={s.cGauge}>
+              <MiniGauges />
+            </span>
+            <button className={`${s.gearChip} ${s.cGear}`} aria-label="Studio" title="Studio" onClick={() => actions.openStudio()}>
               ⚙
             </button>
-            <button className={s.setupChip} title="Tuning and capo" onClick={() => useStore.setState({ setupOpen: true })}>
+            <button className={`${s.setupChip} ${s.cSetup}`} title="Tuning and capo" onClick={() => actions.openStudio('guitar')}>
               <span style={{ fontSize: 15, lineHeight: 1 }} aria-hidden>♩</span>
               {setupStr(setup)}
             </button>
             <button
-              className={`${s.chip} ${listening && live ? s.chipLive : ''}`}
+              className={`${s.chip} ${s.cListen} ${listening && live ? s.chipLive : ''}`}
               aria-label={listening ? 'Pause listening' : 'Resume listening'}
               aria-pressed={listening}
               onClick={() => actions.setListening(!listening)}
@@ -74,7 +78,7 @@ export function Shell() {
               {listenText}
             </button>
             <button
-              className={`${s.chip} ${output ? s.chipOn : ''}`}
+              className={`${s.chip} ${s.cOutput} ${output ? s.chipOn : ''}`}
               aria-label={output ? 'Turn output off' : 'Turn output on'}
               aria-pressed={output}
               onClick={() => actions.setOutput(!output)}
@@ -92,7 +96,7 @@ export function Shell() {
           {tab === 'pedals' && <Pedals />}
         </Suspense>
       </main>
-      <SetupSheet />
+      <Studio />
       <nav className={s.bottomNav} aria-label="Sections">
         {NAV.map(([id, label, icon]) => (
           <button key={id} className={s.bottomBtn} aria-current={tab === id ? 'page' : undefined} onClick={() => actions.selectTab(id)}>

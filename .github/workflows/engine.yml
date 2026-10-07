@@ -37,14 +37,20 @@ jobs:
           node-version: 24
       - run: npm install --no-save --prefix tests ws
       - run: node tests/smoke.mjs target/release/fretline-engine
-      - name: Web app on both channels (headless Chromium)
+      - name: Web tests
+        working-directory: .
+        run: npm ci && npm test
+      - name: Build web app
+        working-directory: .
+        run: npm run build
+      - name: Install Chromium
+        working-directory: .
         run: |
-          cd ..
-          npm ci
-          npm test
-          npm run build
           npx --yes playwright@1 install --with-deps chromium
           npm install --no-save --prefix engine/tests playwright@1
+      - name: Web app on both channels (headless Chromium)
+        working-directory: .
+        run: |
           (npx vite preview --port 4180 --strictPort &)
           sleep 3
           node engine/tests/e2e-web.mjs engine/target/release/fretline-engine http://localhost:4180/

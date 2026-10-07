@@ -19,6 +19,8 @@ const failures = [];
 const check = (ok, what) => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`);
   if (!ok) failures.push(what);
+  // In GitHub Actions, failures also become annotations (readable without the full log).
+  if (!ok && process.env.GITHUB_ACTIONS) console.log(`::error title=${process.argv[1].split('/').pop()}::${what.replace(/\n/g, ' ')}`);
 };
 
 async function connect(origin) {
@@ -140,6 +142,7 @@ try {
 } catch (e) {
   failures.push(String(e));
   console.error(e);
+  if (process.env.GITHUB_ACTIONS) console.log(`::error title=exception::${String(e).split('\n')[0]}`);
 } finally {
   engine?.kill();
 }

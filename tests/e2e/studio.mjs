@@ -168,25 +168,28 @@ try {
 } catch (e) {
   failures.push(String(e));
   console.error(e);
+  // Page errors first: if the page is wedged, the evaluations below give up after 5 s.
+  if (process.env.GITHUB_ACTIONS) console.log(`::error title=page errors::${errors.length} ${errors.slice(0, 3).join(' // ').replace(/\n/g, ' ').slice(0, 900)}`);
+  const bounded = (p, fallback) => Promise.race([p, new Promise((r) => setTimeout(() => r(fallback), 5000))]);
   const waiting = (String(e).match(/waiting for [^\n]*/) ?? [''])[0];
-  const state = await currentPage?.evaluate(() => {
+  const state = await bounded(currentPage?.evaluate(() => {
     const s = window.__fretline?.useStore.getState();
     return s ? `mic ${s.engine.mic}, running ${s.engine.running}, listening ${s.listening}, studio ${s.setupOpen ? s.studioTab : 'closed'}, loaded ${Math.round(performance.now() / 1000)} s ago, in ${Math.round(window.__fretline.engine.levels.inDb)} dB` : 'no app';
-  }).catch(() => 'page gone');
+  }).catch(() => 'page gone'), 'page wedged');
   const why = [...new Set(String(e).split('\n').filter((l) => /intercepts|not stable|outside|not visible|disabled|detached/.test(l)).map((l) => l.replace(/\x1b\[[0-9;]*m/g, '').trim()))].slice(-2).join(' / ');
   const calls = String(e).split('\n').map((l) => l.replace(/\x1b\[[0-9;]*m/g, '').trim()).filter((l) => l.startsWith('- ')).slice(-6).join(' / ');
-  const tabs = await currentPage?.evaluate(() =>
+  const tabs = await bounded(currentPage?.evaluate(() =>
     [...document.querySelectorAll('[role=tab]')].map((t) => {
       const r = t.getBoundingClientRect();
       const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
       return `${t.textContent} ${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)} hit=${top === t || t.contains(top) ? 'self' : top?.className || top?.tagName}`;
     }).join('; ') + ` | vp ${innerWidth}x${innerHeight}`,
-  ).catch(() => '');
-  const msg = `${String(e).split('\n')[0]} | after: ${lastOk} | ${waiting} | ${why} | ${state} | calls: ${calls} | tabs: ${tabs} | page errors: ${errors.slice(0, 2).join(' // ').slice(0, 600)}`;
+  ).catch(() => ''), 'page wedged');
+  const msg = `${String(e).split('\n')[0]} | after: ${lastOk} | ${waiting} | ${why} | ${state} | calls: ${calls} | tabs: ${tabs} `;
   console.log(msg);
   if (process.env.GITHUB_ACTIONS) console.log(`::error title=exception::${msg.replace(/\x1b\[[0-9;]*m/g, '')}`);
 } finally {
-  await browser.close();
+  await Promise.race([browser.close(), sleep(5000)]);
 }
 console.log(failures.length ? `\n${failures.length} failed` : '\nall passed');
 process.exit(failures.length ? 1 : 0);

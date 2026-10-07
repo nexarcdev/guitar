@@ -43,6 +43,7 @@ jobs:
       # The Studio in a real browser (web channel only, no engine build): calibration, gauges,
       # layout stability.
       - name: Studio in headless Chromium
+        timeout-minutes: 10
         run: |
           npx --yes playwright@1 install --with-deps chromium
           npm install --no-save --prefix tests/e2e playwright@1

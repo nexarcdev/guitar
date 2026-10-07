@@ -9,6 +9,7 @@ import { InputTab } from './InputTab';
 import { SoundTab } from './SoundTab';
 import { EngineTab } from './EngineTab';
 import { BUILT, DiagnosticsTab } from './DiagnosticsTab';
+import { Contained } from './Contained';
 import s from './Studio.module.css';
 
 const TABS: Array<[StudioTab, string, string]> = [
@@ -35,7 +36,10 @@ export function Studio() {
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
   }, [open]);
-  useEffect(() => content.current?.scrollTo({ top: 0 }), [tab]);
+  // Braces matter: scrollTo returns a Promise in current Chrome, and React would call it as the cleanup.
+  useEffect(() => {
+    content.current?.scrollTo({ top: 0 });
+  }, [tab]);
 
   if (!open) return null;
   const select = (t: StudioTab) => useStore.setState({ studioTab: t });
@@ -72,11 +76,13 @@ export function Studio() {
         </div>
         <div ref={content} className={s.content} id="studio-panel" role="tabpanel" aria-labelledby={'studio-tab-' + tab}>
           <div className={s.inner}>
-            {tab === 'guitar' && <GuitarTab />}
-            {tab === 'input' && <InputTab />}
-            {tab === 'sound' && <SoundTab />}
-            {tab === 'engine' && <EngineTab />}
-            {tab === 'diagnostics' && <DiagnosticsTab />}
+            <Contained key={tab}>
+              {tab === 'guitar' && <GuitarTab />}
+              {tab === 'input' && <InputTab />}
+              {tab === 'sound' && <SoundTab />}
+              {tab === 'engine' && <EngineTab />}
+              {tab === 'diagnostics' && <DiagnosticsTab />}
+            </Contained>
           </div>
         </div>
         <nav className={s.bottomTabs} role="tablist" aria-label="Studio sections">

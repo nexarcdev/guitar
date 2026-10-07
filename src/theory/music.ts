@@ -131,18 +131,6 @@ export function identifyFrets(frets: Frets, base: number, setup: Setup): ChordNa
   return nameSet([...new Set(pcs)], pcs[0], setup.offsets);
 }
 
-export const PRESETS: Record<string, Frets> = {
-  C: [-1, 3, 2, 0, 1, 0], G: [3, 2, 0, 0, 0, 3], D: [-1, -1, 0, 2, 3, 2], A: [-1, 0, 2, 2, 2, 0],
-  E: [0, 2, 2, 1, 0, 0], Am: [-1, 0, 2, 2, 1, 0], Em: [0, 2, 2, 0, 0, 0], Dm: [-1, -1, 0, 2, 3, 1],
-  F: [1, 3, 3, 2, 1, 1], E7: [0, 2, 0, 1, 0, 0], Cmaj7: [-1, 3, 2, 0, 0, 0],
-};
-
-/** Finds a common fingering that sounds like `name` in this setup. Replaced by the heard voicing in the store. */
-export function shapeFor(name: string, setup: Setup): Frets | null {
-  const k = Object.keys(PRESETS).find((k) => identifyFrets(PRESETS[k], 1, setup).name === name);
-  return k ? PRESETS[k] : null;
-}
-
 /** Identifies the chord in a set of sounding MIDI notes; the lowest note is the bass. */
 export function identifyMidi(midis: number[], o: Offsets): ChordName {
   if (!midis.length) return { name: '·', sub: '', notes: [], root: null };

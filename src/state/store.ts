@@ -1,17 +1,21 @@
 import { create } from 'zustand';
 import { engine, type EngineStatus, type LatencyMode } from '../audio/engine';
 import { DEFAULT_PEDALS, toStates, withTypes, type Pedal } from '../audio/pedals';
-import { NO_PITCH, type Analysis, type ChromaFrame, type FloorSetting, type LooperView, type Notes, type SessionState, type StatePatch } from '../core/protocol';
+import { type Analysis, type FloorSetting, type LooperView, type Notes, type SessionState, type StatePatch } from '../core/protocol';
 import {
-  chordFromChroma, fretMidi, identifyMidi, nameSet, openStrings, pcOf, sameArr, shapeFor, STD_SETUP, TUNINGS,
+  chordFromChroma, fretMidi, identifyFrets, identifyMidi, midiHz, openStrings, pcOf, sameArr, STD_SETUP, TUNINGS,
   type ChordName, type Offsets, type Setup, type Frets,
 } from '../theory/music';
 import { finger } from '../theory/fingering';
 import { mergeWindow } from '../theory/merge';
 import { riffDur, type SaveKind, type TabNote, type TimeSig } from '../theory/stream';
+import { STRINGS, toVoicing, voicingMidis, type Voicing } from '../theory/common';
+import { enumerateVoicings, toBoard, voicingKey } from '../theory/voicings';
+import { alternates, type Alternate } from '../theory/alternates';
+import { judge, type Verdict } from '../theory/verdict';
+import { StrumTracker, type Decided } from './strum';
 import * as db from './db';
 import { trail } from './trail';
-import { confirmFrame } from '../theory/confirm';
 
 export type TabId = 'tuner' | 'chords' | 'tabs' | 'pedals';
 export type GateLevel = 'low' | 'normal' | 'high';
@@ -20,10 +24,26 @@ export const GATE_DB: Record<GateLevel, number> = { low: 8, normal: 12, high: 18
 export const gateLevelOf = (db: number): GateLevel => (db <= 10 ? 'low' : db >= 15 ? 'high' : 'normal');
 export const BUF_SEC = 60;
 
-export interface Heard extends ChordName {
-  frets: Frets | null;
-  /** Listening clock when it was decided. */
+/** A chord in the progression: what was played (or tapped), in the voicing it was played. */
+export interface ChordEntry {
+  id: number;
+  name: ChordName;
+  voicing: Voicing;
+  /** Listening clock of the strum. */
   t: number;
+  /** Consecutive strums of the same chord collapse into one entry. */
+  count: number;
+  source: 'heard' | 'ml' | 'tapped';
+}
+
+/** The latest decided strum. `verdict` is set only while locked on a target. */
+export interface Strum {
+  t: number;
+  heard: number[];
+  name: ChordName;
+  voicing: Voicing | null;
+  verdict: Verdict | null;
+  quiet: boolean;
 }
 
 interface PlayState {
@@ -59,14 +79,16 @@ export interface State {
   /** Use the native engine when it's running (opt-in: probing localhost can prompt). */
   engineOn: boolean;
   // chords
+  /** The fretboard: the target while locked, a mirror of the last heard voicing while following. */
   frets: Frets;
   baseFret: number;
-  heard: Heard | null;
-  history: Array<{ name: string; frets: Frets | null }>;
-  chordMode: 'identify' | 'confirm';
-  confirm: { heard: number[]; wrong: number[]; ok: boolean };
-  /** Exact pitches heard recently by the ML pass, for octave-accurate confirm. */
-  mlRecent: Array<{ midi: number; t: number }>;
+  /** Locked: strums are judged against the board. Following: the board shows what was played. */
+  locked: boolean;
+  heard: Strum | null;
+  /** Chords played this session and before, oldest first (persisted). */
+  progression: ChordEntry[];
+  /** Other ways to play the current chord (heard while following, the target while locked). */
+  alternates: Alternate[];
   // stream
   buf: TabNote[];
   hoverSpan: SaveKind | null;
@@ -109,11 +131,10 @@ const initial: State = {
   engineOn: false,
   frets: [-1, 3, 2, 0, 1, 0],
   baseFret: 1,
+  locked: false,
   heard: null,
-  history: [],
-  chordMode: 'identify',
-  confirm: { heard: [], wrong: [], ok: false },
-  mlRecent: [],
+  progression: [],
+  alternates: [],
   buf: [],
   hoverSpan: null,
   toast: null,
@@ -138,7 +159,7 @@ const set = useStore.setState;
 
 // Client preferences live here. Shared settings belong to the audio channel's session: the web
 // channel saves its own (key 'webSession'), the engine keeps its own on disk.
-const PERSIST: Array<keyof State> = ['tab', 'setup', 'timeSig', 'gapBeats', 'chordMode', 'headstock', 'latency', 'engineOn'];
+const PERSIST: Array<keyof State> = ['tab', 'setup', 'timeSig', 'gapBeats', 'progression', 'headstock', 'latency', 'engineOn'];
 /** Keys from before the channel kept the session, read once to seed it. */
 const LEGACY = ['pedals', 'gateLevel', 'mlOn', 'deviceId', 'outputId', 'nativeOn'] as const;
 
@@ -153,6 +174,10 @@ export async function hydrate() {
     PERSIST.forEach((k, i) => {
       if (vals[i] !== undefined) (patch as Record<string, unknown>)[k] = vals[i];
     });
+    patch.progression = Array.isArray(patch.progression)
+      ? patch.progression.filter((e) => e && typeof e === 'object' && e.name && e.voicing && Array.isArray(e.voicing.frets)).slice(-PROGRESSION_MAX)
+      : [];
+    entryId = Math.max(0, ...patch.progression.map((e) => e.id || 0)) + 1;
     const old = Object.fromEntries(LEGACY.map((k, i) => [k, vals[PERSIST.length + i]])) as Record<(typeof LEGACY)[number], unknown>;
     if (typeof saved === 'string') webSession = saved;
     else {
@@ -188,11 +213,8 @@ export async function hydrate() {
         timers.set(k, setTimeout(() => db.setKV(k, v), 250));
       }
     }
-    if (s.frets !== old.frets || s.baseFret !== old.baseFret || s.setup !== old.setup) {
-      shapeAt = engine.clock();
-      okSince = okUntil = 0;
-      wrongHits.fill(0);
-    }
+    // A target that changed under an open strum window: judge nothing against the old one.
+    if (s.locked && (s.frets !== old.frets || s.baseFret !== old.baseFret || s.setup !== old.setup)) strums.reset();
     if (s.engineOn !== old.engineOn) engine.setEngine(s.engineOn);
   });
 }
@@ -216,9 +238,6 @@ export async function startAudio() {
 
 let fastHand = 3;
 let mlHand = 3;
-let chCand = '';
-let chCount = 0;
-let lastPitchPc = -1;
 let lastVoicedAt = 0;
 let stIdx = -1;
 let stSince = 0;
@@ -275,7 +294,6 @@ function onAnalysis(a: Analysis) {
   for (const f of a.frames) {
     if (f.stable && f.freq > 50 && f.freq < 1200) {
       latest = f;
-      lastPitchPc = pcOf(69 + 12 * Math.log2(f.freq / 440));
       if (s.tab === 'tuner') {
         const idx = targetString(f.freq, T, s.auto, s.tString);
         trail.push(Math.max(-50, Math.min(50, 1200 * Math.log2(f.freq / T[idx].hz))), now);
@@ -300,9 +318,9 @@ function onAnalysis(a: Analysis) {
     } else if (s.voiced && (!a.levels.gate || now - lastVoicedAt > 450)) patch.voiced = false;
   }
 
-  // chord: chroma decides fast, ML refines later
-  sinceAttack = a.levels.sinceAttack;
-  if (a.chroma !== undefined) chromaFrame(a.chroma, a.clock, patch);
+  // chords: one verdict per strum
+  const strum = strums.push(a);
+  if (strum) onStrum(strum, patch);
 
   // fast single notes onto the stream
   if (a.notes.length) {
@@ -330,73 +348,106 @@ function targetString(freq: number, T: ReturnType<typeof openStrings>, auto: boo
 
 const trim = (b: TabNote[], clock: number) => (b.length && b[0].t < clock - BUF_SEC ? b.filter((n) => n.t > clock - BUF_SEC) : b);
 
-// Confirm keeps a short per-pitch hold (strings ring and flicker) that empties as soon as the
-// gate closes, so silence can never read as "heard".
-const pitchHold = new Float32Array(128).fill(NO_PITCH);
-let silentFrames = 0;
-let okSince = 0;
-let okUntil = 0;
-const wrongHits = new Array(6).fill(0);
-/** Listening clock when the confirm shape last changed: older ML notes belong to the previous shape. */
-let shapeAt = 0;
-/** Seconds since the tracker last heard a pick attack. */
-let sinceAttack = Infinity;
-/** Confirm only listens for this long after a real attack, so noise during a pause can't light it up. */
-const CONFIRM_AFTER_ATTACK = 6;
+// ---------------------------------------------------------------- chords
 
-function chromaFrame(cf: ChromaFrame | null, clock: number, patch: Partial<State>) {
-  const s = get();
-  const confirming = s.chordMode === 'confirm' && s.tab === 'chords';
-  if (!cf) {
-    chCand = '';
-    if (++silentFrames >= 2) pitchHold.fill(NO_PITCH);
-  } else {
-    silentFrames = 0;
-    for (let m = 0; m < 128; m++) pitchHold[m] = Math.max(cf.pitch[m], pitchHold[m] - 3);
-  }
-  if (confirming) updateConfirm(cf ? pitchHold : null, clock, patch);
-  if (!cf) return;
-  // YIN only locks on when one pitch dominates, so a fresh clean reading means a single note is
-  // ringing: name the note rather than reading its overtones as a chord.
-  const mono = lastPitchPc >= 0 && performance.now() - lastVoicedAt < 150;
-  const r = mono ? nameSet([lastPitchPc], lastPitchPc, s.setup.offsets) : chordFromChroma(cf.chroma, null, s.setup.offsets);
-  if (!r) {
-    chCand = '';
-    return;
-  }
-  if (chCand === r.name) chCount++;
-  else { chCand = r.name; chCount = 1; }
-  if (chCount === 4) setHeard(r, clock, patch);
+const strums = new StrumTracker(STRINGS);
+let chordHand = 3;
+let entryId = 1;
+const PROGRESSION_MAX = 16;
+
+/** Names what was heard from its fundamentals, with the 12-bin chroma as a fallback for odd sets. */
+function nameHeard(d: Decided, o: Offsets): ChordName {
+  const midis = d.heard.map((f) => f.midi);
+  const name = identifyMidi(midis, o);
+  if (name.root != null || midis.length < 3) return name;
+  return chordFromChroma(d.chroma, pcOf(Math.min(...midis)), o) ?? name;
 }
+
+const plain = (v: Voicing): Voicing => ({ frets: v.frets, baseFret: v.baseFret, midis: v.midis });
 
 /**
- * Confirmed means every string of the shape sounding and no muted string ringing, held for
- * 200 ms. Once confirmed it stays green briefly through flicker, but drops the moment the
- * strings stop or a wrong string rings. A wrong string must show in 2 of the last 3 frames.
+ * Where the heard notes sit on the neck. A string an octave above a lower string cannot be told
+ * from that string's partial by the core, so for a recognised chord the voicing is the fullest
+ * playable fingering of it, on the heard bass, whose every note has a peak in the spectrum.
+ * Anything else is placed note by note.
  */
-function updateConfirm(pitch: ArrayLike<number> | null, clock: number, patch: Partial<State>) {
-  const s = get();
-  const now = performance.now();
-  if (sinceAttack > CONFIRM_AFTER_ATTACK) pitch = null;
-  const f = confirmFrame({ frets: s.frets, baseFret: s.baseFret, setup: s.setup, pitch, mlRecent: pitch ? s.mlRecent.filter((m) => m.t >= shapeAt) : [], clock });
-  for (let i = 0; i < 6; i++) wrongHits[i] = Math.max(0, Math.min(3, wrongHits[i] + (f.wrong.includes(i) ? 1 : -1)));
-  const wrong = [0, 1, 2, 3, 4, 5].filter((i) => wrongHits[i] >= 2);
-  const full = f.played.length > 0 && f.heard.length === f.played.length && !wrong.length;
-  if (full) {
-    if (!okSince) okSince = now;
-    if (now - okSince >= 200) okUntil = now + 400;
-  } else okSince = 0;
-  const ok = !wrong.length && !!pitch && now < okUntil;
-  const prev = s.confirm;
-  if (prev.ok !== ok || !sameArr(prev.heard, f.heard) || !sameArr(prev.wrong, wrong)) patch.confirm = { heard: f.heard, wrong, ok };
+function heardVoicing(name: ChordName, d: Decided, setup: Setup): Voicing | null {
+  const midis = d.heard.map((f) => f.midi);
+  if (!midis.length) return null;
+  if (name.root != null && midis.length >= 2) {
+    const bass = pcOf(Math.min(...midis));
+    const supported = enumerateVoicings(name.notes, name.root, setup, { bass, minStrings: Math.max(2, midis.length) }).filter((v) =>
+      v.midis.every((m) => d.peaks.has(m)),
+    );
+    const covering = supported.filter((v) => midis.every((m) => v.midis.includes(m)));
+    const pool = covering.length ? covering : supported;
+    pool.sort((a, b) => b.midis.length - a.midis.length || a.cost - b.cost);
+    if (pool[0]) return plain(pool[0]);
+  }
+  const r = finger(midis, setup, chordHand, d.heard.map((f) => f.db));
+  if (!r.placed.length) return null;
+  chordHand = r.hand;
+  const abs = new Array<number>(STRINGS).fill(-1);
+  for (const p of r.placed) abs[p.s] = p.f;
+  const b = toBoard(abs);
+  return toVoicing(b.frets, b.baseFret, setup);
 }
-function setHeard(r: ChordName, t: number, patch: Partial<State>) {
+
+function pushEntry(list: ChordEntry[], e: Omit<ChordEntry, 'id' | 'count'>): ChordEntry[] {
+  const last = list[list.length - 1];
+  if (last && last.name.name === e.name.name) return [...list.slice(0, -1), { ...last, voicing: e.voicing, t: e.t, source: e.source, count: last.count + 1 }];
+  return [...list, { ...e, id: entryId++, count: 1 }].slice(-PROGRESSION_MAX);
+}
+
+/** The chord before the current one, for ranking alternates by how far the hand moves. */
+function prevOf(list: ChordEntry[], current: ChordName): Voicing | null {
+  const last = list[list.length - 1];
+  const before = last && last.name.name === current.name ? list[list.length - 2] : last;
+  return before?.voicing ?? null;
+}
+
+const altCache = new Map<string, Alternate[]>();
+/** Alternates are computed after the strum has painted, and remembered per chord and setup. */
+function scheduleAlternates(name: ChordName, voicing: Voicing | null, prev: Voicing | null, setup: Setup) {
+  if (!voicing || name.root == null) {
+    if (get().alternates.length) set({ alternates: [] });
+    return;
+  }
+  const key = [name.name, voicingKey(voicing), prev ? voicingKey(prev) : '', setup.offsets.join(','), setup.capo].join('|');
+  queueMicrotask(() => {
+    let alts = altCache.get(key);
+    if (!alts) {
+      alts = alternates({ name, voicing }, prev, setup);
+      altCache.set(key, alts);
+      if (altCache.size > 64) altCache.delete(altCache.keys().next().value as string);
+    }
+    set({ alternates: alts });
+  });
+}
+
+function onStrum(d: Decided, patch: Partial<State>) {
   const s = get();
-  const cur = patch.heard ?? s.heard;
-  if (cur && cur.name === r.name) return;
-  const frets = shapeFor(r.name, s.setup);
-  patch.heard = { ...r, frets, t };
-  if (r.root != null) patch.history = [{ name: r.name, frets }, ...(patch.history ?? s.history)].slice(0, 8);
+  if (d.quiet) {
+    if (s.locked) patch.heard = { t: d.t, heard: [], name: identifyMidi([], s.setup.offsets), voicing: null, verdict: null, quiet: true };
+    return;
+  }
+  const midis = d.heard.map((f) => f.midi);
+  const name = nameHeard(d, s.setup.offsets);
+  const voicing = heardVoicing(name, d, s.setup);
+  if (!s.locked) {
+    if (voicing) {
+      patch.frets = voicing.frets;
+      patch.baseFret = voicing.baseFret;
+    }
+    patch.heard = { t: d.t, heard: midis, name, voicing, verdict: null, quiet: false };
+    if (name.root != null && voicing) {
+      patch.progression = pushEntry(s.progression, { name, voicing, t: d.t, source: 'heard' });
+      scheduleAlternates(name, voicing, prevOf(patch.progression, name), s.setup);
+    } else if (s.alternates.length) patch.alternates = [];
+  } else {
+    const target = toVoicing(s.frets, s.baseFret, s.setup);
+    patch.heard = { t: d.t, heard: midis, name, voicing, verdict: judge(target, midis, d.peaks, s.setup), quiet: false };
+  }
 }
 
 function onNotes(m: Notes) {
@@ -405,23 +456,20 @@ function onNotes(m: Notes) {
   const r = mergeWindow(s.buf, m.from, m.to, m.notes, s.setup, mlHand);
   mlHand = r.hand;
   const patch: Partial<State> = { buf: trim(r.buf, m.to) };
-  // Only notes that survived ghost cleanup count as evidence for Confirm.
-  const recent = [...s.mlRecent.filter((x) => x.t > m.to - 3), ...r.chords.flatMap((c) => c.midis.map((midi) => ({ midi, t: c.t })))];
-  patch.mlRecent = recent;
-  // The ML pass hears the actual voicing, bass included. It may refine the chroma decision for the
-  // same strum (chroma decides ~0.25–0.5 s after the onset), or fill in a strum chroma missed, but
-  // it never overrides a newer chord: ML results arrive 1–2 s late.
+  // The ML pass hears the actual voicing, bass included, 1–2 s late. While following it may
+  // rename the strum it belongs to; it never overrides a newer one or a locked target.
   const last = r.chords.filter((c) => new Set(c.midis.map(pcOf)).size >= 3).pop();
-  if (last) {
+  const entry = s.progression[s.progression.length - 1];
+  if (last && !s.locked && entry && entry.source !== 'tapped' && Math.abs(entry.t - last.t) < 0.8 && s.heard?.t === entry.t) {
     const name = identifyMidi(last.midis, s.setup.offsets);
-    const h = s.heard;
-    const sameStrum = !!h && h.t >= last.t - 0.2 && h.t <= last.t + 0.8;
-    const missed = !h || h.t < last.t - 0.2;
-    if (name.root != null && (sameStrum || missed) && h?.name !== name.name) {
-      const frets = shapeFor(name.name, s.setup);
-      patch.heard = { ...name, frets, t: sameStrum && h ? h.t : last.t };
-      const replace = sameStrum && h && s.history[0]?.name === h.name;
-      patch.history = [{ name: name.name, frets }, ...(replace ? s.history.slice(1) : s.history)].slice(0, 8);
+    if (name.root != null && name.name !== entry.name.name) {
+      const d: Decided = { t: entry.t, heard: last.midis.map((midi) => ({ midi, db: 0 })), peaks: new Set(last.midis), topDb: 0, floorDb: -100, chroma: [], quiet: false };
+      const voicing = heardVoicing(name, d, s.setup) ?? entry.voicing;
+      patch.progression = [...s.progression.slice(0, -1), { ...entry, name, voicing, source: 'ml' }];
+      patch.heard = { ...s.heard, name, voicing };
+      patch.frets = voicing.frets;
+      patch.baseFret = voicing.baseFret;
+      scheduleAlternates(name, voicing, prevOf(patch.progression, name), s.setup);
     }
   }
   set(patch);
@@ -477,11 +525,54 @@ export const actions = {
     set({ tuned: [], tString: 0, detected: null });
   },
   // chords
-  strum() {
+  /** Puts a chord on the board as the target and locks: strums are judged against it. */
+  setTarget(frets: Frets, baseFret = 1) {
     const s = get();
-    s.frets.forEach((f, i) => {
-      if (f >= 0) engine.pluck(440 * Math.pow(2, (fretMidi(i, f === 0 ? 0 : f + s.baseFret - 1, s.setup) - 69) / 12), i * 0.045, 1.6);
-    });
+    strums.reset();
+    const f = [...frets] as unknown as Frets;
+    set({ frets: f, baseFret, locked: true, heard: null });
+    scheduleAlternates(identifyFrets(f, baseFret, s.setup), toVoicing(f, baseFret, s.setup), prevOf(s.progression, identifyFrets(f, baseFret, s.setup)), s.setup);
+  },
+  setFret(i: number, n: number) {
+    const s = get();
+    const fr = [...s.frets];
+    fr[i] = fr[i] === n ? 0 : n;
+    actions.setTarget(fr as unknown as Frets, s.baseFret);
+  },
+  toggleNut(i: number) {
+    const s = get();
+    const fr = [...s.frets];
+    fr[i] = fr[i] === -1 ? 0 : -1;
+    actions.setTarget(fr as unknown as Frets, s.baseFret);
+  },
+  setBaseFret(n: number) {
+    const s = get();
+    actions.setTarget(s.frets, Math.max(1, Math.min(12, n)));
+  },
+  lock(on: boolean) {
+    const s = get();
+    if (on) actions.setTarget(s.frets, s.baseFret);
+    else {
+      strums.reset();
+      set({ locked: false, heard: null });
+    }
+  },
+  /** The "Heard: Am" line: follow what was played instead of the target. */
+  followHeard() {
+    const s = get();
+    const v = s.heard?.voicing;
+    strums.reset();
+    set({ locked: false, heard: null, ...(v ? { frets: v.frets, baseFret: v.baseFret } : {}) });
+    if (v && s.heard) scheduleAlternates(s.heard.name, v, prevOf(s.progression, s.heard.name), s.setup);
+  },
+  /** Plays a voicing (default: the board), low string first. */
+  strum(v?: Voicing) {
+    const s = get();
+    const midis = v ? v.midis : voicingMidis(s.frets, s.baseFret, s.setup);
+    engine.playNotes(midis.map((m, i) => ({ t: i * 0.045, hz: midiHz(m) })), 0, 1.6);
+  },
+  clearProgression() {
+    set({ progression: [], alternates: get().locked ? get().alternates : [] });
   },
   // riffs
   saveRiff(notes: TabNote[], label: string, count: number) {

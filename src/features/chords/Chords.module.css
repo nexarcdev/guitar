@@ -353,3 +353,32 @@
   font-weight: 500;
   color: var(--muted);
 }
+
+/* Follow / Locked (interim styling; the single-screen layout lands with the cards) */
+.lock {
+  margin-left: auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+}
+.lock[aria-pressed='true'] {
+  background: var(--gold-fill);
+  border-color: var(--gold-edge);
+  color: var(--gold-hi);
+}
+.heardLine {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-top: 6px;
+  color: var(--gold-hi);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}

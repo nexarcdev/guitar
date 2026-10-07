@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { identifyMidi, identifyFrets, openStrings, PRESETS, shapeFor, STD_SETUP, tuningName, setupStr, stringLabel, type Setup } from '../src/theory/music';
+import { identifyMidi, identifyFrets, openStrings, STD_SETUP, tuningName, setupStr, stringLabel, type Setup } from '../src/theory/music';
+import { COMMON } from '../src/theory/common';
 import { finger } from '../src/theory/fingering';
 
 describe('music', () => {
@@ -12,16 +13,12 @@ describe('music', () => {
     expect(stringLabel('E', 5)).toBe('e');
     expect(stringLabel('E', 0)).toBe('E');
   });
-  it('identifies preset shapes', () => {
-    expect(identifyFrets(PRESETS.C, 1, STD_SETUP).name).toBe('C');
-    expect(identifyFrets(PRESETS.Am, 1, STD_SETUP).name).toBe('Am');
-    expect(identifyFrets(PRESETS.Cmaj7, 1, STD_SETUP).name).toBe('Cmaj7');
-    expect(identifyFrets(PRESETS.E7, 1, STD_SETUP).name).toBe('E7');
+  it('names every common chord as its label', () => {
+    for (const c of COMMON) expect(identifyFrets(c.frets, 1, STD_SETUP).name).toBe(c.label);
   });
   it('transposes with capo and tuning', () => {
     const capo2: Setup = { offsets: STD_SETUP.offsets, capo: 2 };
-    expect(identifyFrets(PRESETS.G, 1, capo2).name).toBe('A');
-    expect(shapeFor('A', capo2)).toEqual(PRESETS.G);
+    expect(identifyFrets(COMMON.find((c) => c.label === 'G')!.frets, 1, capo2).name).toBe('A');
     expect(setupStr({ offsets: [-2, 0, 0, 0, 0, 0], capo: 2 })).toBe('Drop D · Capo 2');
     expect(tuningName([1, 0, 0, 0, 0, 0])).toBe('Custom');
   });
@@ -60,33 +57,6 @@ describe('chordFromChroma', () => {
   it('names a real seventh and returns null for noise', () => {
     expect(chordFromChroma(v({ 2: 1, 6: 0.6, 9: 0.8, 0: 0.7 }), null, STD_SETUP.offsets)?.name).toBe('D7');
     expect(chordFromChroma(Array(12).fill(0.5), null, STD_SETUP.offsets)).toBeNull();
-  });
-});
-
-import { confirmFrame } from '../src/theory/confirm';
-import { NO_PITCH } from '../src/core/protocol';
-describe('chord confirm (levels measured on a real guitar)', () => {
-  const C: [number, number, number, number, number, number] = [-1, 3, 2, 0, 1, 0];
-  const pitch = (lv: Record<number, number>) => {
-    const p = new Float32Array(128).fill(NO_PITCH);
-    for (const [m, d] of Object.entries(lv)) p[+m] = d;
-    return p;
-  };
-  const run = (lv: Record<number, number> | null) =>
-    confirmFrame({ frets: C, baseFret: 1, setup: STD_SETUP, pitch: lv ? pitch(lv) : null, mlRecent: [], clock: 0 });
-  it('hears every string of the shape', () => {
-    const f = run({ 48: -2, 52: -6, 55: 0, 60: -9, 64: -15 });
-    expect(f.heard.sort()).toEqual([1, 2, 3, 4, 5]);
-    expect(f.wrong).toEqual([]);
-  });
-  it('flags the muted low E when it was actually struck', () => {
-    expect(run({ 40: -3, 48: -2, 52: -6, 55: 0, 60: -9, 64: -15 }).wrong).toEqual([0]);
-  });
-  it('ignores sympathetic ringing of the muted string', () => {
-    expect(run({ 40: -14, 48: -2, 52: -6, 55: 0, 60: -9, 64: -15 }).wrong).toEqual([]);
-  });
-  it('hears nothing in silence', () => {
-    expect(run(null).heard).toEqual([]);
   });
 });
 

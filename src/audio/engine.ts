@@ -296,10 +296,10 @@ class AudioEngine {
   }
 
   /** Plays notes from `from` seconds in. Returns the `now()` time that maps to t = 0. */
-  playNotes(notes: Array<{ t: number; hz: number }>, from: number) {
+  playNotes(notes: Array<{ t: number; hz: number }>, from: number, dur = 0.7) {
     const lead = 0.05;
     const p = this.play(
-      notes.filter((n) => n.t >= from).map((n) => ({ at: n.t - from, hz: n.hz, dur: 0.7, voice: 'pluck' as const })),
+      notes.filter((n) => n.t >= from).map((n) => ({ at: n.t - from, hz: n.hz, dur, voice: 'pluck' as const })),
       lead,
     );
     return { zero: this.now() + lead - from, stop: p.stop };

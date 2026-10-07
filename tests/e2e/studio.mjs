@@ -67,6 +67,8 @@ try {
     await page.waitForFunction(() => window.__fretline?.useStore.getState().engine.mic === 'live', null, { timeout: 15000 });
 
     // Header controls keep their place when the listening status changes.
+    // Fonts first: the web font arriving mid-check reflows the header on its own.
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
     const box = async (loc) => (await loc.boundingBox()) ?? {};
     const outputChip = page.getByRole('button', { name: /Turn output (on|off)/ });
     const before = await box(outputChip);
@@ -74,7 +76,7 @@ try {
     await sleep(300);
     const after = await box(outputChip);
     await page.getByRole('button', { name: 'Resume listening' }).click();
-    check(before.x === after.x && before.y === after.y, `${name}: Output chip stays put when listening changes`);
+    check(before.x === after.x && before.y === after.y, `${name}: Output chip stays put when listening changes (${before.x},${before.y} then ${after.x},${after.y})`);
 
     await page.getByRole('button', { name: 'Studio', exact: true }).filter({ visible: true }).first().click();
     await page.getByRole('tab', { name: 'Input' }).filter({ visible: true }).first().click();

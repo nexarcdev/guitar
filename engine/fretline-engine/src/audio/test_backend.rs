@@ -1,5 +1,5 @@
 //! A device-free backend for development and end-to-end tests: the "guitar" is a WAV file (or a
-//! built-in plucked-string phrase) played in real time and looped, and the "speakers" are a
+//! built-in plucked-string phrase, every 8 s) played in real time and looped, and the "speakers" are a
 //! real-time clock that can record what they were given to a WAV file.
 
 use super::{Backend, ErrorFn, MakeInput, MakeOutput, Stream};
@@ -85,10 +85,11 @@ fn load_wav(path: &PathBuf) -> Result<(Vec<f32>, u32), String> {
     Ok((mono, spec.sample_rate))
 }
 
-/// Karplus-Strong plucks: single notes, then an A major chord, with a little hiss underneath.
+/// Karplus-Strong plucks: single notes, then an A major chord, then 2 s of rest (real playing
+/// has pauses, which is when the noise floor gets measured), with a little hiss underneath.
 fn phrase(rate: u32) -> Vec<f32> {
     let sr = rate as f32;
-    let mut out = vec![0.0f32; (sr * 6.0) as usize];
+    let mut out = vec![0.0f32; (sr * 8.0) as usize];
     let mut seed = 12345u64;
     let mut rnd = move || {
         seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);

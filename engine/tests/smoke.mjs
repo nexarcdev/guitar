@@ -1,5 +1,5 @@
 // End-to-end smoke test of a built engine binary on the device-free test backend, which plays a
-// looping plucked phrase (A2, D3, G3, then an A major chord, every 6 s) as the guitar.
+// looping plucked phrase (A2, D3, G3, then an A major chord, then a rest, every 8 s) as the guitar.
 // Usage: node smoke.mjs <path-to-fretline-engine> (needs the `ws` package)
 import { spawn } from 'node:child_process';
 import { readFileSync, mkdtempSync, existsSync } from 'node:fs';
@@ -71,8 +71,8 @@ try {
   check(c.ml?.status === 'ready' && c.ml.backend === 'native', `native basic-pitch ${c.ml?.status}`);
 
   // Detection runs in the engine: the tuner hears the phrase, basic-pitch transcribes it.
-  await sleep(7000);
-  check(c.analysis > 280, `analysis messages ${c.analysis} in ~7.5 s`);
+  await sleep(9000);
+  check(c.analysis > 380, `analysis messages ${c.analysis} in ~9.5 s`);
   const steps = c.clocks.slice(1).map((t, i) => t - c.clocks[i]);
   check(steps.every((d) => Math.abs(d - 1024 / 48000) < 1e-9), 'listening clock advances one chunk per message');
   check([45, 50, 55].every((m) => c.heard.has(m)), `tuner heard A2 D3 G3 (${[...c.heard].sort((a, b) => a - b).join(' ')})`);

@@ -417,13 +417,6 @@
   font-size: 13px;
   line-height: 1.45;
 }
-.mono {
-  margin-top: 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  color: var(--muted);
-  overflow-wrap: anywhere;
-}
 .help {
   margin-top: 12px;
   padding: 12px 14px;

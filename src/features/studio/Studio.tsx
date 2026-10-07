@@ -9,7 +9,7 @@ import { InputTab } from './InputTab';
 import { SoundTab } from './SoundTab';
 import { EngineTab } from './EngineTab';
 import { BUILT, DiagnosticsTab } from './DiagnosticsTab';
-import { Contained } from './Contained';
+import { Contained } from '../shell/Contained';
 import s from './Studio.module.css';
 
 const TABS: Array<[StudioTab, string, string]> = [
@@ -76,7 +76,7 @@ export function Studio() {
         </div>
         <div ref={content} className={s.content} id="studio-panel" role="tabpanel" aria-labelledby={'studio-tab-' + tab}>
           <div className={s.inner}>
-            <Contained key={tab}>
+            <Contained key={tab} what={'The ' + TABS.find((t) => t[0] === tab)![1] + ' tab'}>
               {tab === 'guitar' && <GuitarTab />}
               {tab === 'input' && <InputTab />}
               {tab === 'sound' && <SoundTab />}

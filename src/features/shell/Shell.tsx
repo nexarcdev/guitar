@@ -4,6 +4,7 @@ import { engine } from '../../audio/engine';
 import { setupStr } from '../../theory/music';
 import { Tuner } from '../tuner/Tuner';
 import { Studio } from '../studio/Studio';
+import { Contained } from './Contained';
 import { MiniGauges } from '../gauges/Gauges';
 import s from './Shell.module.css';
 
@@ -89,12 +90,14 @@ export function Shell() {
           </div>
         </header>
         <MicBanner />
-        <Suspense fallback={null}>
-          {tab === 'tuner' && <Tuner />}
-          {tab === 'chords' && <Chords />}
-          {tab === 'tabs' && <Tabs />}
-          {tab === 'pedals' && <Pedals />}
-        </Suspense>
+        <Contained key={tab} what={'The ' + NAV.find((n) => n[0] === tab)![1] + ' view'}>
+          <Suspense fallback={null}>
+            {tab === 'tuner' && <Tuner />}
+            {tab === 'chords' && <Chords />}
+            {tab === 'tabs' && <Tabs />}
+            {tab === 'pedals' && <Pedals />}
+          </Suspense>
+        </Contained>
       </main>
       <Studio />
       <nav className={s.bottomNav} aria-label="Sections">

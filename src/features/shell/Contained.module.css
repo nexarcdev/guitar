@@ -1,0 +1,55 @@
+.box {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(224, 64, 64, 0.08);
+  border: 1px solid rgba(224, 64, 64, 0.35);
+  color: var(--ink);
+}
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--red-ink);
+}
+.desc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.error {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--well);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.retry,
+.reload {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.retry {
+  background: var(--gold);
+  border: 1px solid var(--gold-lo);
+  color: var(--on-gold);
+}
+.reload {
+  background: var(--fill);
+  border: 1px solid var(--line-2);
+  color: var(--ink);
+}

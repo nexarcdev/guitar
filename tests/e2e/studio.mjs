@@ -9,7 +9,10 @@ const [appUrl] = process.argv.slice(2);
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const failures = [];
+let lastOk = 'start';
+let currentPage = null;
 const check = (ok, what) => {
+  if (ok) lastOk = what;
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`);
   if (!ok) failures.push(what);
   if (!ok && process.env.GITHUB_ACTIONS) console.log(`::error title=studio.mjs::${what}`);
@@ -56,6 +59,7 @@ const level = (page) => app(page, () => window.__fretline.engine.levels.inDb);
 try {
   for (const [name, viewport] of [['desktop', { width: 1280, height: 860 }], ['phone', { width: 390, height: 844 }]]) {
     const page = await browser.newPage({ viewport });
+    currentPage = page;
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(appUrl + '?debug');
     await page.mouse.click(5, 300);
@@ -163,7 +167,14 @@ try {
 } catch (e) {
   failures.push(String(e));
   console.error(e);
-  if (process.env.GITHUB_ACTIONS) console.log(`::error title=exception::${String(e).split('\n')[0]}`);
+  const waiting = (String(e).match(/waiting for [^\n]*/) ?? [''])[0];
+  const state = await currentPage?.evaluate(() => {
+    const s = window.__fretline?.useStore.getState();
+    return s ? `mic ${s.engine.mic}, running ${s.engine.running}, listening ${s.listening}, in ${Math.round(window.__fretline.engine.levels.inDb)} dB` : 'no app';
+  }).catch(() => 'page gone');
+  const msg = `${String(e).split('\n')[0]} | after: ${lastOk} | ${waiting} | ${state}`;
+  console.log(msg);
+  if (process.env.GITHUB_ACTIONS) console.log(`::error title=exception::${msg.replace(/\x1b\[[0-9;]*m/g, '')}`);
 } finally {
   await browser.close();
 }

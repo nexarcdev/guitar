@@ -4,14 +4,14 @@
 //! quiet guitar cable works as well as a hot interface: the gate opens ~12 dB above the floor and
 //! closes ~6 dB above it, which also stops decaying strings and hum from producing readings.
 
-use crate::chroma::{Chroma, ChromaFrame};
+use crate::chroma::{Chroma, ChromaFrame, FRAME_N};
 use crate::floor::{FloorMode, NoiseFloor};
 use crate::yin::Yin;
 use serde::Serialize;
 use std::collections::VecDeque;
 
 const FRAME: usize = 2048;
-const CHROMA_N: usize = 8192;
+/// Ring buffer length: a power of two no shorter than the chroma frame.
 const RING: usize = 16384;
 const VOICED_CLARITY: f64 = 0.9;
 /// Default gate threshold above the floor (dB); the gate closes 6 dB lower.
@@ -29,6 +29,11 @@ const LEGATO_FRAMES: usize = 8;
 const LEGATO_DROP_DB: f32 = 9.0;
 /// "Never" for seconds-since-attack, kept finite so it survives JSON.
 pub const NEVER: f64 = 1e9;
+/// The floor rises slowly only while a recently struck note is still sounding. A gate that is open
+/// with no attack for this long is sitting on noise, and the floor must be free to catch up.
+const PLAYING_SEC: f64 = 2.5;
+/// The level still ramps for a few frames after an attack; a jump within this is the same attack.
+const ATTACK_DEBOUNCE: f64 = 0.04;
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct PitchFrame {
@@ -64,6 +69,11 @@ pub struct Levels {
     /// Recent playing peak, dBFS (decays slowly).
     pub peak_db: f32,
     pub gate: bool,
+    /// Pick attacks counted since the tracker started. The app diffs this between chunks to open a
+    /// per-strum window; `since_attack` alone can miss an attack that landed mid-chunk.
+    pub attacks: u32,
+    /// Loudest frame level (dBFS) since the latest attack.
+    pub attack_db: f32,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -107,6 +117,7 @@ pub struct Tracker {
     last_emit: i32,
     quiet: u32,
     attack: bool,
+    attacks: u32,
     note_peak: f32,
 }
 
@@ -116,15 +127,15 @@ impl Tracker {
         Self {
             sr: sample_rate,
             yin: Yin::new(FRAME, sample_rate),
-            chroma: Chroma::new(CHROMA_N, sample_rate),
+            chroma: Chroma::new(sample_rate),
             hop,
             chroma_every: (sample_rate * 0.06).round() as usize,
             ring: vec![0.0; RING],
             end: 0,
             next_frame: FRAME as u64,
-            next_chroma: CHROMA_N as u64,
+            next_chroma: FRAME_N as u64,
             frame: vec![0.0; FRAME],
-            cframe: vec![0.0; CHROMA_N],
+            cframe: vec![0.0; FRAME_N],
             floor: NoiseFloor::new(hop as f64 / sample_rate),
             open_db: OPEN_DB,
             above: 0,
@@ -137,6 +148,7 @@ impl Tracker {
             last_emit: -1,
             quiet: 0,
             attack: false,
+            attacks: 0,
             note_peak: -100.0,
         }
     }
@@ -170,6 +182,8 @@ impl Tracker {
             since_attack: self.since_attack,
             peak_db: self.peak_db,
             gate: self.gate,
+            attacks: self.attacks,
+            attack_db: self.note_peak,
         }
     }
 
@@ -187,7 +201,8 @@ impl Tracker {
         if t0 != self.end {
             self.end = t0;
             self.next_frame = t0 + FRAME as u64;
-            self.next_chroma = t0 + CHROMA_N as u64;
+            self.next_chroma = t0 + FRAME_N as u64;
+            self.ring.fill(0.0);
             self.cand.clear();
             self.last_emit = -1;
             self.pitches.clear();
@@ -233,11 +248,14 @@ impl Tracker {
 
     /// Noise floor, playing peak, gate with hysteresis, attack detection.
     fn track(&mut self, level: f32) {
-        self.floor.push(level, self.gate);
+        self.floor.push(level, self.gate && self.since_attack < PLAYING_SEC);
         let floor = self.floor.db();
         self.above = if level > (floor + self.open_db).max(ABS_MIN_DB) { self.above + 1 } else { 0 };
+        let mut attack = false;
         if !self.gate && self.above >= OPEN_FRAMES {
+            // Playing starts: the gate opening is the first attack.
             self.gate = true;
+            attack = true;
         } else if self.gate && level < floor + self.open_db - HYSTERESIS_DB {
             self.gate = false;
         }
@@ -251,15 +269,19 @@ impl Tracker {
         }
         self.since_attack += self.hop as f64 / self.sr;
         let n = self.recent.len() - 1;
-        if self.gate && n > 0 {
+        if self.gate && n > 0 && self.since_attack > ATTACK_DEBOUNCE {
             let prev = self.recent.iter().take(n);
             let (mx, mn) = prev.fold((f32::NEG_INFINITY, f32::INFINITY), |(a, b), &v| (a.max(v), b.min(v)));
             if level > mx + 3.0 && level > mn + 6.0 {
-                self.attack = true;
-                self.since_attack = 0.0;
-                self.cand.clear();
-                self.note_peak = level;
+                attack = true;
             }
+        }
+        if attack {
+            self.attack = true;
+            self.attacks += 1;
+            self.since_attack = 0.0;
+            self.cand.clear();
+            self.note_peak = level;
         }
         if self.gate {
             self.note_peak = self.note_peak.max(level);

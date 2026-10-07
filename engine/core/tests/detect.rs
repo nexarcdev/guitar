@@ -1,6 +1,6 @@
 //! Detection tests, ported from the web app's TypeScript suite when the tracker moved into the core.
 
-use fretline_core::chroma::Chroma;
+use fretline_core::chroma::{Chroma, FRAME_N};
 use fretline_core::floor::FloorMode;
 use fretline_core::resample::Resampler;
 use fretline_core::synth::{NoteSpec, Synth, VoiceKind};
@@ -57,7 +57,7 @@ fn yin_rejects_silence_and_noise() {
 
 #[test]
 fn chroma_finds_a_c_major_triad_octave_exact() {
-    let f = Chroma::new(8192, SR).compute(&tone(&[130.81, 164.81, 196.0], 8192, SR), 1e-12).unwrap();
+    let f = Chroma::new(SR).compute(&tone(&[130.81, 164.81, 196.0], FRAME_N, SR), 1e-12).unwrap();
     assert!(f.pitch[48] > -20.0 && f.pitch[52] > -20.0, "C3 {} E3 {}", f.pitch[48], f.pitch[52]);
     assert!(f.pitch[40] < -60.0, "open low E must not appear: {}", f.pitch[40]);
     let mut idx: Vec<usize> = (0..12).collect();
@@ -65,6 +65,53 @@ fn chroma_finds_a_c_major_triad_octave_exact() {
     let mut top = idx[..3].to_vec();
     top.sort();
     assert_eq!(top, vec![0, 4, 7]);
+    // Harmonics attributed: three strings, three fundamentals, and the levels are absolute.
+    let mut m: Vec<u8> = f.fundamentals.iter().map(|x| x.midi).collect();
+    m.sort();
+    assert_eq!(m, vec![48, 52, 55], "{:?}", f.fundamentals);
+    // Each partial has amplitude 0.3 / 3 = 0.1, RMS -23 dBFS.
+    assert!((f.top_db + 23.0).abs() < 1.0, "top_db {}", f.top_db);
+}
+
+#[test]
+fn a_single_low_e_is_one_fundamental_not_five() {
+    let f = Chroma::new(SR).compute(&tone(&[82.41], FRAME_N, SR), 1e-12).unwrap();
+    let m: Vec<u8> = f.fundamentals.iter().map(|x| x.midi).collect();
+    assert_eq!(m, vec![40], "{:?}", f.fundamentals);
+    // The salience array still shows the partials, octave exact.
+    assert!(f.pitch[52] > -12.0 && f.pitch[59] > -20.0, "E3 {} B3 {}", f.pitch[52], f.pitch[59]);
+}
+
+#[test]
+fn six_string_e_chord_keeps_the_notes_that_are_not_harmonics() {
+    // E2 B2 E3 G#3 B3 E4: E3, B3 and E4 coincide with partials of E2 and B2, so by level alone they
+    // are claimed as harmonics; G#3 is nobody's partial. The salience array still shows all six.
+    let f = Chroma::new(SR).compute(&tone(&[82.41, 123.47, 164.81, 207.65, 246.94, 329.63], FRAME_N, SR), 1e-12).unwrap();
+    let mut m: Vec<u8> = f.fundamentals.iter().map(|x| x.midi).collect();
+    m.sort();
+    assert_eq!(m, vec![40, 47, 56], "{:?}", f.fundamentals);
+    for midi in [40, 47, 52, 56, 59, 64] {
+        assert!(f.pitch[midi] > -20.0, "midi {midi}: {}", f.pitch[midi]);
+    }
+    assert!(f.fundamentals.len() <= 6);
+}
+
+#[test]
+fn tracker_counts_attacks() {
+    let mut tr = Tracker::new(SR);
+    let n = (3.0 * SR) as usize;
+    let mut x = vec![0.0f32; n];
+    for (k, start) in [0.5, 1.6].iter().map(|s| (s * SR) as usize).enumerate() {
+        let _ = k;
+        for i in 0..(0.9 * SR) as usize {
+            let env = (-(i as f64) / (0.4 * SR)).exp();
+            x[start + i] += (0.3 * env * (2.0 * std::f64::consts::PI * 110.0 * i as f64 / SR).sin()) as f32;
+        }
+    }
+    let out = feed(&mut tr, &x);
+    let last = out.last().unwrap();
+    assert_eq!(last.levels.attacks, 2, "since_attack {}", last.levels.since_attack);
+    assert!(last.levels.attack_db > -20.0, "attack_db {}", last.levels.attack_db);
 }
 
 #[test]
@@ -113,6 +160,7 @@ fn three_minutes_of_drifting_hiss_hum_and_clicks_never_open_analysis() {
     let mut rng = Rng(7);
     let n = 1024;
     let (mut opens, mut chroma, mut notes, mut stable, mut was_open) = (0, 0, 0, 0, false);
+    let mut attacks = 0;
     let mut t = 0u64;
     for c in 0..(180.0 * SR) as usize / n {
         let mut x = vec![0.0f32; n];
@@ -139,8 +187,9 @@ fn three_minutes_of_drifting_hiss_hum_and_clicks_never_open_analysis() {
         }
         notes += o.notes.len();
         stable += o.frames.iter().filter(|f| f.stable).count();
+        attacks = o.levels.attacks;
     }
-    assert_eq!((opens, chroma, notes, stable), (0, 0, 0, 0));
+    assert_eq!((opens, chroma, notes, stable, attacks), (0, 0, 0, 0, 0));
 }
 
 /// A string still ringing when the app starts: auto mode calibrates onto it and can't hear the

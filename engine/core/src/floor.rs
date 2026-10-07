@@ -11,6 +11,11 @@
 //! app started while a string was still ringing.
 //!
 //! Manual: a fixed floor chosen by the player; the automatic estimate keeps running for display.
+//!
+//! Frames of digital silence (a device that has not started delivering yet, a muted stream) are
+//! not noise measurements and never enter the history: a floor learned on them sits far below
+//! the real room, the gate then opens on room noise, and "playing" slows the rise that would
+//! have corrected it.
 
 use serde::{Deserialize, Serialize};
 
@@ -24,6 +29,8 @@ pub const RECAL_SEC: f64 = 1.5;
 const RISE_PLAYING: f64 = 0.2;
 const RISE_IDLE: f64 = 1.5;
 pub const MIN_DB: f32 = -110.0;
+/// Below this a frame is digital silence, not a reading of the room.
+pub const SILENT_DB: f32 = -100.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -78,8 +85,11 @@ impl NoiseFloor {
         self.explicit = explicit;
     }
 
-    /// Feeds one level reading (dBFS); `gate` = currently playing.
-    pub fn push(&mut self, level: f32, gate: bool) {
+    /// Feeds one level reading (dBFS); `playing` = a note was struck recently and is still sounding.
+    pub fn push(&mut self, level: f32, playing: bool) {
+        if level < SILENT_DB {
+            return;
+        }
         let len = self.hist.len();
         self.hist[self.hist_i] = level;
         self.hist_i = (self.hist_i + 1) % len;
@@ -98,7 +108,7 @@ impl NoiseFloor {
         if self.age < self.cal || target < self.estimate {
             self.estimate = target;
         } else {
-            self.estimate += (target - self.estimate).min((if gate { RISE_PLAYING } else { RISE_IDLE }) * self.dt);
+            self.estimate += (target - self.estimate).min((if playing { RISE_PLAYING } else { RISE_IDLE }) * self.dt);
         }
         if self.explicit && self.age >= self.cal {
             self.explicit = false;

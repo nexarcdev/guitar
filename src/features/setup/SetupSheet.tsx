@@ -580,6 +580,11 @@ function NativeEngine() {
               ? 'The engine running on this computer (' + (st?.version ?? 'unknown') + ') doesn\u2019t match this version of Fretline. Install the latest one.'
               : 'Start Fretline Engine from the Start menu; it sits in the notification area. Until it\u2019s running, Fretline uses the browser\u2019s audio as before.'}
           </div>
+          {conn === 'absent' && (
+            <div className={s.secNote} style={{ marginTop: 6 }}>
+              Engine running but still not found? Click the icon left of the address bar, open <b>Site settings</b>, and allow <b>Local network access</b>.
+            </div>
+          )}
           <div className={s.soundRow} style={{ marginTop: 10 }}>
             <a className={s.testOk} href={NATIVE_DOWNLOAD}>Download</a>
             <button className={s.testBtn} onClick={() => engine.retryNative()}>Try again</button>

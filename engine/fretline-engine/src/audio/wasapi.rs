@@ -91,7 +91,8 @@ fn find(flow: EDataFlow, id: &str) -> Result<IMMDevice, String> {
     let en = enumerator()?;
     unsafe {
         if id.is_empty() {
-            en.GetDefaultAudioEndpoint(flow, eConsole).map_err(|e| format!("no default device: {}", e.message()))
+            en.GetDefaultAudioEndpoint(flow, eConsole)
+                .map_err(|_| if flow == eCapture { "no input device is connected".to_string() } else { "no speakers or headphones are connected".to_string() })
         } else {
             let h = HSTRING::from(id);
             en.GetDevice(PCWSTR(h.as_ptr())).map_err(|_| "that device is no longer connected".to_string())

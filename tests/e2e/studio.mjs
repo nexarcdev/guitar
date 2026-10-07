@@ -172,7 +172,8 @@ try {
     const s = window.__fretline?.useStore.getState();
     return s ? `mic ${s.engine.mic}, running ${s.engine.running}, listening ${s.listening}, in ${Math.round(window.__fretline.engine.levels.inDb)} dB` : 'no app';
   }).catch(() => 'page gone');
-  const msg = `${String(e).split('\n')[0]} | after: ${lastOk} | ${waiting} | ${state}`;
+  const why = [...new Set(String(e).split('\n').filter((l) => /intercepts|not stable|outside|not visible|disabled|detached/.test(l)).map((l) => l.replace(/\x1b\[[0-9;]*m/g, '').trim()))].slice(-2).join(' / ');
+  const msg = `${String(e).split('\n')[0]} | after: ${lastOk} | ${waiting} | ${why} | ${state}`;
   console.log(msg);
   if (process.env.GITHUB_ACTIONS) console.log(`::error title=exception::${msg.replace(/\x1b\[[0-9;]*m/g, '')}`);
 } finally {

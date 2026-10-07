@@ -182,7 +182,7 @@ try {
       return `${t.textContent} ${Math.round(r.x)},${Math.round(r.y)} ${Math.round(r.width)}x${Math.round(r.height)} hit=${top === t || t.contains(top) ? 'self' : top?.className || top?.tagName}`;
     }).join('; ') + ` | vp ${innerWidth}x${innerHeight}`,
   ).catch(() => '');
-  const msg = `${String(e).split('\n')[0]} | after: ${lastOk} | ${waiting} | ${why} | ${state} | calls: ${calls} | tabs: ${tabs}`;
+  const msg = `${String(e).split('\n')[0]} | after: ${lastOk} | ${waiting} | ${why} | ${state} | calls: ${calls} | tabs: ${tabs} | page errors: ${errors.slice(0, 2).join(' // ').slice(0, 600)}`;
   console.log(msg);
   if (process.env.GITHUB_ACTIONS) console.log(`::error title=exception::${msg.replace(/\x1b\[[0-9;]*m/g, '')}`);
 } finally {

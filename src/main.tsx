@@ -2,13 +2,15 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import { Shell } from './features/shell/Shell';
-import { attachEngine, hydrate, useStore } from './state/store';
+import { actions, attachEngine, hydrate, useStore } from './state/store';
 import { engine } from './audio/engine';
 import './styles/global.css';
 
 async function boot() {
   await hydrate();
   attachEngine();
+  // End-to-end tests drive and inspect the app through this (only with ?debug in the URL).
+  if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __fretline: { useStore, engine, actions } });
   // Browsers keep audio suspended until a gesture; any tap or key starts it.
   const wake = () => engine.resume();
   document.addEventListener('pointerdown', wake);
@@ -18,9 +20,11 @@ async function boot() {
       <Shell />
     </StrictMode>,
   );
-  // Always listening by default: open the input straight away.
+  // Always listening by default: open the input straight away (unless the low-latency engine
+  // answers first, in which case it owns the guitar).
   const s = useStore.getState();
   engine.listening = s.listening;
+  if (s.nativeOn && (await engine.waitForNative(1500))) return;
   engine.start(s.deviceId);
 }
 

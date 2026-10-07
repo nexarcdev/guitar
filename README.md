@@ -58,6 +58,45 @@ input ─┬─ capture worklet ──MessagePorts──▶ pitch worker (YIN, c
   rhythm settings, input device and headstock style. Riffs export and import as JSON. On first run it
   imports anything the prototype left in localStorage, except the prototype's two sample riffs.
 
+## Low-latency engine (Windows)
+
+Chrome on Windows can't get under about 50 ms from string to speaker (most of it is Chrome's own
+output buffering, whatever the device), which is too slow to play through pedals. Fretline Engine
+is a small native tray app in [`engine/`](engine/) that takes over the guitar input and the
+speakers and runs the pedals and looper at a few milliseconds. The browser keeps doing all the
+listening: the engine streams the raw guitar back, so the tuner, chords and tabs are unchanged.
+
+```
+guitar ─▶ WASAPI capture ─┬─ monitor ring ─▶ drift reader ─▶ conditioner ─▶ pedals ─▶ looper ─▶ WASAPI render
+                          └─ analysis ring ─▶ ws://127.0.0.1:47831 ─▶ web app ─▶ pitch + ML workers
+web app ─ JSON (pedals, Output, looper, noise floor, devices) ─▶ engine
+```
+
+- **Use it.** Settings → Low-latency engine → Download for Windows, run the installer (per user, no
+  admin; not code-signed yet, so SmartScreen asks: More info → Run anyway), then "I've installed it,
+  connect". Chrome asks once to let the site reach devices on your network; that is the engine on
+  this computer. Fretline only looks for the engine after you opt in, and falls back to browser
+  audio whenever it isn't running.
+- **Audio paths.** Each device opens exclusive (when chosen: the device's smallest period, no
+  Windows effects in the path), else low-latency shared mode (`IAudioClient3`, the smallest engine
+  period the driver allows), else regular shared mode. Exclusive input is the default: it bypasses
+  input "enhancements" such as Realtek AI noise reduction. Speakers default to shared so other apps
+  keep playing. The two devices' clocks are bridged by a small resampling buffer that holds a
+  constant backlog (`engine/dsp/src/drift.rs`) and grows only after an underrun.
+- **Security.** The socket listens on 127.0.0.1 only and accepts Fretline's own origins
+  (`https://nexarcdev.github.io`, `http://localhost:*`); any other page gets a 403.
+- **Protocol.** `engine/fretline-engine/src/protocol.rs` (engine side) and `src/audio/native.ts`
+  (web side). Binary frames carry mono f32 audio with the engine's sample index; the web app maps it
+  onto its own listening clock, so pausing and switching between engine and browser never jump.
+- **Build and test.** `cd engine && cargo test --release && cargo build --release`. Off Windows the
+  engine runs a device-free test backend (`--test`, `--test-wav FILE`, `--record FILE`):
+  `node engine/tests/smoke.mjs <binary>` checks the protocol, and `node engine/tests/e2e-web.mjs
+  <binary> <app url>` drives the real web app in headless Chromium against it. `--probe` writes what
+  WASAPI can see and open to `%LOCALAPPDATA%\Fretline\engine.log`.
+- **Releases.** `.github/workflows/engine.yml` builds and tests on Linux and Windows, builds the Inno
+  Setup installer, and on `main` publishes it as the `engine-v<version>` release, which the app links
+  to as `releases/latest/download/FretlineEngineSetup.exe`.
+
 ## Changes from the prototype
 
 - The demo guitar is gone. Without a mic the app explains what's missing (permission blocked, no device,
@@ -85,5 +124,7 @@ under Your guitar → Sound check.
   tuned against recordings of real guitars, where pick noise and string resonance will differ.
 - basic-pitch output arrives 1 to 2 s after you play. Provisional single notes cover that gap, but
   chords appear only once the ML window lands.
-- Browser audio input adds latency (often 10 to 40 ms round trip). That is fine for practice and
-  looping, but it is not a hardware amp.
+- Browser audio adds latency (about 50 ms through Output on Windows in Chrome). That is fine for
+  practice and looping but not for playing through pedals; use the low-latency engine for that.
+- The engine's WASAPI paths are built and smoke-tested in CI on Windows, but CI runners have no sound
+  card, so real-device behaviour (driver periods, exclusive formats) is verified on hardware only.

@@ -60,6 +60,13 @@ export interface State {
   latency: LatencyMode;
   /** Output device for all of Fretline's sound ('' = system default). */
   outputId: string;
+  /** Use the native low-latency engine when it's running (opt-in: probing localhost can prompt). */
+  nativeOn: boolean;
+  /** Engine device ids ('' = Windows default); they differ from the browser's ids. */
+  nativeInput: string;
+  nativeOutput: string;
+  nativeExclusiveIn: boolean;
+  nativeExclusiveOut: boolean;
   // chords
   frets: Shape;
   baseFret: number;
@@ -111,6 +118,11 @@ const initial: State = {
   mlOn: true,
   latency: 'lowest',
   outputId: '',
+  nativeOn: false,
+  nativeInput: '',
+  nativeOutput: '',
+  nativeExclusiveIn: true,
+  nativeExclusiveOut: false,
   frets: [-1, 3, 2, 0, 1, 0],
   baseFret: 1,
   heard: null,
@@ -140,7 +152,9 @@ const set = useStore.setState;
 
 // ---------------------------------------------------------------- persistence
 
-const PERSIST: Array<keyof State> = ['tab', 'setup', 'pedals', 'timeSig', 'gapBeats', 'chordMode', 'deviceId', 'headstock', 'gateLevel', 'mlOn', 'latency', 'outputId'];
+const PERSIST: Array<keyof State> = ['tab', 'setup', 'pedals', 'timeSig', 'gapBeats', 'chordMode', 'deviceId', 'headstock', 'gateLevel', 'mlOn', 'latency', 'outputId', 'nativeOn', 'nativeInput', 'nativeOutput', 'nativeExclusiveIn', 'nativeExclusiveOut'];
+
+const nativePrefs = (s: State) => ({ on: s.nativeOn, input: s.nativeInput, output: s.nativeOutput, exclusiveInput: s.nativeExclusiveIn, exclusiveOutput: s.nativeExclusiveOut });
 
 export async function hydrate() {
   try {
@@ -177,6 +191,11 @@ export async function hydrate() {
     if (s.gateLevel !== prev.gateLevel) engine.setGate(GATE_DB[s.gateLevel] ?? 12);
     if (s.mlOn !== prev.mlOn) engine.setMl(s.mlOn);
     if (s.outputId !== prev.outputId) engine.setOutputDevice(s.outputId);
+    if (
+      s.nativeOn !== prev.nativeOn || s.nativeInput !== prev.nativeInput || s.nativeOutput !== prev.nativeOutput ||
+      s.nativeExclusiveIn !== prev.nativeExclusiveIn || s.nativeExclusiveOut !== prev.nativeExclusiveOut
+    )
+      engine.setNative(nativePrefs(s));
     if (s.frets !== prev.frets || s.baseFret !== prev.baseFret || s.setup !== prev.setup) {
       shapeAt = engine.clock();
       okSince = okUntil = 0;
@@ -189,6 +208,7 @@ export async function hydrate() {
   engine.setMl(get().mlOn);
   engine.latency = get().latency;
   engine.outputId = get().outputId;
+  engine.setNative(nativePrefs(get()));
 }
 
 // ---------------------------------------------------------------- engine wiring

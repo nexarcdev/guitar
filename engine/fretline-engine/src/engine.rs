@@ -101,6 +101,13 @@ pub struct Supervisor {
     output: Option<Box<dyn Stream>>,
     input_retry: Instant,
     output_retry: Instant,
+    /// Exclusive mode asked for but not granted (usually the device was still busy, e.g. the
+    /// browser hadn't released it yet): try once more a moment later.
+    input_upgrade: Option<Instant>,
+    output_upgrade: Option<Instant>,
+    /// That one retry has been spent (reset when the user changes device or mode).
+    input_upgrade_tried: bool,
+    output_upgrade_tried: bool,
     error: Option<String>,
     last_status: Option<Status>,
 }
@@ -142,6 +149,10 @@ impl Supervisor {
             output: None,
             input_retry: now,
             output_retry: now,
+            input_upgrade: None,
+            output_upgrade: None,
+            input_upgrade_tried: false,
+            output_upgrade_tried: false,
             error: None,
             last_status: None,
         };
@@ -239,12 +250,14 @@ impl Supervisor {
                 if let Some(i) = input {
                     if i != self.input_id {
                         self.input_id = i;
+                        self.input_upgrade_tried = false;
                         self.close_input();
                     }
                 }
                 if let Some(o) = output {
                     if o != self.output_id {
                         self.output_id = o;
+                        self.output_upgrade_tried = false;
                         self.output = None;
                     }
                 }
@@ -253,12 +266,14 @@ impl Supervisor {
                 if let Some(i) = input {
                     if i != self.exclusive_input {
                         self.exclusive_input = i;
+                        self.input_upgrade_tried = false;
                         self.close_input();
                     }
                 }
                 if let Some(o) = output {
                     if o != self.exclusive_output {
                         self.exclusive_output = o;
+                        self.output_upgrade_tried = false;
                         self.output = None;
                     }
                 }
@@ -297,15 +312,33 @@ impl Supervisor {
         if !want_in && self.input.is_some() {
             log!("closing input");
             self.input = None;
+            self.input_upgrade = None;
+            self.input_upgrade_tried = false;
         }
         if !want_out && self.output.is_some() {
             log!("closing output");
             self.output = None;
+            self.output_upgrade = None;
+            self.output_upgrade_tried = false;
+        }
+        if self.input_upgrade.is_some_and(|t| now >= t) && self.input.is_some() {
+            log!("retrying exclusive input");
+            self.input = None;
+            self.input_upgrade = None;
+            self.input_upgrade_tried = true;
+        }
+        if self.output_upgrade.is_some_and(|t| now >= t) && self.output.is_some() {
+            log!("retrying exclusive output");
+            self.output = None;
+            self.output_upgrade = None;
+            self.output_upgrade_tried = true;
         }
         if want_in && self.input.is_none() && now >= self.input_retry {
             match self.open_input() {
                 Ok(s) => {
                     log!("input open: {:?}", s.info());
+                    let missed = self.exclusive_input && s.info().mode != "exclusive" && s.info().mode != "test";
+                    self.input_upgrade = (missed && !self.input_upgrade_tried).then(|| now + Duration::from_secs(3));
                     self.input = Some(s);
                     self.error = None;
                     // The monitor resampler depends on the input's rate and period.
@@ -322,6 +355,8 @@ impl Supervisor {
             match self.open_output() {
                 Ok(s) => {
                     log!("output open: {:?}", s.info());
+                    let missed = self.exclusive_output && s.info().mode != "exclusive" && s.info().mode != "test";
+                    self.output_upgrade = (missed && !self.output_upgrade_tried).then(|| now + Duration::from_secs(3));
                     self.output = Some(s);
                     if self.error.as_deref().is_some_and(|e| e.starts_with("Speakers")) {
                         self.error = None;

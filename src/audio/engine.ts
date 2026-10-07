@@ -3,6 +3,10 @@
 //          └─ inBus ─▶ pedal chain ─▶ chainOut ─┬────────────────▶ master (output toggle) ─▶ speakers
 //                                               └─ looper worklet ─▶ master
 // Everything stateful lives here, outside React; the store subscribes to events.
+//
+// With the Fretline engine (native.ts) connected, the guitar, pedals, looper and speakers move
+// to the native app; the browser mic closes and the analysis workers are fed from the socket
+// instead of the capture worklet. Everything else (synth, riff playback) stays in the browser.
 
 import captureUrl from './worklets/capture.worklet.ts?worker&url';
 import looperUrl from './worklets/looper.worklet.ts?worker&url';
@@ -12,6 +16,7 @@ import { makeFx, type FxNode, type Pedal, type PedalName } from './pedals';
 import { pluck, referenceTone, type Voice } from './synth';
 import type { LooperView } from './looperCore';
 import type { TrackerOutput } from '../dsp/tracker';
+import { NativeLink, type NativeConn, type NativeMeters, type NativeStatus } from './native';
 
 export type LatencyMode = 'lowest' | 'interactive' | 'playback';
 
@@ -38,6 +43,17 @@ export interface EngineStatus {
   canPickOutput: boolean;
   /** Device actually in use. */
   deviceId: string;
+  /** Link to the native low-latency engine ('off' = not in use). */
+  native: NativeConn;
+  nativeStatus: NativeStatus | null;
+}
+
+export interface NativePrefs {
+  on: boolean;
+  input: string;
+  output: string;
+  exclusiveInput: boolean;
+  exclusiveOutput: boolean;
 }
 
 export interface Analysis extends TrackerOutput {
@@ -94,7 +110,7 @@ class AudioEngine {
   output = false;
   /** Audio buffer size preference; 'playback' trades latency for robustness on struggling systems. */
   latency: LatencyMode = 'lowest';
-  status: EngineStatus = { mic: 'idle', running: false, ml: 'off', mlBackend: '', devices: [], deviceId: '', outputs: [], outputId: '', canPickOutput: false };
+  status: EngineStatus = { mic: 'idle', running: false, ml: 'off', mlBackend: '', devices: [], deviceId: '', outputs: [], outputId: '', canPickOutput: false, native: 'off', nativeStatus: null };
   /** Output device to use when the context is (re)created; '' = system default. */
   outputId = '';
 
@@ -147,7 +163,6 @@ class AudioEngine {
         this.looper.port.onmessage = (e) => this.emit('looper', e.data as LooperView);
         this.chainOut.connect(this.looper);
         this.looper.connect(this.master);
-        this.startWorkers(ac);
       });
       this.applyPedals(this.pedals);
     }
@@ -160,12 +175,52 @@ class AudioEngine {
     return this.ac;
   }
 
-  private startWorkers(ac: AudioContext) {
-    if (!this.capture) return;
+  /**
+   * Analysis workers run at the rate of whatever feeds them: the capture worklet (browser input)
+   * or the native engine's stream. Switching feed or rate re-creates them.
+   */
+  private feed: 'capture' | 'native' | null = null;
+  private workerRate = 0;
+  private pitchPort: MessagePort | null = null;
+  private mlPort: MessagePort | null = null;
+
+  private setupWorkers(rate: number, feed: 'capture' | 'native') {
+    if (this.pitchW && rate === this.workerRate && feed === this.feed) return;
+    if (feed === 'capture' && !this.capture) return;
+    this.stopWorkers();
+    this.feed = feed;
+    this.workerRate = rate;
+    // Keep the listening clock running on from where it was, whichever source takes over.
+    const at = Math.round(this.clockBase * rate);
+    if (feed === 'capture') this.capture!.port.postMessage({ type: 'clock', at });
+    else this.nativeClock = at;
+    this.startPitch();
+    if (this.mlEnabled) this.startMl();
+  }
+
+  private stopWorkers() {
+    this.pitchW?.terminate();
+    this.mlW?.terminate();
+    this.pitchW = this.mlW = null;
+    this.capture?.port.postMessage({ type: 'unsink', id: 'pitch' });
+    this.capture?.port.postMessage({ type: 'unsink', id: 'ml' });
+    this.pitchPort?.close();
+    this.mlPort?.close();
+    this.pitchPort = this.mlPort = null;
+  }
+
+  /** Hands one end of a worker's audio channel to its feed. */
+  private attachFeed(id: 'pitch' | 'ml', port: MessagePort) {
+    if (this.feed === 'capture') this.capture?.port.postMessage({ type: 'sink', id, port }, [port]);
+    else if (id === 'pitch') this.pitchPort = port;
+    else this.mlPort = port;
+  }
+
+  private startPitch() {
     this.pitchW = new Worker(new URL('../workers/pitch.worker.ts', import.meta.url), { type: 'module' });
     const pc = new MessageChannel();
-    this.pitchW.postMessage({ type: 'init', sampleRate: ac.sampleRate, port: pc.port2 }, [pc.port2]);
-    this.capture.port.postMessage({ type: 'sink', id: 'pitch', port: pc.port1 }, [pc.port1]);
+    this.pitchW.postMessage({ type: 'init', sampleRate: this.workerRate, port: pc.port2 }, [pc.port2]);
+    this.attachFeed('pitch', pc.port1);
     this.pitchW.postMessage({ type: 'gate', openDb: this.openDb });
     this.pitchW.onmessage = (e) => {
       const a = e.data as Analysis;
@@ -175,26 +230,26 @@ class AudioEngine {
       const now = performance.now();
       if (now - this.floorSentAt > 200) {
         this.floorSentAt = now;
-        const msg = { type: 'floor', floorDb: a.levels.floorDb, openDb: a.levels.openDb };
-        this.cond?.port.postMessage(msg);
+        const msg = { type: 'floor', floorDb: a.levels.floorDb, openDb: a.levels.openDb } as const;
+        if (this.isNative()) this.native.send(msg);
+        else this.cond?.port.postMessage(msg);
         this.mlW?.postMessage(msg);
       }
       this.emit('analysis', a);
     };
-    if (this.mlEnabled) this.startMl(ac);
   }
 
-  private startMl(ac: AudioContext) {
-    if (!this.capture || this.mlW) return;
+  private startMl() {
+    if (!this.feed || this.mlW) return;
 
     this.mlW = new Worker(new URL('../workers/ml.worker.ts', import.meta.url), { type: 'module' });
     const mc = new MessageChannel();
     this.setStatus({ ml: 'loading' });
     this.mlW.postMessage(
-      { type: 'init', sampleRate: ac.sampleRate, modelUrl: new URL(import.meta.env.BASE_URL + 'model/model.json', location.href).href, port: mc.port2 },
+      { type: 'init', sampleRate: this.workerRate, modelUrl: new URL(import.meta.env.BASE_URL + 'model/model.json', location.href).href, port: mc.port2 },
       [mc.port2],
     );
-    this.capture.port.postMessage({ type: 'sink', id: 'ml', port: mc.port1 }, [mc.port1]);
+    this.attachFeed('ml', mc.port1);
     this.mlW.onmessage = (e) => {
       const m = e.data;
       if (m.type === 'status') this.setStatus({ ml: m.status, mlBackend: m.backend ?? this.status.mlBackend });
@@ -205,7 +260,7 @@ class AudioEngine {
 
   /** Listening-clock seconds, extrapolated between analysis chunks so the stream moves smoothly. */
   clock() {
-    if (!this.listening || this.status.mic !== 'live' || !this.status.running) return this.clockBase;
+    if (!this.listening || this.status.mic !== 'live' || (!this.status.running && !this.isNative())) return this.clockBase;
     return this.clockBase + Math.min(0.25, (performance.now() - this.clockAt) / 1000);
   }
 
@@ -219,6 +274,7 @@ class AudioEngine {
   }
 
   private async open(deviceId: string) {
+    if (this.isNative()) return;
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
       this.setStatus({ mic: 'insecure' });
       return;
@@ -265,7 +321,7 @@ class AudioEngine {
       });
       return;
     }
-    if (!(this.listening || this.output)) {
+    if (!(this.listening || this.output) || this.isNative()) {
       stream.getTracks().forEach((t) => t.stop());
       this.setStatus({ mic: 'idle' });
       return;
@@ -277,6 +333,12 @@ class AudioEngine {
     // resampling the live input inside the graph.
     const ac = this.context(settings.sampleRate);
     await this.modules;
+    if (this.isNative()) {
+      // The engine connected while the mic was opening.
+      stream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+    this.setupWorkers(ac.sampleRate, 'capture');
     const switched = settings.deviceId !== this.status.deviceId;
     this.closeInput();
     this.stream = stream;
@@ -339,12 +401,15 @@ class AudioEngine {
       this.mlW.terminate();
       this.mlW = null;
       this.capture?.port.postMessage({ type: 'unsink', id: 'ml' });
+      this.mlPort?.close();
+      this.mlPort = null;
       this.setStatus({ ml: 'off' });
-    } else if (on && this.ac && this.capture && !this.mlW) this.startMl(this.ac);
+    } else if (on && !this.mlW) this.startMl();
   }
 
   /** What Fretline is sending to the speakers right now, dBFS (or 'NaN' if the graph is poisoned). */
   outputDb(): number | 'NaN' {
+    if (this.isNative()) return this.nativeMeters?.outDb ?? -120;
     if (!this.tap) return -120;
     const b = (this.tapBuf ??= new Float32Array(this.tap.fftSize));
     this.tap.getFloatTimeDomainData(b);
@@ -380,6 +445,19 @@ class AudioEngine {
    * 10 ms. The compressor adds its fixed 6 ms look-ahead when it's on.
    */
   latencyBreakdown() {
+    const nl = this.isNative() ? this.status.nativeStatus?.latency : null;
+    if (nl) {
+      // Engine estimate: device periods plus the small buffer that absorbs clock drift.
+      return {
+        inputMs: Math.round(nl.inputMs * 10) / 10,
+        inputSource: 'measured' as 'measured' | 'reported' | 'typical',
+        engineMs: Math.round(nl.bufferMs * 10) / 10,
+        outputMs: Math.round(nl.outputMs * 10) / 10,
+        pedalsMs: 0,
+        totalMs: Math.round(nl.totalMs),
+        native: true,
+      };
+    }
     const ac = this.ac;
     const t = this.stream?.getAudioTracks()[0] as (MediaStreamTrack & { stats?: { latency?: number; averageLatency?: number } }) | undefined;
     const st = t?.getSettings() as (MediaTrackSettings & { latency?: number }) | undefined;
@@ -403,11 +481,12 @@ class AudioEngine {
       outputMs: Math.round(outputMs),
       pedalsMs,
       totalMs: Math.round(inputMs + engineMs + outputMs + pedalsMs),
+      native: false,
     };
   }
 
   delayMs(): number {
-    return this.ac ? this.latencyBreakdown().totalMs : 0;
+    return this.ac || this.isNative() ? this.latencyBreakdown().totalMs : 0;
   }
 
   /** Snapshot for the Sound check panel. */
@@ -430,6 +509,11 @@ class AudioEngine {
 
   /** Releases the mic while the tab is hidden (unless it's needed for Output), and reopens it on return. */
   private onVisibility = () => {
+    if (this.isNative()) {
+      // Same rule for the engine: it closes the input when nobody listens and Output is off.
+      this.native.send({ type: 'listen', on: this.listening && !(document.hidden && !this.output) });
+      return;
+    }
     if (document.hidden) {
       if (this.stream && !this.output) {
         this.releasedHidden = true;
@@ -480,11 +564,14 @@ class AudioEngine {
   setListening(on: boolean) {
     this.listening = on;
     this.capture?.port.postMessage({ type: 'listening', on });
+    this.native.send({ type: 'listen', on });
     this.sync();
   }
 
   setOutput(on: boolean) {
     this.output = on;
+    this.native.send({ type: 'output', on });
+    if (this.isNative()) return;
     const ac = this.context();
     this.master.gain.setTargetAtTime(on ? 1 : 0, ac.currentTime, 0.02);
     this.routeInput();
@@ -509,7 +596,7 @@ class AudioEngine {
 
   /** Mic stays open while anything needs it: analysis (listening) or the amp (output). */
   private sync() {
-    if (this.testing) return;
+    if (this.testing || this.isNative()) return;
     const need = this.listening || this.output;
     if (need && !this.stream) {
       if (this.status.mic !== 'denied' && this.status.mic !== 'insecure') this.start();
@@ -520,6 +607,7 @@ class AudioEngine {
 
   applyPedals(ps: Pedal[]) {
     this.pedals = ps;
+    this.native.send({ type: 'pedals', pedals: ps.map((p) => ({ name: p.name, on: p.on, level: p.level })) });
     const ac = this.ac;
     if (!ac) return;
     for (const p of ps) if (p.on && !this.fx.has(p.name)) this.fx.set(p.name, makeFx(ac, p.name));
@@ -551,8 +639,131 @@ class AudioEngine {
   // ---- looper
 
   loop(cmd: 'tap' | 'stop' | 'clear', slot: number) {
+    if (this.isNative()) return this.native.send({ type: 'loop', cmd, slot });
     this.context();
     this.modules?.then(() => this.looper?.port.postMessage({ type: cmd, slot }));
+  }
+
+  // ---- native engine
+
+  private native = new NativeLink({
+    open: () => this.onNativeOpen(),
+    conn: (c) => this.onNativeConn(c),
+    status: (st) => this.onNativeStatus(st),
+    meters: (m) => this.onNativeMeters(m),
+    frame: (rate, t0, data) => this.onNativeFrame(rate, t0, data),
+  });
+  private nativePrefs: NativePrefs = { on: false, input: '', output: '', exclusiveInput: true, exclusiveOutput: false };
+  private nativeMeters: NativeMeters | null = null;
+  private nativeClock = 0;
+  private nativeLastT0 = -1;
+  private lastLooperJson = '';
+
+  isNative() {
+    return this.native.conn === 'connected';
+  }
+
+  /** Applies the user's engine settings; turning it on starts looking for the engine. */
+  setNative(p: NativePrefs) {
+    const prev = this.nativePrefs;
+    this.nativePrefs = p;
+    this.native.enable(p.on);
+    if (p.input !== prev.input || p.output !== prev.output) this.native.send({ type: 'devices', input: p.input, output: p.output });
+    if (p.exclusiveInput !== prev.exclusiveInput || p.exclusiveOutput !== prev.exclusiveOutput)
+      this.native.send({ type: 'exclusive', input: p.exclusiveInput, output: p.exclusiveOutput });
+  }
+
+  /** Waits briefly for the engine at startup so the browser mic isn't opened just to be closed. */
+  waitForNative(ms: number) {
+    return this.native.waitConnected(ms);
+  }
+
+  retryNative() {
+    this.native.retryNow();
+  }
+
+  private onNativeOpen() {
+    // The engine takes over the guitar: free the browser input and its amp path.
+    this.closeInput();
+    if (this.master && this.ac) this.master.gain.setTargetAtTime(0, this.ac.currentTime, 0.02);
+    // Loops recorded in the browser can't move to the engine; stop them rather than play on top.
+    for (let i = 0; i < 4; i++) this.looper?.port.postMessage({ type: 'clear', slot: i });
+    this.nativeLastT0 = -1;
+    const p = this.nativePrefs;
+    this.native.send({ type: 'devices', input: p.input, output: p.output });
+    this.native.send({ type: 'exclusive', input: p.exclusiveInput, output: p.exclusiveOutput });
+    this.native.send({ type: 'pedals', pedals: this.pedals.map((x) => ({ name: x.name, on: x.on, level: x.level })) });
+    this.native.send({ type: 'output', on: this.output });
+    this.native.send({ type: 'listen', on: this.listening && !(document.hidden && !this.output) });
+  }
+
+  private onNativeConn(c: NativeConn) {
+    this.setStatus({ native: c, ...(c === 'off' ? { nativeStatus: null } : {}) });
+    if (c !== 'connected' && this.feed === 'native') {
+      // Engine gone: back to the browser input, workers and amp path, as before.
+      this.stopWorkers();
+      this.feed = null;
+      this.nativeMeters = null;
+      this.setStatus({ mic: 'idle' });
+      if (this.ac && this.master) this.master.gain.setTargetAtTime(this.output ? 1 : 0, this.ac.currentTime, 0.02);
+      this.sync();
+    } else if (c !== 'connected' && this.status.mic === 'idle') this.sync();
+  }
+
+  private onNativeStatus(st: NativeStatus) {
+    const mic: MicState = !this.isNative() ? this.status.mic : st.input ? 'live' : st.error ? 'error' : this.listening || this.output ? 'starting' : 'idle';
+    this.setStatus({ nativeStatus: st, mic });
+    if (this.isNative() && st.input) {
+      const switched = st.input.id !== this.status.deviceId;
+      this.setupWorkers(st.input.rate, 'native');
+      if (switched) {
+        this.setStatus({ deviceId: st.input.id });
+        this.pitchW?.postMessage({ type: 'recalibrate' });
+      }
+    }
+  }
+
+  private onNativeMeters(m: NativeMeters) {
+    this.nativeMeters = m;
+    this.emit('cond', { floorDb: m.floorDb, peakDb: -100, gainDb: m.gainDb, gate: m.gate });
+    const view: LooperView = {
+      len: m.looperLen,
+      free: m.looperFree,
+      rate: m.looperRate,
+      slots: m.slots.map((x) => ({ state: x.state as LooperView['slots'][number]['state'], progress: x.progress })),
+    };
+    const j = JSON.stringify(view);
+    if (j !== this.lastLooperJson) {
+      this.lastLooperJson = j;
+      this.emit('looper', view);
+    }
+  }
+
+  /**
+   * The engine's sample index runs whether or not anyone listens; the app's listening clock
+   * pauses with Listening, exactly like the capture worklet. Short drops in the engine's
+   * stream still advance the clock, so notes after them keep their timing.
+   */
+  private onNativeFrame(rate: number, t0: number, data: Float32Array) {
+    if (!this.listening) {
+      this.nativeLastT0 = -1; // a pause is not a gap: the clock stops with Listening
+      return;
+    }
+    if (this.feed !== 'native' || rate !== this.workerRate) return;
+    if (this.nativeLastT0 >= 0) {
+      const gap = t0 - (this.nativeLastT0 + data.length);
+      if (gap > 0 && gap < rate * 2) this.nativeClock += gap;
+    }
+    this.nativeLastT0 = t0;
+    if (this.mlPort) {
+      const copy = data.slice();
+      this.mlPort.postMessage({ t0: this.nativeClock, data: copy }, [copy.buffer]);
+    }
+    if (this.pitchPort) {
+      const copy = data.slice();
+      this.pitchPort.postMessage({ t0: this.nativeClock, data: copy }, [copy.buffer]);
+    }
+    this.nativeClock += data.length;
   }
 
   // ---- synth

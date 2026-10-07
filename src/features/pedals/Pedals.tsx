@@ -6,8 +6,8 @@ import type { SlotView } from '../../audio/looperCore';
 import s from './Pedals.module.css';
 
 export function Pedals() {
-  const { pedals, drag, output, mic, looper } = useStore(
-    useShallow((x) => ({ pedals: x.pedals, drag: x.drag, output: x.output, mic: x.engine.mic, looper: x.looper })),
+  const { pedals, drag, output, mic, looper, native } = useStore(
+    useShallow((x) => ({ pedals: x.pedals, drag: x.drag, output: x.output, mic: x.engine.mic, looper: x.looper, native: x.engine.native === 'connected' })),
   );
   const knob = useRef<{ i: number; y: number; l: number } | null>(null);
 
@@ -22,9 +22,9 @@ export function Pedals() {
   return (
     <div className={s.page}>
       <div className={s.top}>
-        <div className="kicker">{'SIGNAL CHAIN · ' + (mic === 'live' ? 'MIC' : 'NO INPUT') + ' → OUTPUT ' + (output ? 'ON' : 'OFF')}</div>
+        <div className="kicker">{'SIGNAL CHAIN · ' + (mic === 'live' ? (native ? 'FRETLINE ENGINE' : 'MIC') : 'NO INPUT') + ' → OUTPUT ' + (output ? 'ON' : 'OFF')}</div>
         <div className={s.hint}>
-          {output && engine.delayMs() ? 'Delay through Output about ' + engine.delayMs() + ' ms · ' : ''}Drag the grip to reorder · drag a knob to adjust · tap the footswitch
+          {output && engine.delayMs() ? (native ? 'Low-latency engine · ' : '') + 'Delay through Output about ' + engine.delayMs() + ' ms · ' : ''}Drag the grip to reorder · drag a knob to adjust · tap the footswitch
         </div>
       </div>
       {!output && (

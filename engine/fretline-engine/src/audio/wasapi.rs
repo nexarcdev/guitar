@@ -395,12 +395,14 @@ fn spawn(flow: EDataFlow, id: &str, exclusive: bool, cb: Callback, on_error: Err
                 let o = open(&dev, exclusive)?;
                 let latency = o.client.GetStreamLatency().unwrap_or(0) as f32 / 10_000.0;
                 let period_ms = o.period_frames as f32 * 1000.0 / o.fmt.rate as f32;
+                // Shared render keeps a second period queued (see run_render); count it.
+                let queued_ms = if flow == eRender && !o.exclusive { render_queue(&o) as f32 * 1000.0 / o.fmt.rate as f32 - period_ms } else { 0.0 };
                 let info = StreamInfo {
                     id: device_id(&dev).unwrap_or_default(),
                     name: device_name(&dev),
                     rate: o.fmt.rate,
                     period_ms,
-                    device_ms: (latency - period_ms).max(0.0),
+                    device_ms: (latency - period_ms).max(0.0) + queued_ms.max(0.0),
                     mode: o.mode.into(),
                 };
                 log!("{name}: {} {:?}, buffer {} frames, period {} frames, stream latency {latency:.2} ms", info.mode, o.fmt, o.buffer_frames, o.period_frames);
@@ -530,6 +532,12 @@ unsafe fn run_capture(o: &Opened, mut f: InputFn, stop: &AtomicBool, started: im
     r
 }
 
+/// Frames to keep queued in shared mode: two engine periods, not the whole (often 20 ms+)
+/// buffer, so what we play reaches the speakers as soon as the engine can take it.
+fn render_queue(o: &Opened) -> u32 {
+    (o.period_frames * 2).clamp(1, o.buffer_frames)
+}
+
 unsafe fn run_render(o: &Opened, mut f: OutputFn, stop: &AtomicBool, started: impl FnOnce()) -> Result<(), String> {
     let ev = Event(CreateEventW(None, false, false, None).map_err(|e| hr_text(&e))?);
     o.client.SetEventHandle(ev.0).map_err(|e| hr_text(&e))?;
@@ -537,13 +545,14 @@ unsafe fn run_render(o: &Opened, mut f: OutputFn, stop: &AtomicBool, started: im
     let fmt = o.fmt;
     let size = fmt.align / fmt.channels;
     // Start from silence so the first period doesn't play garbage.
-    let pre = o.buffer_frames;
+    let pre = if o.exclusive { o.buffer_frames } else { render_queue(o) };
     ren.GetBuffer(pre).map_err(|e| hr_text(&e))?;
     ren.ReleaseBuffer(pre, AUDCLNT_BUFFERFLAGS_SILENT.0 as u32).map_err(|e| hr_text(&e))?;
     o.client.Start().map_err(|e| hr_text(&e))?;
     started();
     let mut mono = vec![0.0f32; o.buffer_frames as usize];
     let mut misses = 0;
+    let queue = render_queue(o);
     let r = (|| -> Result<(), String> {
         while !stop.load(Ordering::Relaxed) {
             if !wait(&ev, stop, &mut misses)? {
@@ -552,7 +561,7 @@ unsafe fn run_render(o: &Opened, mut f: OutputFn, stop: &AtomicBool, started: im
             let frames = if o.exclusive {
                 o.buffer_frames
             } else {
-                o.buffer_frames - o.client.GetCurrentPadding().map_err(|e| hr_text(&e))?
+                queue.saturating_sub(o.client.GetCurrentPadding().map_err(|e| hr_text(&e))?)
             } as usize;
             if frames == 0 {
                 continue;

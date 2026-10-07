@@ -418,3 +418,24 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: 1px;
+  background: var(--gold);
+}
+.dot[data-state='ok'] {
+  background: var(--green);
+}
+.dot[data-state='bad'] {
+  background: var(--red);
+}
+.soundRow a {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}

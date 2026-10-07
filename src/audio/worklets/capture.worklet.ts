@@ -17,6 +17,11 @@ class CaptureProcessor extends AudioWorkletProcessor {
     this.port.onmessage = (e: MessageEvent) => {
       const m = e.data;
       if (m.type === 'listening') this.listening = m.on;
+      else if (m.type === 'clock') {
+        // Continue the listening clock from another source (the native engine) without a jump.
+        this.clock = Math.max(this.clock, m.at);
+        this.fill = 0;
+      }
       else if (m.type === 'sink') this.sinks.push({ id: m.id, port: m.port as MessagePort });
       else if (m.type === 'unsink') {
         this.sinks.filter((x) => x.id === m.id).forEach((x) => x.port.close());

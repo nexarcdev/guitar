@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { engine } from '../../audio/engine';
+import { NATIVE_DOWNLOAD } from '../../audio/native';
 import { diagnose, playStep, STEPS, type StepId, type Verdict } from '../../audio/soundTest';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore, actions } from '../../state/store';
@@ -7,9 +8,10 @@ import { MAX_CAPO, OFFSET_MAX, OFFSET_MIN, openStrings, ord, sameArr, stringLabe
 import s from './SetupSheet.module.css';
 
 export function SetupSheet() {
-  const { open, setup, devices, deviceId, mic, level, headstock } = useStore(
+  const { open, setup, devices, deviceId, mic, level, headstock, native } = useStore(
     useShallow((x) => ({
       open: x.setupOpen, setup: x.setup, devices: x.engine.devices, deviceId: x.engine.deviceId, mic: x.engine.mic, level: x.level, headstock: x.headstock,
+      native: x.engine.native === 'connected',
     })),
   );
   const doneRef = useRef<HTMLButtonElement>(null);
@@ -109,9 +111,11 @@ export function SetupSheet() {
         <div>
           <div className={s.secHead}>
             <div className="kicker">INPUT</div>
-            <div className={s.secNote}>{mic === 'live' ? 'Play a note and watch the meter' : 'Allow the microphone to choose an input'}</div>
+            <div className={s.secNote}>
+              {native ? 'From Fretline Engine · choose the device below' : mic === 'live' ? 'Play a note and watch the meter' : 'Allow the microphone to choose an input'}
+            </div>
           </div>
-          {devices.length > 0 && (
+          {!native && devices.length > 0 && (
             <div className={s.tunings}>
               {devices.map((d) => (
                 <button key={d.id} className={s.opt} aria-pressed={d.id === deviceId} onClick={() => actions.selectDevice(d.id)}>
@@ -123,7 +127,9 @@ export function SetupSheet() {
           <InputMeter level={level} />
         </div>
 
-        <SoundCheck />
+        <NativeEngine />
+
+        {!native && <SoundCheck />}
 
         <Detection />
 
@@ -514,6 +520,146 @@ function InputEffectsSteps() {
         </li>
         <li>Still breaking up? Set the input and your speakers to the same rate (for example 48000 Hz) under <kbd>mmsys.cpl</kbd> → device → Advanced.</li>
       </ol>
+    </>
+  );
+}
+
+/** Status dot: gold looking, green connected, red problem. */
+function Dot({ state }: { state: 'look' | 'ok' | 'bad' }) {
+  return <span className={s.dot} data-state={state} aria-hidden />;
+}
+
+/**
+ * The native engine: Chrome on Windows can't get under ~50 ms from string to speaker, so pedals
+ * and the looper can move to a small native app that plays at a few milliseconds.
+ */
+function NativeEngine() {
+  const { on, conn, st } = useStore(useShallow((x) => ({ on: x.nativeOn, conn: x.engine.native, st: x.engine.nativeStatus })));
+  if (!IS_WINDOWS && !on) return null;
+  const connected = conn === 'connected' && !!st;
+  const set = (nativeOn: boolean) => useStore.setState({ nativeOn });
+  const head = !on
+    ? 'Pedals with almost no delay'
+    : connected ? 'Connected · Fretline Engine ' + st.version
+    : conn === 'outdated' ? 'This engine needs an update'
+    : 'Looking for Fretline Engine on this computer';
+  return (
+    <div>
+      <div className={s.secHead}>
+        <div className="kicker">LOW-LATENCY ENGINE</div>
+        <div className={s.secNote}>
+          {on && <Dot state={connected ? (st.error ? 'bad' : 'ok') : conn === 'outdated' ? 'bad' : 'look'} />}
+          {head}
+        </div>
+      </div>
+      {!on && (
+        <>
+          <div className={s.secNote}>
+            Chrome adds about 40 ms on the way to your speakers, which is too slow to play through pedals. Fretline Engine is a small Windows app that
+            runs the pedals and looper in a few milliseconds instead. The tuner, chords and tabs keep working the same.
+          </div>
+          <div className={s.soundRow} style={{ marginTop: 10 }}>
+            <a className={s.testOk} href={NATIVE_DOWNLOAD}>Download for Windows</a>
+            <button className={s.testBtn} onClick={() => set(true)}>I've installed it, connect</button>
+          </div>
+          <div className={s.help}>
+            <div>
+              The installer isn't code-signed yet. If Windows SmartScreen warns, choose <b>More info</b>, then <b>Run anyway</b>.
+            </div>
+            <div style={{ marginTop: 6 }}>
+              When Chrome asks to let this site connect to devices on your network, choose <b>Allow</b>: that's how Fretline reaches the engine on this
+              computer. Nothing leaves your machine.
+            </div>
+          </div>
+        </>
+      )}
+      {on && !connected && (
+        <>
+          <div className={s.secNote}>
+            {conn === 'outdated'
+              ? 'The engine running on this computer (' + (st?.version ?? 'unknown') + ') doesn\u2019t match this version of Fretline. Install the latest one.'
+              : 'Start Fretline Engine from the Start menu; it sits in the notification area. Until it\u2019s running, Fretline uses the browser\u2019s audio as before.'}
+          </div>
+          <div className={s.soundRow} style={{ marginTop: 10 }}>
+            <a className={s.testOk} href={NATIVE_DOWNLOAD}>Download</a>
+            <button className={s.testBtn} onClick={() => engine.retryNative()}>Try again</button>
+            <button className={s.testLink} onClick={() => set(false)}>Stop using the engine</button>
+          </div>
+        </>
+      )}
+      {connected && <NativePanel />}
+    </div>
+  );
+}
+
+function NativePanel() {
+  const { st, inId, outId, exIn, exOut } = useStore(
+    useShallow((x) => ({ st: x.engine.nativeStatus!, inId: x.nativeInput, outId: x.nativeOutput, exIn: x.nativeExclusiveIn, exOut: x.nativeExclusiveOut })),
+  );
+  const lat = st.latency;
+  const mode = (m?: string) => (m === 'exclusive' ? 'exclusive' : m === 'low-latency shared' ? 'low-latency shared' : m ? m : 'closed');
+  const pick = (label: string, list: Array<{ id: string; name: string }>, value: string, key: 'nativeInput' | 'nativeOutput') => (
+    <div style={{ marginTop: 14 }}>
+      <div className={s.secHead}>
+        <div className="kicker">{label}</div>
+      </div>
+      <div className={s.tunings}>
+        {[{ id: '', name: 'Windows default' }, ...list].map((d) => (
+          <button key={d.id || 'default'} className={s.opt} aria-pressed={value === d.id} onClick={() => useStore.setState({ [key]: d.id })}>
+            <span className={s.optName} title={d.name}>{d.name}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+  return (
+    <>
+      {st.error && <div className={s.warn}>{st.error}</div>}
+      {lat && (
+        <>
+          <div className={s.secNote}>{'Delay through Output about ' + Math.round(lat.totalMs) + ' ms (engine estimate; your driver can add a little)'}</div>
+          <div className={s.breakdown} aria-label="Where the delay comes from">
+            {(
+              [
+                ['Input', lat.inputMs, mode(st.input?.mode)],
+                ['Buffer', lat.bufferMs, 'keeps the two devices in step'],
+                ['Output', lat.outputMs, mode(st.output?.mode)],
+              ] as const
+            ).map(([name, ms, note]) => (
+              <div key={name} className={s.bdRow}>
+                <span className={s.bdName}>{name}</span>
+                <span className={s.bdBar}>
+                  <span style={{ width: Math.min(100, (ms / Math.max(lat.totalMs, 1)) * 100) + '%' }} />
+                </span>
+                <span className={s.bdMs}>{ms < 1 ? '<1' : ms.toFixed(1)} ms</span>
+                <span className={s.bdNote}>{note}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <OutputMeter />
+      {pick('GUITAR INPUT', st.inputs, inId, 'nativeInput')}
+      <div className={s.tunings} style={{ marginTop: 8 }}>
+        {([[true, 'Exclusive', 'Recommended: skips Windows input effects'], [false, 'Shared', 'If another app needs this input too']] as const).map(([v, name, sub]) => (
+          <button key={name} className={s.opt} aria-pressed={exIn === v} onClick={() => useStore.setState({ nativeExclusiveIn: v })}>
+            <span className={s.optName}>{name}</span>
+            <span className={s.optSub}>{sub}</span>
+          </button>
+        ))}
+      </div>
+      {pick('SPEAKERS', st.outputs, outId, 'nativeOutput')}
+      <div className={s.tunings} style={{ marginTop: 8 }}>
+        {([[false, 'Shared', 'Other apps keep playing'], [true, 'Exclusive', 'Lowest delay; other sound stops while Output is on']] as const).map(([v, name, sub]) => (
+          <button key={name} className={s.opt} aria-pressed={exOut === v} onClick={() => useStore.setState({ nativeExclusiveOut: v })}>
+            <span className={s.optName}>{name}</span>
+            <span className={s.optSub}>{sub}</span>
+          </button>
+        ))}
+      </div>
+      <div className={s.soundRow} style={{ marginTop: 12 }}>
+        <button className={s.testLink} onClick={() => useStore.setState({ nativeOn: false })}>Stop using the engine</button>
+      </div>
     </>
   );
 }

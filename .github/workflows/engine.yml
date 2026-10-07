@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'engine/**'
+      - 'src/audio/native.ts'
+      - 'src/audio/engine.ts'
       - '.github/workflows/engine.yml'
   workflow_dispatch:
 
@@ -33,6 +35,16 @@ jobs:
           node-version: 24
       - run: npm install --no-save --prefix tests ws
       - run: node tests/smoke.mjs target/release/fretline-engine
+      - name: Web app against the engine (headless Chromium)
+        run: |
+          cd ..
+          npm ci
+          npm run build
+          npx --yes playwright@1 install --with-deps chromium
+          npm install --no-save --prefix engine/tests playwright@1
+          (npx vite preview --port 4180 --strictPort &)
+          sleep 3
+          node engine/tests/e2e-web.mjs engine/target/release/fretline-engine http://localhost:4180/
 
   windows:
     runs-on: windows-latest
@@ -62,7 +74,12 @@ jobs:
       - name: Engine log
         if: always()
         shell: pwsh
-        run: Get-Content "$env:LOCALAPPDATA\Fretline\engine.log" -ErrorAction SilentlyContinue
+        run: |
+          $log = Get-Content "$env:LOCALAPPDATA\Fretline\engine.log" -ErrorAction SilentlyContinue
+          $log
+          # Also as an annotation, readable from the API without downloading logs.
+          $probe = ($log | Select-String -Pattern 'inputs:|outputs:|default (in|out)put|exclusive|shared|failed' | Select-Object -Last 12) -join '%0A'
+          if ($probe) { "::notice title=WASAPI probe::$probe" }
       - name: Build installer
         shell: pwsh
         run: |

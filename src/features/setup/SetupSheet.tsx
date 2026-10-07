@@ -203,6 +203,7 @@ function SoundCheck() {
         </span>
       </div>
       <OutputMeter />
+      <OutputPicker />
       <SoundTest />
       {IS_WINDOWS && (
         <div className={s.help}>
@@ -422,16 +423,16 @@ function SoundTest() {
 function LatencyChoice() {
   const latency = useStore((x) => x.latency);
   const [initial] = useState(latency);
-  const [delay, setDelay] = useState(() => engine.delayMs());
+  const [lb, setLb] = useState(() => engine.latencyBreakdown());
   useEffect(() => {
-    const t = setInterval(() => setDelay(engine.delayMs()), 1000);
+    const t = setInterval(() => setLb(engine.latencyBreakdown()), 1000);
     return () => clearInterval(t);
   }, []);
   return (
     <div style={{ marginTop: 12 }}>
       <div className={s.secHead}>
         <div className="kicker">AUDIO BUFFERS</div>
-        <div className={s.secNote}>{latency !== initial ? 'Reload to apply' : delay ? 'Delay through Output about ' + delay + ' ms' : ''}</div>
+        <div className={s.secNote}>{latency !== initial ? 'Reload to apply' : lb.totalMs ? 'Delay through Output about ' + lb.totalMs + ' ms' : ''}</div>
       </div>
       <div className={s.tunings}>
         {([['lowest', 'Lowest', 'Smallest delay for pedals'], ['interactive', 'Low', 'If Lowest crackles'], ['playback', 'Safe', 'If sound breaks up']] as const).map(([id, name, sub]) => (
@@ -446,6 +447,49 @@ function LatencyChoice() {
           Reload now
         </button>
       )}
+      {lb.totalMs > 0 && (
+        <div className={s.breakdown} aria-label="Where the delay comes from">
+          {(
+            [
+              ['Input', lb.inputMs, lb.inputSource === 'measured' ? 'measured' : lb.inputSource === 'reported' ? 'reported' : 'typical, not reported'],
+              ['Engine', lb.engineMs, 'Chrome'],
+              ['Output', lb.outputMs, 'speakers / driver'],
+              ...(lb.pedalsMs ? ([['Pedals', lb.pedalsMs, 'compressor look-ahead']] as const) : []),
+            ] as const
+          ).map(([name, ms, note]) => (
+            <div key={name} className={s.bdRow}>
+              <span className={s.bdName}>{name}</span>
+              <span className={s.bdBar}>
+                <span style={{ width: Math.min(100, (ms / Math.max(lb.totalMs, 1)) * 100) + '%' }} />
+              </span>
+              <span className={s.bdMs}>{ms < 1 ? '<1' : ms} ms</span>
+              <span className={s.bdNote}>{note}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Choose where Fretline's sound goes; each device has its own driver delay. */
+function OutputPicker() {
+  const { outputs, can } = useStore(useShallow((x) => ({ outputs: x.engine.outputs, can: x.engine.canPickOutput })));
+  const outputId = useStore((x) => x.outputId);
+  if (!can || outputs.length < 1) return null;
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div className={s.secHead}>
+        <div className="kicker">OUTPUT</div>
+        <div className={s.secNote}>Headphones on your interface are usually much quicker than laptop speakers</div>
+      </div>
+      <div className={s.tunings}>
+        {[{ id: '', label: 'System default' }, ...outputs].map((d) => (
+          <button key={d.id || 'default'} className={s.opt} aria-pressed={outputId === d.id} onClick={() => useStore.setState({ outputId: d.id })}>
+            <span className={s.optName} title={d.label}>{d.label}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -379,3 +379,42 @@
   text-decoration: underline;
   padding: 0;
 }
+.breakdown {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+.bdRow {
+  display: grid;
+  grid-template-columns: 56px minmax(60px, 1fr) 52px minmax(0, 1.2fr);
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.bdName {
+  color: var(--ink);
+  font-weight: 600;
+}
+.bdBar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--fill-2);
+  overflow: hidden;
+}
+.bdBar > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--gold), var(--red));
+}
+.bdMs {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.bdNote {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -30,6 +30,12 @@ export interface EngineStatus {
   ml: MlStatus;
   mlBackend: string;
   devices: InputDevice[];
+  /** Audio output devices (speakers, headphones, interface outputs). */
+  outputs: InputDevice[];
+  /** Output device in use ('' = system default). */
+  outputId: string;
+  /** setSinkId is available, so the output can be chosen. */
+  canPickOutput: boolean;
   /** Device actually in use. */
   deviceId: string;
 }
@@ -88,7 +94,9 @@ class AudioEngine {
   output = false;
   /** Audio buffer size preference; 'playback' trades latency for robustness on struggling systems. */
   latency: LatencyMode = 'lowest';
-  status: EngineStatus = { mic: 'idle', running: false, ml: 'off', mlBackend: '', devices: [], deviceId: '' };
+  status: EngineStatus = { mic: 'idle', running: false, ml: 'off', mlBackend: '', devices: [], deviceId: '', outputs: [], outputId: '', canPickOutput: false };
+  /** Output device to use when the context is (re)created; '' = system default. */
+  outputId = '';
 
   on<K extends keyof Events>(k: K, fn: Listener<K>) {
     this.listeners[k].add(fn);
@@ -142,6 +150,10 @@ class AudioEngine {
         this.startWorkers(ac);
       });
       this.applyPedals(this.pedals);
+    }
+    if (this.outputId && !this.sinkApplied) {
+      this.sinkApplied = true;
+      this.setOutputDevice(this.outputId);
     }
     if (this.ac.state === 'suspended') this.ac.resume().catch(() => {});
     this.setStatus({ running: this.ac.state === 'running' });
@@ -344,17 +356,58 @@ class AudioEngine {
     return 20 * Math.log10(Math.sqrt(sum / b.length) + 1e-9);
   }
 
+  private sinkApplied = false;
+
+  /** Route all of Fretline's sound to a specific output device ('' = system default). */
+  async setOutputDevice(id: string) {
+    this.outputId = id;
+    const ac = this.ac as (AudioContext & { setSinkId?: (id: string) => Promise<void> }) | null;
+    if (!ac?.setSinkId) return;
+    try {
+      await ac.setSinkId(id);
+      this.setStatus({ outputId: id });
+    } catch {
+      // Unplugged or not allowed: fall back to the system default.
+      await ac.setSinkId('').catch(() => {});
+      this.outputId = '';
+      this.setStatus({ outputId: '' });
+    }
+  }
+
   /**
-   * Estimated delay from string to speaker through Output: capture buffer + engine block +
-   * output buffer (+6 ms if the compressor's fixed look-ahead is in the chain).
+   * Where the delay from string to speaker goes when playing through Output. Input comes from
+   * Chrome's live track stats when available, then the track's reported latency, else a typical
+   * 10 ms. The compressor adds its fixed 6 ms look-ahead when it's on.
    */
-  delayMs(): number {
+  latencyBreakdown() {
     const ac = this.ac;
-    if (!ac) return 0;
-    const st = this.stream?.getAudioTracks()[0]?.getSettings() as (MediaTrackSettings & { latency?: number }) | undefined;
-    const out = ((ac as AudioContext & { outputLatency?: number }).outputLatency || 0) + (ac.baseLatency || 0);
-    const comp = this.pedals.some((p) => p.on && p.name === 'Compressor') ? 0.006 : 0;
-    return Math.round((out + (st?.latency ?? 0.01) + comp) * 1000);
+    const t = this.stream?.getAudioTracks()[0] as (MediaStreamTrack & { stats?: { latency?: number; averageLatency?: number } }) | undefined;
+    const st = t?.getSettings() as (MediaTrackSettings & { latency?: number }) | undefined;
+    let inputMs = 10;
+    let inputSource: 'measured' | 'reported' | 'typical' = 'typical';
+    const live = t?.stats?.averageLatency ?? t?.stats?.latency;
+    if (typeof live === 'number' && live > 0) {
+      inputMs = live; // MediaStreamTrackAudioStats reports milliseconds
+      inputSource = 'measured';
+    } else if (typeof st?.latency === 'number' && st.latency > 0) {
+      inputMs = st.latency * 1000;
+      inputSource = 'reported';
+    }
+    const engineMs = ac ? (ac.baseLatency || 0) * 1000 : 0;
+    const outputMs = ac ? ((ac as AudioContext & { outputLatency?: number }).outputLatency || 0) * 1000 : 0;
+    const pedalsMs = this.pedals.some((p) => p.on && p.name === 'Compressor') ? 6 : 0;
+    return {
+      inputMs: Math.round(inputMs),
+      inputSource,
+      engineMs: Math.round(engineMs),
+      outputMs: Math.round(outputMs),
+      pedalsMs,
+      totalMs: Math.round(inputMs + engineMs + outputMs + pedalsMs),
+    };
+  }
+
+  delayMs(): number {
+    return this.ac ? this.latencyBreakdown().totalMs : 0;
   }
 
   /** Snapshot for the Sound check panel. */
@@ -415,7 +468,10 @@ class AudioEngine {
       const devices = all
         .filter((d) => d.kind === 'audioinput' && d.deviceId !== 'default' && d.deviceId !== 'communications')
         .map((d, i) => ({ id: d.deviceId, label: d.label || 'Input ' + (i + 1) }));
-      this.setStatus({ devices });
+      const outputs = all
+        .filter((d) => d.kind === 'audiooutput' && d.deviceId !== 'default' && d.deviceId !== 'communications')
+        .map((d, i) => ({ id: d.deviceId, label: d.label || 'Output ' + (i + 1) }));
+      this.setStatus({ devices, outputs, canPickOutput: !!this.ac && 'setSinkId' in this.ac });
     } catch {
       /* enumerate is best effort */
     }

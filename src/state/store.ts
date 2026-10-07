@@ -58,6 +58,8 @@ export interface State {
   mlOn: boolean;
   /** Audio buffer size: 'interactive' (lowest delay) or 'playback' (larger, more robust). Applies on reload. */
   latency: LatencyMode;
+  /** Output device for all of Fretline's sound ('' = system default). */
+  outputId: string;
   // chords
   frets: Shape;
   baseFret: number;
@@ -108,6 +110,7 @@ const initial: State = {
   gateLevel: 'normal',
   mlOn: true,
   latency: 'lowest',
+  outputId: '',
   frets: [-1, 3, 2, 0, 1, 0],
   baseFret: 1,
   heard: null,
@@ -137,7 +140,7 @@ const set = useStore.setState;
 
 // ---------------------------------------------------------------- persistence
 
-const PERSIST: Array<keyof State> = ['tab', 'setup', 'pedals', 'timeSig', 'gapBeats', 'chordMode', 'deviceId', 'headstock', 'gateLevel', 'mlOn', 'latency'];
+const PERSIST: Array<keyof State> = ['tab', 'setup', 'pedals', 'timeSig', 'gapBeats', 'chordMode', 'deviceId', 'headstock', 'gateLevel', 'mlOn', 'latency', 'outputId'];
 
 export async function hydrate() {
   try {
@@ -173,6 +176,7 @@ export async function hydrate() {
     if (s.pedals !== prev.pedals) engine.applyPedals(s.pedals);
     if (s.gateLevel !== prev.gateLevel) engine.setGate(GATE_DB[s.gateLevel] ?? 12);
     if (s.mlOn !== prev.mlOn) engine.setMl(s.mlOn);
+    if (s.outputId !== prev.outputId) engine.setOutputDevice(s.outputId);
     if (s.frets !== prev.frets || s.baseFret !== prev.baseFret || s.setup !== prev.setup) {
       shapeAt = engine.clock();
       okSince = okUntil = 0;
@@ -184,6 +188,7 @@ export async function hydrate() {
   engine.setGate(GATE_DB[get().gateLevel] ?? 12);
   engine.setMl(get().mlOn);
   engine.latency = get().latency;
+  engine.outputId = get().outputId;
 }
 
 // ---------------------------------------------------------------- engine wiring

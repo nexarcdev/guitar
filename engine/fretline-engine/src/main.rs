@@ -6,6 +6,7 @@
 //!   --test          use the device-free test backend (default off Windows)
 //!   --test-wav      play FILE as the guitar (implies --test)
 //!   --record        write what the speakers would play to FILE (test backend)
+//!   --probe         log the audio devices and try opening the defaults, then exit
 
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
@@ -28,10 +29,11 @@ struct Args {
     test: bool,
     wav: Option<PathBuf>,
     record: Option<PathBuf>,
+    probe: bool,
 }
 
 fn args() -> Args {
-    let mut a = Args { port: protocol::DEFAULT_PORT, test: !cfg!(windows), wav: None, record: None };
+    let mut a = Args { port: protocol::DEFAULT_PORT, test: !cfg!(windows), wav: None, record: None, probe: false };
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
         match arg.as_str() {
@@ -42,6 +44,7 @@ fn args() -> Args {
                 a.wav = it.next().map(PathBuf::from);
             }
             "--record" => a.record = it.next().map(PathBuf::from),
+            "--probe" => a.probe = true,
             _ => log!("ignoring argument {arg}"),
         }
     }
@@ -52,6 +55,12 @@ fn main() {
     logging::init();
     let a = args();
     log!("Fretline engine {} starting", engine::VERSION);
+
+    if a.probe {
+        let backend: Box<dyn Backend> = if a.test { Box::new(TestBackend::new(a.wav, a.record)) } else { platform_backend() };
+        probe(backend);
+        return;
+    }
 
     // Binding doubles as the single-instance check.
     let listener = match TcpListener::bind(("127.0.0.1", a.port)) {
@@ -85,6 +94,19 @@ fn main() {
         loop {
             std::thread::park();
         }
+    }
+}
+
+/// Diagnostics: what the engine can see and open, written to the log.
+fn probe(mut b: Box<dyn Backend>) {
+    log!("inputs: {:?}", b.inputs());
+    log!("outputs: {:?}", b.outputs());
+    for exclusive in [false, true] {
+        let r = b.open_input("", exclusive, Box::new(|_| Box::new(|_| {})), Box::new(|e| log!("input error: {e}")));
+        log!("default input, exclusive {exclusive}: {:?}", r.as_ref().map(|s| s.info().clone()));
+        drop(r);
+        let r = b.open_output("", exclusive, Box::new(|_| Box::new(|o: &mut [f32]| o.fill(0.0))), Box::new(|e| log!("output error: {e}")));
+        log!("default output, exclusive {exclusive}: {:?}", r.as_ref().map(|s| s.info().clone()));
     }
 }
 

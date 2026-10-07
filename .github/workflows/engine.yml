@@ -1,0 +1,93 @@
+name: Engine
+
+on:
+  push:
+    paths:
+      - 'engine/**'
+      - '.github/workflows/engine.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: engine-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup toolchain install stable --profile minimal && rustup default stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+      - run: cargo test --release
+      - run: cargo build --release
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install --no-save --prefix tests ws
+      - run: node tests/smoke.mjs target/release/fretline-engine
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup toolchain install stable --profile minimal && rustup default stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+      - run: cargo test --release
+      - run: cargo build --release
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: npm install --no-save --prefix tests ws
+      - name: Smoke test (test backend)
+        run: node tests/smoke.mjs target/release/fretline-engine.exe
+      - name: Probe WASAPI (runners have no sound card; this checks it fails gracefully)
+        shell: pwsh
+        run: |
+          $p = Start-Process target/release/fretline-engine.exe -ArgumentList '--probe' -PassThru -Wait
+          "probe exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { exit 1 }
+      - name: Engine log
+        if: always()
+        shell: pwsh
+        run: Get-Content "$env:LOCALAPPDATA\Fretline\engine.log" -ErrorAction SilentlyContinue
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          $v = (Select-String -Path fretline-engine/Cargo.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          & $iscc "/DAppVersion=$v" installer/fretline-engine.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "ENGINE_VERSION=$v" >> $env:GITHUB_ENV
+      - uses: actions/upload-artifact@v6
+        with:
+          name: FretlineEngineSetup
+          path: engine/target/installer/FretlineEngineSetup.exe
+      - name: Publish release
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="engine-v$ENGINE_VERSION"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" target/installer/FretlineEngineSetup.exe --clobber
+          else
+            gh release create "$tag" target/installer/FretlineEngineSetup.exe \
+              --target "$GITHUB_SHA" --latest \
+              --title "Fretline Engine $ENGINE_VERSION" \
+              --notes "Low-latency audio engine for Fretline on Windows. Run FretlineEngineSetup.exe, then reload Fretline: it connects automatically. The installer is not code-signed yet, so Windows SmartScreen will warn; choose More info, then Run anyway."
+          fi

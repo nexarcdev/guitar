@@ -1,8 +1,0 @@
-[package]
-name = "fretline-dsp"
-version = "0.1.0"
-edition = "2021"
-description = "Real-time guitar DSP for the Fretline low-latency engine: input conditioning, pedals, looper."
-license = "MIT"
-
-[dependencies]

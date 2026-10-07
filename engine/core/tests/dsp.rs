@@ -1,7 +1,7 @@
-use fretline_dsp::conditioner::Conditioner;
-use fretline_dsp::drift::DriftReader;
-use fretline_dsp::looper::{Looper, SlotState};
-use fretline_dsp::{Chain, Command, PedalKind, PedalSetting};
+use fretline_core::conditioner::Conditioner;
+use fretline_core::drift::DriftReader;
+use fretline_core::looper::{Looper, SlotState};
+use fretline_core::{Chain, Command, PedalKind, PedalSetting};
 
 const SR: f32 = 48000.0;
 

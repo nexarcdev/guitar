@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["dsp", "fretline-engine"]
+members = ["core", "fretline-engine"]
 
 [profile.release]
 opt-level = 3

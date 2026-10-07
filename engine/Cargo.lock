@@ -258,15 +258,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "fretline-dsp"
+name = "fretline-core"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "fretline-engine"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
- "fretline-dsp",
+ "fretline-core",
  "hound",
  "rtrb",
  "serde",

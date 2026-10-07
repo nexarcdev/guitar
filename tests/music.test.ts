@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { identifyMidi, identifyShape, openStrings, PRESETS, shapeFor, STD_SETUP, tuningName, setupStr, stringLabel, type Setup } from '../src/theory/music';
+import { identifyMidi, identifyFrets, openStrings, PRESETS, shapeFor, STD_SETUP, tuningName, setupStr, stringLabel, type Setup } from '../src/theory/music';
 import { finger } from '../src/theory/fingering';
 
 describe('music', () => {
@@ -13,14 +13,14 @@ describe('music', () => {
     expect(stringLabel('E', 0)).toBe('E');
   });
   it('identifies preset shapes', () => {
-    expect(identifyShape(PRESETS.C, 1, STD_SETUP).name).toBe('C');
-    expect(identifyShape(PRESETS.Am, 1, STD_SETUP).name).toBe('Am');
-    expect(identifyShape(PRESETS.Cmaj7, 1, STD_SETUP).name).toBe('Cmaj7');
-    expect(identifyShape(PRESETS.E7, 1, STD_SETUP).name).toBe('E7');
+    expect(identifyFrets(PRESETS.C, 1, STD_SETUP).name).toBe('C');
+    expect(identifyFrets(PRESETS.Am, 1, STD_SETUP).name).toBe('Am');
+    expect(identifyFrets(PRESETS.Cmaj7, 1, STD_SETUP).name).toBe('Cmaj7');
+    expect(identifyFrets(PRESETS.E7, 1, STD_SETUP).name).toBe('E7');
   });
   it('transposes with capo and tuning', () => {
     const capo2: Setup = { offsets: STD_SETUP.offsets, capo: 2 };
-    expect(identifyShape(PRESETS.G, 1, capo2).name).toBe('A');
+    expect(identifyFrets(PRESETS.G, 1, capo2).name).toBe('A');
     expect(shapeFor('A', capo2)).toEqual(PRESETS.G);
     expect(setupStr({ offsets: [-2, 0, 0, 0, 0, 0], capo: 2 })).toBe('Drop D · Capo 2');
     expect(tuningName([1, 0, 0, 0, 0, 0])).toBe('Custom');

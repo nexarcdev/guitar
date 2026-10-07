@@ -1,8 +1,8 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useStore, actions } from '../../state/store';
 import {
-  absFret, fretMidi, identifyShape, noteName, openStrings, ord, pcOf, PRESETS, stringLabel, tuningName,
-  type Shape,
+  absFret, fretMidi, identifyFrets, noteName, openStrings, ord, pcOf, PRESETS, stringLabel, tuningName,
+  type Frets,
 } from '../../theory/music';
 import s from './Chords.module.css';
 
@@ -17,12 +17,12 @@ export function Chords() {
   const T = openStrings(setup.offsets);
   const confirm = chordMode === 'confirm';
   const hearing = listening && live;
-  const setFrets = (f: Shape) => useStore.setState({ frets: f });
+  const setFrets = (f: Frets) => useStore.setState({ frets: f });
 
-  const ch = identifyShape(frets, baseFret, setup);
+  const ch = identifyFrets(frets, baseFret, setup);
   let chordSub = ch.sub;
   if (setup.capo && ch.root != null) {
-    const shape = identifyShape(frets, baseFret, { ...setup, capo: 0 });
+    const shape = identifyFrets(frets, baseFret, { ...setup, capo: 0 });
     if (shape.root != null && shape.name !== ch.name) chordSub = shape.name + ' shape · ' + ch.sub;
   }
 
@@ -118,7 +118,7 @@ export function Chords() {
                     className={s.histBtn}
                     data-last={i === a.length - 1}
                     data-shape={!!h.frets}
-                    onClick={() => h.frets && useStore.setState({ frets: [...h.frets] as unknown as Shape, baseFret: 1 })}
+                    onClick={() => h.frets && useStore.setState({ frets: [...h.frets] as unknown as Frets, baseFret: 1 })}
                   >
                     {h.name}
                   </button>
@@ -164,7 +164,7 @@ export function Chords() {
                     onClick={() => {
                       const fr = [...frets] as number[];
                       fr[i] = f === -1 ? 0 : -1;
-                      setFrets(fr as unknown as Shape);
+                      setFrets(fr as unknown as Frets);
                     }}
                   >
                     <span className={s.nutLabel}>{stringLabel(T[i].note, i)}</span>
@@ -179,7 +179,7 @@ export function Chords() {
                       onClick={() => {
                         const fr = [...frets] as number[];
                         fr[i] = f === n ? 0 : n;
-                        setFrets(fr as unknown as Shape);
+                        setFrets(fr as unknown as Frets);
                       }}
                     >
                       <span className={s.fdot} data-on={f === n} />
@@ -202,10 +202,10 @@ export function Chords() {
             <div className={`kicker ${s.sectionKicker}`}>COMMON SHAPES</div>
             <div className={s.wrap}>
               {Object.keys(PRESETS).map((name) => {
-                const r = identifyShape(PRESETS[name], 1, setup);
+                const r = identifyFrets(PRESETS[name], 1, setup);
                 const nm = r.root != null ? r.name : '?';
                 return (
-                  <button key={name} className={s.preset} onClick={() => useStore.setState({ frets: [...PRESETS[name]] as unknown as Shape, baseFret: 1 })}>
+                  <button key={name} className={s.preset} onClick={() => useStore.setState({ frets: [...PRESETS[name]] as unknown as Frets, baseFret: 1 })}>
                     <span>{nm}</span>
                     {nm !== name && <span className={s.presetSub}>{name} shape</span>}
                   </button>

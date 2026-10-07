@@ -4,7 +4,7 @@ import { DEFAULT_PEDALS, toStates, withTypes, type Pedal } from '../audio/pedals
 import { NO_PITCH, type Analysis, type ChromaFrame, type FloorSetting, type LooperView, type Notes, type SessionState, type StatePatch } from '../core/protocol';
 import {
   chordFromChroma, fretMidi, identifyMidi, nameSet, openStrings, pcOf, sameArr, shapeFor, STD_SETUP, TUNINGS,
-  type ChordName, type Offsets, type Setup, type Shape,
+  type ChordName, type Offsets, type Setup, type Frets,
 } from '../theory/music';
 import { finger } from '../theory/fingering';
 import { mergeWindow } from '../theory/merge';
@@ -21,7 +21,7 @@ export const gateLevelOf = (db: number): GateLevel => (db <= 10 ? 'low' : db >= 
 export const BUF_SEC = 60;
 
 export interface Heard extends ChordName {
-  frets: Shape | null;
+  frets: Frets | null;
   /** Listening clock when it was decided. */
   t: number;
 }
@@ -59,10 +59,10 @@ export interface State {
   /** Use the native engine when it's running (opt-in: probing localhost can prompt). */
   engineOn: boolean;
   // chords
-  frets: Shape;
+  frets: Frets;
   baseFret: number;
   heard: Heard | null;
-  history: Array<{ name: string; frets: Shape | null }>;
+  history: Array<{ name: string; frets: Frets | null }>;
   chordMode: 'identify' | 'confirm';
   confirm: { heard: number[]; wrong: number[]; ok: boolean };
   /** Exact pitches heard recently by the ML pass, for octave-accurate confirm. */

@@ -2,7 +2,7 @@
 // should be muted is ringing. Works on octave-exact pitch salience, so an open low E is not
 // mistaken for the E on the D string, plus exact pitches the ML pass heard recently.
 
-import { absFret, fretMidi, STD_MIDI, type Setup, type Shape } from './music';
+import { absFret, fretMidi, STD_MIDI, type Setup, type Frets } from './music';
 
 /** A string counts as sounding when its fundamental is within this many dB of the loudest peak. */
 export const HEARD_DB = -30;
@@ -15,7 +15,7 @@ export const WRONG_DB = -8;
 const ML_WINDOW = 2;
 
 export interface ConfirmInput {
-  frets: Shape;
+  frets: Frets;
   baseFret: number;
   setup: Setup;
   /** Held per-MIDI salience (dB relative to the strongest peak), or null when nothing is playing. */

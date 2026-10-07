@@ -61,7 +61,7 @@ try {
     // No service worker: its auto-update reload would restart the page mid-test.
     const page = await browser.newPage({ viewport, serviceWorkers: 'block' });
     currentPage = page;
-    page.on('pageerror', (e) => errors.push(e.message));
+    page.on('pageerror', (e) => errors.push(e.stack ?? e.message));
     await page.goto(appUrl + '?debug');
     await page.mouse.click(5, 300);
     await page.waitForFunction(() => window.__fretline?.useStore.getState().engine.mic === 'live', null, { timeout: 15000 });

@@ -2,7 +2,7 @@
 // Clients send ControlMsg and receive ChannelMsg, whether the channel runs in this browser
 // (WebAssembly) or in the native engine (WebSocket).
 
-export const PROTOCOL = 2;
+export const PROTOCOL = 3;
 
 export type PedalName = 'Compressor' | 'Overdrive' | 'Distortion' | 'Fuzz' | 'Chorus' | 'Phaser' | 'Delay' | 'Reverb';
 

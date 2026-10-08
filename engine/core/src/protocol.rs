@@ -15,7 +15,7 @@ use crate::tracker::TrackerOutput;
 use serde::{Deserialize, Serialize};
 
 /// Bump when a message changes incompatibly.
-pub const PROTOCOL: u32 = 2;
+pub const PROTOCOL: u32 = 3;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct PedalState {

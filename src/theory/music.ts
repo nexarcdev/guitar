@@ -71,7 +71,8 @@ export const fretMidi = (string: number, fret: number, setup: Setup) =>
 
 // ---- chord naming
 
-const TEMPL: ReadonlyArray<readonly [string, readonly number[]]> = [
+/** Chord templates: suffix and intervals from the root. */
+export const TEMPL: ReadonlyArray<readonly [string, readonly number[]]> = [
   ['', [0, 4, 7]], ['m', [0, 3, 7]], ['5', [0, 7]], ['dim', [0, 3, 6]], ['aug', [0, 4, 8]],
   ['sus2', [0, 2, 7]], ['sus4', [0, 5, 7]], ['7', [0, 4, 7, 10]], ['maj7', [0, 4, 7, 11]],
   ['m7', [0, 3, 7, 10]], ['dim7', [0, 3, 6, 9]], ['m7b5', [0, 3, 6, 10]], ['6', [0, 4, 7, 9]],
@@ -117,29 +118,17 @@ export function nameSet(set: number[], bass: number, o: Offsets): ChordName {
 }
 
 /** Frets per string, -1 = muted, 0 = open. `base` is the fret the diagram's first column represents. */
-export type Shape = readonly [number, number, number, number, number, number];
+export type Frets = readonly [number, number, number, number, number, number];
 
 export const absFret = (f: number, base: number) => (f <= 0 ? f : f + base - 1);
 
-export function identifyShape(frets: Shape, base: number, setup: Setup): ChordName {
+export function identifyFrets(frets: Frets, base: number, setup: Setup): ChordName {
   const pcs: number[] = [];
   frets.forEach((f, i) => {
     if (f >= 0) pcs.push(pcOf(fretMidi(i, absFret(f, base), setup)));
   });
   if (!pcs.length) return { name: '·', sub: 'Tap frets to build a chord', notes: [], root: null };
   return nameSet([...new Set(pcs)], pcs[0], setup.offsets);
-}
-
-export const PRESETS: Record<string, Shape> = {
-  C: [-1, 3, 2, 0, 1, 0], G: [3, 2, 0, 0, 0, 3], D: [-1, -1, 0, 2, 3, 2], A: [-1, 0, 2, 2, 2, 0],
-  E: [0, 2, 2, 1, 0, 0], Am: [-1, 0, 2, 2, 1, 0], Em: [0, 2, 2, 0, 0, 0], Dm: [-1, -1, 0, 2, 3, 1],
-  F: [1, 3, 3, 2, 1, 1], E7: [0, 2, 0, 1, 0, 0], Cmaj7: [-1, 3, 2, 0, 0, 0],
-};
-
-/** Finds a common shape that sounds like `name` in this setup, so a heard chord can be shown on the fretboard. */
-export function shapeFor(name: string, setup: Setup): Shape | null {
-  const k = Object.keys(PRESETS).find((k) => identifyShape(PRESETS[k], 1, setup).name === name);
-  return k ? PRESETS[k] : null;
 }
 
 /** Identifies the chord in a set of sounding MIDI notes; the lowest note is the bass. */

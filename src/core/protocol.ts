@@ -2,7 +2,7 @@
 // Clients send ControlMsg and receive ChannelMsg, whether the channel runs in this browser
 // (WebAssembly) or in the native engine (WebSocket).
 
-export const PROTOCOL = 2;
+export const PROTOCOL = 3;
 
 export type PedalName = 'Compressor' | 'Overdrive' | 'Distortion' | 'Fuzz' | 'Chorus' | 'Phaser' | 'Delay' | 'Reverb';
 
@@ -107,10 +107,27 @@ export interface FastNote {
 
 export const NO_PITCH = -120;
 
+/** Fundamentals reported per frame; the app caps to the instrument's string count. */
+export const MAX_FUNDAMENTALS = 8;
+
+export interface Fundamental {
+  midi: number;
+  /** Sine-equivalent RMS dBFS: directly comparable with Levels.floorDb. */
+  db: number;
+}
+
 export interface ChromaFrame {
   chroma: number[];
-  /** Per-MIDI pitch salience in dB relative to the strongest peak (NO_PITCH = none). */
+  /** Per-MIDI pitch salience in dB relative to the strongest peak (NO_PITCH = none). Octave exact. */
   pitch: number[];
+  /** Sine-equivalent dBFS of the strongest peak; pitch[m] + topDb is note m's absolute level. */
+  topDb: number;
+  /**
+   * Notes left after the 2nd to 16th harmonics are attributed to lower notes, loudest first. A note
+   * an octave or a twelfth above a louder one is claimed as its harmonic; the app recovers such
+   * strings from `pitch` with chord knowledge.
+   */
+  fundamentals: Fundamental[];
 }
 
 export interface Levels {
@@ -125,6 +142,10 @@ export interface Levels {
   sinceAttack: number;
   peakDb: number;
   gate: boolean;
+  /** Pick attacks counted since the tracker started; diff between chunks to find new strums. */
+  attacks: number;
+  /** Loudest frame level (dBFS) since the latest attack. */
+  attackDb: number;
 }
 
 export interface Analysis {

@@ -1,0 +1,134 @@
+/* The editable fretboard. */
+.fretRow {
+  display: grid;
+  grid-template-columns: 48px repeat(5, minmax(0, 1fr)) 48px;
+  align-items: center;
+  margin-bottom: 6px;
+  height: 40px;
+}
+
+.chev {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--line-3);
+  background: var(--fill);
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.chev:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.chev:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.fretNum {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.board {
+  border-radius: 18px;
+  overflow: hidden;
+  margin-right: 48px;
+  background: linear-gradient(180deg, rgba(60, 30, 28, 0.7), rgba(30, 16, 16, 0.8));
+}
+
+.string {
+  display: grid;
+  grid-template-columns: 48px repeat(5, minmax(0, 1fr));
+  height: 46px;
+  transition: background 0.2s;
+  --str: rgba(255, 255, 255, 0.35);
+  --dot: radial-gradient(circle at 35% 30%, #f6d98a, #e9b949 50%, #b8862a);
+  --dotShadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.string[data-heard='true'] {
+  background: rgba(74, 222, 128, 0.14);
+  --str: rgba(74, 222, 128, 0.8);
+  --dot: radial-gradient(circle at 35% 30%, #a7f3c4, #4ade80 50%, #15803d);
+  --dotShadow: 0 0 16px rgba(74, 222, 128, 0.7);
+}
+
+.string[data-wrong='true'] {
+  background: rgba(224, 64, 64, 0.16);
+  --str: rgba(224, 64, 64, 0.85);
+}
+
+.string[data-wrong='true'] .nutLabel {
+  color: var(--red-ink);
+}
+
+.string[data-wrong='true'] .nut {
+  text-shadow: 0 0 12px rgba(224, 64, 64, 0.9);
+}
+
+.nut {
+  border: none;
+  border-right: 4px solid var(--gold);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.nut:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nutLabel {
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+
+.string[data-heard='true'] .nutLabel {
+  color: var(--green);
+}
+
+.cell {
+  border: none;
+  border-right: 2px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(transparent 47%, var(--str) 47%, var(--str) 53%, transparent 53%);
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.cell:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.fdot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--dot);
+  box-shadow: var(--dotShadow);
+  transition: all 0.15s;
+  transform: scale(0.4);
+  opacity: 0;
+}
+
+.fdot[data-on='true'] {
+  transform: scale(1);
+  opacity: 1;
+}
+.string[data-missing='true'] .fdot[data-on='true'] {
+  opacity: 0.45;
+}

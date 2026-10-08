@@ -88,6 +88,7 @@ const snap = () =>
       channel: s.engine.channel, conn: s.engine.engine, mic: s.engine.mic, ml: s.engine.ml, backend: s.engine.mlBackend, st: s.engine.status, session: s.session,
       looper: s.looper, levels: s.levels, freq: s.freq, voiced: s.voiced, notes: s.buf.filter((n) => !n.p).map((n) => n.m), clock: engine.clock(), outDb: engine.outputDb(),
       micOpen: engine.diagnostics()?.micOpen, pedals: s.pedals,
+      heardName: s.heard?.name.name, locked: s.locked, verdict: s.heard?.verdict?.status, fixes: s.heard?.verdict?.fixes, progression: s.progression.map((e) => e.name.name),
     };
   });
 const waitFor = async (pred, ms) => {
@@ -153,6 +154,22 @@ try {
   await call('engine.reference', 440);
   s = await waitFor((x) => x.outDb > -25, 1500);
   check(s.outDb > -25, `web: reference tone from the core synth (${s.outDb.toFixed(1)} dBFS)`);
+
+  // Chords: following the phrase's A major strum, then judging it against a target.
+  await page.getByRole('button', { name: 'Chords' }).first().click();
+  s = await waitFor((x) => x.heardName === 'A', 9500);
+  check(s.heardName === 'A' && s.progression?.includes('A') && !s.locked, `web: followed the A strum (${s.progression?.join(' ') || 'nothing heard'})`);
+  // The phrase's single plucks get verdicts too; the ones that matter here are on the A strum.
+  await call('actions.setTarget', [-1, 0, 2, 2, 2, 0], 1);
+  s = await waitFor((x) => x.verdict != null && x.heardName === 'A', 9500);
+  check(s.locked && (s.verdict === 'exact' || s.verdict === 'sameName'), `web: open A judged against an A target (${s.verdict}, heard ${s.heardName})`);
+  await call('actions.setTarget', [-1, 0, 2, 2, 1, 0], 1);
+  s = await waitFor((x) => x.verdict != null && x.heardName === 'A', 9500);
+  check(s.verdict === 'different' && s.heardName === 'A', `web: A against an Am target is different, heard ${s.heardName}${s.fixes?.length ? ' (' + s.fixes.join(', ') + ')' : ''}`);
+  await page.getByRole('button', { name: /^Locked/ }).click();
+  s = await waitFor((x) => !x.locked, 1500);
+  check(!s.locked, 'web: the padlock unlocks');
+  await page.getByRole('button', { name: 'Tuner' }).first().click();
 
   // Noise floor through the Studio: fixed floor, keyboard on the threshold, back to following.
   await page.getByRole('button', { name: 'Studio', exact: true }).filter({ visible: true }).first().click();

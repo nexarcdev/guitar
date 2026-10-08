@@ -61,6 +61,7 @@ describe('worklet → tracker (web channel audio path)', () => {
     for (let i = 0; i < sig.length; i++) sig[i] = rnd() * 0.0003;
     pluck(sig, 45, 1.2, 0.3, SR, rnd);
     const notes: number[] = [];
+    const chromas: Array<ChromaFrame & { clock: number }> = [];
     let last: Analysis | null = null;
     let chunks = 0;
     for (let b = 0; b + 128 <= sig.length; b += 128) {
@@ -72,11 +73,20 @@ describe('worklet → tracker (web channel audio path)', () => {
         t.f32(t.x.tracker_buf(), CHUNK).set(w.f32(w.x.chunk_ptr(k), CHUNK));
         last = JSON.parse(t.read(t.x.tracker_push(w.x.chunk_t0(k), CHUNK)));
         notes.push(...last!.notes.map((x) => x.midi));
+        if (last!.chroma) chromas.push({ ...last!.chroma, clock: last!.clock });
       }
     }
     expect(notes).toEqual([45]);
     expect(last!.clock).toBeCloseTo((chunks * CHUNK) / SR, 6);
     expect(last!.levels.floorDb).toBeLessThan(-70);
+    // One pluck is one attack, and the chroma frames name it as one fundamental at an absolute level.
+    expect(last!.levels.attacks).toBe(1);
+    // Judged as the app does: 150 ms after the attack (the transient is broadband) and well above
+    // the floor (the tail decays into the noise).
+    const cf = chromas.filter((c) => c.clock >= 1.2 + 0.15 && c.fundamentals.length && c.topDb > last!.levels.floorDb + 20);
+    expect(cf.length).toBeGreaterThan(3);
+    expect(cf.map((c) => c.fundamentals[0].midi)).toEqual(cf.map(() => 45));
+    expect(cf.every((c) => c.fundamentals[0].db <= c.topDb + 1e-3 && c.fundamentals[0].db > last!.levels.floorDb + 12)).toBe(true);
     // Listening off: the clock stops.
     w.x.capture_listening(0);
     const before = w.x.capture_clock();

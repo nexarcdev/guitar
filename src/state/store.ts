@@ -19,9 +19,9 @@ import { trail } from './trail';
 
 export type TabId = 'tuner' | 'chords' | 'tabs' | 'pedals';
 export type GateLevel = 'low' | 'normal' | 'high';
+export type StudioTab = 'guitar' | 'input' | 'sound' | 'engine' | 'diagnostics';
 /** dB above the noise floor at which each gate setting opens. */
 export const GATE_DB: Record<GateLevel, number> = { low: 8, normal: 12, high: 18 };
-export const gateLevelOf = (db: number): GateLevel => (db <= 10 ? 'low' : db >= 15 ? 'high' : 'normal');
 export const BUF_SEC = 60;
 
 /** A chord in the progression: what was played (or tapped), in the voicing it was played. */
@@ -56,6 +56,8 @@ export interface State {
   tab: TabId;
   setup: Setup;
   setupOpen: boolean;
+  /** Which Studio tab is showing. */
+  studioTab: StudioTab;
   listening: boolean;
   /** Mirrors session.output (set at once on a local change). */
   output: boolean;
@@ -113,6 +115,7 @@ const initial: State = {
   tab: 'tuner',
   setup: STD_SETUP,
   setupOpen: false,
+  studioTab: 'input',
   listening: true,
   output: false,
   engine: engine.status,
@@ -503,6 +506,22 @@ export const actions = {
   setFloor(floor: FloorSetting) {
     engine.set({ floor });
   },
+  /**
+   * Where playing starts, dBFS: everything quieter is treated as noise. Following the noise
+   * (auto floor), the line keeps its distance above the measured floor; fixed, it stays put.
+   */
+  setThreshold(db: number) {
+    const st = get().session;
+    if (!st) return;
+    if (st.floor.mode === 'auto') engine.set({ gateDb: Math.round(Math.max(3, Math.min(30, db - engine.levels.measuredDb))) });
+    else engine.set({ floor: { mode: 'manual', manualDb: Math.round(Math.max(-110, Math.min(-10, db - st.gateDb))) } });
+  },
+  /** On: the floor tracks changing noise. Off: it stays where it is now. */
+  setFollowNoise(on: boolean) {
+    const st = get().session;
+    if (!st) return;
+    engine.set({ floor: { mode: on ? 'auto' : 'manual', manualDb: on ? st.floor.manualDb : Math.round(engine.levels.floorDb) } });
+  },
   recalibrate() {
     engine.recalibrate();
   },
@@ -512,6 +531,9 @@ export const actions = {
   },
   setTuning(offsets: Offsets) {
     actions.saveSetup({ offsets });
+  },
+  openStudio(tab?: StudioTab) {
+    set({ setupOpen: true, ...(tab ? { studioTab: tab } : {}) });
   },
   selectDevice(id: string) {
     engine.set({ inputId: id });

@@ -31,6 +31,26 @@ export interface EngineStatus {
   canPickOutput: boolean;
 }
 
+/**
+ * The latest levels, for gauges that redraw every animation frame (no React state involved).
+ * dBFS; `inAt`/`outAt` are performance.now() of the last reading, so stale input reads as off.
+ */
+export interface LiveLevels {
+  /** Input RMS of the latest analysis frame, and the chunk's sample peak. */
+  inDb: number;
+  inPeakDb: number;
+  inAt: number;
+  outDb: number;
+  outAt: number;
+  /** Noise floor in force, the automatic estimate, and the gate margin above the floor. */
+  floorDb: number;
+  measuredDb: number;
+  openDb: number;
+  gate: boolean;
+}
+
+const dB = (x: number) => 20 * Math.log10(x + 1e-9);
+
 type Events = {
   status: EngineStatus;
   state: SessionState;
@@ -98,6 +118,7 @@ class AudioEngine {
     engine: { status: 'off', backend: '' },
   };
 
+  levels: LiveLevels = { inDb: -120, inPeakDb: -120, inAt: 0, outDb: -120, outAt: 0, floorDb: -80, measuredDb: -80, openDb: 12, gate: false };
   status: EngineStatus = { channel: 'web', mic: 'idle', running: false, ml: 'off', mlBackend: '', status: null, engine: 'off', engineVersion: '', canPickOutput: false };
   /** The active channel's shared state. */
   state: SessionState | null = null;
@@ -192,6 +213,15 @@ class AudioEngine {
         this.clockMap.advance(m.clock, 1024 / rate);
         const map = (t: number) => this.clockMap.map(t);
         this.clockAt = performance.now();
+        const L = this.levels;
+        const last = m.frames[m.frames.length - 1];
+        if (last) L.inDb = dB(last.rms);
+        L.inPeakDb = dB(m.peak);
+        L.inAt = this.clockAt;
+        L.floorDb = m.levels.floorDb;
+        L.measuredDb = m.levels.measuredDb;
+        L.openDb = m.levels.openDb;
+        L.gate = m.levels.gate;
         this.emit('analysis', { ...m, clock: map(m.clock), frames: m.frames.map((f) => ({ ...f, t: map(f.t) })), notes: m.notes.map((n) => ({ ...n, t: map(n.t) })) });
         return;
       }
@@ -202,6 +232,8 @@ class AudioEngine {
       }
       case 'meters':
         this.outDb = m.outDb;
+        this.levels.outDb = m.outDb;
+        this.levels.outAt = performance.now();
         this.emit('looper', m.looper);
         this.emit('cond', { gainDb: m.gainDb });
         return;

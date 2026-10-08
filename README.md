@@ -62,12 +62,18 @@ never needs to know which channel it is talking to.
 - **Listening clock.** Capture counts samples only while someone listens and stamps every chunk.
   Every note, chord and riff timestamp uses that clock; the app maps each channel's clock onto
   one timeline, so pausing and switching channels never make timestamps jump.
-- **Noise floor.** One estimate per channel drives the tuner's gate, the auto level and gate on
-  Output, and silence skipping for basic-pitch. **Auto** tracks the 20th percentile of recent
-  levels (fast to learn, slow to rise while a struck note still sounds); frames of digital
-  silence never enter it, so a stream's silent head cannot leave it far below the room.
-  **Recalibrate** measures afresh for 1.5 s with the strings muted (for when a string was ringing
-  at start-up); **Manual** fixes it. The setting is remembered per input device.
+- **Noise floor and threshold.** One estimate per channel drives the tuner's gate, the auto
+  level and gate on Output, and silence skipping for basic-pitch. It follows the noise (the 20th
+  percentile of recent levels: fast to learn, slow to rise while a struck note still sounds; frames
+  of digital silence never enter it, so a stream's silent head cannot leave it far below the
+  room) or stays fixed. In the Studio's Input
+  tab a live gauge shows the input level, the measured floor and a draggable "plays above here"
+  threshold (following the noise, the threshold keeps its distance above the floor). A guided
+  calibration measures 3 s of muted strings and then one played note, and puts the threshold
+  between them. Settings are remembered per input device.
+- **Gauges.** Input and output levels are drawn every animation frame from the analysis stream
+  and meters (no React state per frame): a compact pair in the header, amp-style VU gauges on the
+  Pedals page, full-size bars in the Studio.
 - **Tuner.** YIN through an FFT difference function (`engine/core/src/yin.rs`).
 - **Chords.** Two spectral bands (`engine/core/src/chroma.rs`): a 171 ms frame from 70 Hz up
   and a 683 ms frame for B0 to B2, so drop C and bass registers resolve to the semitone. Every
@@ -104,7 +110,7 @@ Chrome on Windows can't get under about 50 ms from string to speaker (most of it
 output buffering, whatever the device), which is too slow to play through pedals. Fretline Engine
 runs the engine channel natively.
 
-- **Use it.** Settings → Low-latency engine → Download for Windows, run the installer (per user, no
+- **Use it.** Studio → Engine → Download for Windows, run the installer (per user, no
   admin; not code-signed yet, so SmartScreen asks: More info → Run anyway), then "I've installed it,
   connect". Chrome asks once to let the site reach devices on your network; that is the engine on
   this computer. Fretline only looks for the engine after you opt in, and falls back to the web
@@ -128,13 +134,20 @@ cd engine && cargo test --release     # core (DSP, detection, decoder parity, se
 
 Off Windows the engine runs a device-free test backend (`--test`, `--test-wav FILE`, `--record
 FILE`, `--state FILE`). `node engine/tests/smoke.mjs <binary>` checks the engine over its socket;
-`node engine/tests/e2e-web.mjs <binary> <app url>` drives the real web app in headless Chromium on
-both channels, switching between them. `--probe` writes what WASAPI can see and open to
+`node tests/e2e/channels.mjs <binary> <app url>` drives the real web app in headless Chromium on
+both channels, switching between them, and `node tests/e2e/studio.mjs <app url>` checks the Studio
+(guided calibration, gauges, layout stability) on the web channel. `--probe` writes what WASAPI can see and open to
 `%LOCALAPPDATA%\Fretline\engine.log`.
 
-`.github/workflows/engine.yml` builds and tests on Linux and Windows, builds the Inno Setup
-installer, and on `main` publishes it as the `engine-v<version>` release, which the app links to as
-`releases/latest/download/FretlineEngineSetup.exe`.
+CI keeps the site and the engine independent:
+
+- `pages.yml` deploys the site: unit tests, the core built to WebAssembly, the Studio browser
+  test, then GitHub Pages. It never builds the native engine.
+- `engine.yml` runs only for engine changes: Linux and Windows builds and tests, the Inno Setup
+  installer, and on `main` a new `engine-v<version>` release when the version in
+  `engine/fretline-engine/Cargo.toml` is new (bump it to ship an engine change). The app links
+  to `releases/latest/download/FretlineEngineSetup.exe`.
+- `channels.yml` runs the two-channel browser test alongside; it never blocks a deploy.
 
 ## Changes from the prototype
 

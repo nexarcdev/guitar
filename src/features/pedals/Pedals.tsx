@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore, actions } from '../../state/store';
 import { engine } from '../../audio/engine';
+import { VuGauge } from '../gauges/Gauges';
 import type { SlotView } from '../../core/protocol';
 import s from './Pedals.module.css';
 
@@ -23,10 +24,15 @@ export function Pedals() {
   return (
     <div className={s.page}>
       <div className={s.top}>
-        <div className="kicker">{'SIGNAL CHAIN · ' + (mic === 'live' ? (native ? 'FRETLINE ENGINE' : 'MIC') : 'NO INPUT') + ' → OUTPUT ' + (output ? 'ON' : 'OFF')}</div>
-        <div className={s.hint}>
-          {output && engine.delayMs() ? (native ? 'Low-latency engine · ' : '') + 'Delay through Output about ' + engine.delayMs() + ' ms · ' : ''}Drag the grip to reorder · drag a knob to adjust · tap the footswitch
+        <div className={s.topRow}>
+          <div className="kicker">{'SIGNAL CHAIN · ' + (mic === 'live' ? (native ? 'FRETLINE ENGINE' : 'MIC') : 'NO INPUT') + ' → OUTPUT ' + (output ? 'ON' : 'OFF')}</div>
+          <span className={s.delay}>{output && engine.delayMs() ? 'About ' + engine.delayMs() + ' ms delay' : ''}</span>
         </div>
+        <div className={s.hint}>Drag the grip to reorder · drag a knob to adjust · tap the footswitch</div>
+      </div>
+      <div className={s.vus}>
+        <VuGauge kind="in" />
+        <VuGauge kind="out" />
       </div>
       {!output && (
         <div className="notice">

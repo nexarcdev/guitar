@@ -3,12 +3,13 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-    # The web app builds Fretline's core (engine/core) to WebAssembly, so only engine-only
-    # changes skip a deploy.
+    # The site never waits for the native engine: it builds only Fretline's core (engine/core)
+    # to WebAssembly, so engine-only changes don't deploy at all.
     paths-ignore:
       - 'engine/fretline-engine/**'
       - 'engine/installer/**'
       - 'engine/tests/**'
+      - '.github/workflows/channels.yml'
       - '.github/workflows/engine.yml'
   workflow_dispatch:
 
@@ -37,6 +38,18 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+      # The Studio in a real browser (web channel only, no engine build): calibration, gauges,
+      # layout stability.
+      - name: Studio in headless Chromium
+        timeout-minutes: 10
+        run: |
+          npx --yes playwright@1 install --with-deps chromium
+          npm install --no-save --prefix tests/e2e playwright@1
+          (npx vite preview --port 4180 --strictPort &)
+          sleep 3
+          node tests/e2e/studio.mjs http://localhost:4180/${{ github.event.repository.name }}/
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
       - uses: actions/upload-pages-artifact@v5

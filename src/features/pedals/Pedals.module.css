@@ -5,10 +5,27 @@
 }
 .top {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 4px;
+}
+.topRow {
+  display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  min-height: 22px;
+}
+.delay {
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--gold-hi);
+  font-variant-numeric: tabular-nums;
+}
+.vus {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 300px));
+  gap: 12px;
+  justify-content: center;
 }
 .hint {
   font-size: 13px;
@@ -127,10 +144,8 @@
 }
 .loopHead {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 4px;
   margin-bottom: 16px;
 }
 .slots {

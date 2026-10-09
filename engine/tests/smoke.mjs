@@ -27,7 +27,12 @@ async function connect(origin) {
   for (let i = 0; i < 50; i++) {
     const r = await new Promise((resolve) => {
       const ws = new WebSocket(`ws://127.0.0.1:${port}`, { origin });
-      ws.on('open', () => resolve({ ws }));
+      // Collect before 'open': the engine answers a new client with its state at once, and that
+      // frame can arrive in the same read as the handshake. A listener attached after awaiting
+      // 'open' then misses it (ws flushes the leftover bytes on the next tick, ahead of the
+      // await's continuation), and the restored session looks empty.
+      const c = collect(ws);
+      ws.on('open', () => resolve({ ws, c }));
       ws.on('error', (e) => resolve({ error: e.message }));
     });
     if (r.ws || !/ECONNREFUSED/.test(r.error)) return r;
@@ -60,10 +65,9 @@ try {
   const evil = await connect('https://evil.example');
   check(!evil.ws && /403/.test(evil.error ?? ''), `foreign origin refused (${evil.error})`);
 
-  let { ws, error } = await connect('https://nexarcdev.github.io');
+  let { ws, c, error } = await connect('https://nexarcdev.github.io');
   check(!!ws, `Fretline origin accepted ${error ?? ''}`);
   if (!ws) throw new Error('no connection');
-  let c = collect(ws);
   const send = (m) => ws.send(JSON.stringify(m));
   send({ type: 'hello', client: 'smoke', version: 'ci' });
   await sleep(500);
@@ -129,8 +133,7 @@ try {
   await sleep(500);
   check(existsSync(state), 'session saved to disk');
   start(join(dir, 'second.wav'));
-  ({ ws } = await connect('http://localhost:5173'));
-  c = collect(ws);
+  ({ ws, c } = await connect('http://localhost:5173'));
   await sleep(500);
   check(c.state?.gateDb === 15 && c.state.floor.mode === 'manual' && c.state.pedals[0].name === 'Overdrive', `session restored (rev ${c.state?.rev})`);
   ws.close();

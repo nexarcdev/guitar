@@ -12,6 +12,14 @@ the traps that have bitten before.
 - Controls never move because text changed. Status goes in a fixed one-line chip (`Section` in
   `src/features/studio/Section.tsx`); descriptions stay static. `tests/e2e/studio.mjs` checks this.
 
+## Finishing work
+
+- Work is finished when it is on `main`. Once the checks pass on the branch, merge it into
+  `main` (a pull request merged right away is fine) and delete the branch. Never leave a branch
+  or a pull request open at the end of a session unless you are stuck, and then say what blocks it.
+- A merge that touches `engine/` runs the Engine workflow on `main`, which publishes the release
+  when the version is new. Check that run finished green; a red Windows job means no release.
+
 ## React effects: give them a block body
 
 Write `useEffect(() => { doThing(); }, deps)`, not `useEffect(() => doThing(), deps)`.

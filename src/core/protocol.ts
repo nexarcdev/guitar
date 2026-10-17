@@ -69,6 +69,8 @@ export interface StreamInfo {
   deviceMs: number;
   /** 'exclusive' | 'low-latency shared' | 'shared' | 'browser' | 'test' */
   mode: string;
+  /** Why the stream isn't in the mode asked for (e.g. exclusive refused), when it isn't. */
+  fallback?: string;
 }
 
 export interface Latency {
@@ -201,10 +203,67 @@ export interface Meters {
   looper: LooperView;
 }
 
+/** How one device stream has been keeping time. Gaps and work are the worst in the last 10 s. */
+export interface StreamHealth {
+  /** How often the device should call, ms. */
+  periodMs: number;
+  /** Longest time between two calls, ms. */
+  worstGapMs: number;
+  /** Longest the engine took to handle one call, ms (over the period = can't keep up). */
+  worstWorkMs: number;
+  /** Calls more than half a period (and 1 ms) late, since the stream opened. */
+  late: number;
+  /** Glitches Windows reported: input lost, or speakers that ran dry before the engine wrote. */
+  glitches: number;
+  /** Times the stream failed and was reopened since the engine started. */
+  restarts: number;
+}
+
+/** The buffer between the guitar input and the speakers. */
+export interface BufferHealth {
+  targetMs: number;
+  /** What the worst moment in the last 30 s needed, ms. */
+  neededMs: number;
+  marginMs: number;
+  /** Least audio left over in the last 30 s, ms (negative = ran dry by that much). */
+  lowestMs: number;
+  maxMs: number;
+  /** The input clock against the speakers' clock, ppm. */
+  driftPpm: number;
+  /** Times the speakers ran out of guitar audio since they opened. */
+  underruns: number;
+  lastShortMs: number;
+  overflows: number;
+  /** It wanted to be larger than maxMs. */
+  limited: boolean;
+}
+
+export interface EngineEvent {
+  seq: number;
+  /** ms since 1970. */
+  at: number;
+  level: 'info' | 'warn' | 'error';
+  source: 'input' | 'output' | 'buffer' | 'engine';
+  text: string;
+  /** How many times in a row it happened (`at` is the latest). */
+  repeat: number;
+}
+
+/** Engine only, twice a second. */
+export interface Telemetry {
+  type: 'telemetry';
+  input: StreamHealth | null;
+  output: StreamHealth | null;
+  buffer: BufferHealth | null;
+  /** The latest events, oldest first. */
+  events: EngineEvent[];
+}
+
 export type ChannelMsg =
   | ({ type: 'status' } & Status)
   | ({ type: 'state' } & SessionState)
   | Analysis
   | Notes
   | { type: 'ml'; status: MlState; backend: string }
-  | Meters;
+  | Meters
+  | Telemetry;

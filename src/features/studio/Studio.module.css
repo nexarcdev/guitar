@@ -590,3 +590,112 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Engine health: input (gold), buffer (green), speakers (red). */
+.health {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+.healthCard {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--well);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--line-3);
+  min-width: 0;
+}
+.healthCard[data-accent='gold'] {
+  border-top-color: var(--gold);
+}
+.healthCard[data-accent='green'] {
+  border-top-color: var(--green);
+}
+.healthCard[data-accent='red'] {
+  border-top-color: var(--red);
+}
+.healthTitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.healthKv {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 12px;
+}
+.healthKv dt {
+  color: var(--muted-2);
+  white-space: nowrap;
+}
+.healthKv dd {
+  margin: 0;
+  text-align: right;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.healthKv dd[data-tone='warn'] {
+  color: var(--gold-hi);
+}
+.healthKv dd[data-tone='bad'] {
+  color: var(--red-ink);
+}
+.events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  height: 240px;
+  overflow-y: auto;
+  border-radius: 12px;
+  background: var(--well);
+  border: 1px solid var(--line);
+}
+.event {
+  display: grid;
+  grid-template-columns: max-content 64px minmax(0, 1fr);
+  gap: 10px;
+  padding: 6px 12px 6px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  border-left: 3px solid var(--green);
+  border-bottom: 1px solid var(--line);
+}
+.event[data-level='warn'] {
+  border-left-color: var(--gold);
+}
+.event[data-level='error'] {
+  border-left-color: var(--red);
+  background: rgba(224, 64, 64, 0.06);
+}
+.eventTime {
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+}
+.eventSource {
+  color: var(--muted);
+  font-weight: 600;
+}
+.eventText {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.eventRepeat {
+  color: var(--gold-hi);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 480px) {
+  .event {
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+  .eventSource {
+    display: none;
+  }
+}

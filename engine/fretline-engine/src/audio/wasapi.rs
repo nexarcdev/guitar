@@ -13,8 +13,8 @@
 use super::{Backend, ErrorFn, InputFn, MakeInput, MakeOutput, OutputFn, Stream};
 use crate::log;
 use fretline_core::protocol::{DeviceInfo, StreamInfo};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 use windows::core::{Interface, GUID, HSTRING, PCWSTR};
@@ -237,6 +237,8 @@ struct Opened {
     period_frames: u32,
     exclusive: bool,
     mode: &'static str,
+    /// Why this isn't the mode asked for, when it isn't.
+    fallback: Option<String>,
 }
 
 fn hr_text(e: &windows::core::Error) -> String {
@@ -303,7 +305,7 @@ unsafe fn open_exclusive(dev: &IMMDevice) -> Result<Opened, String> {
         Err(e) => return Err(hr_text(&e)),
     };
     let buffer_frames = client.GetBufferSize().map_err(|e| hr_text(&e))?;
-    Ok(Opened { client, fmt, buffer_frames, period_frames: buffer_frames, exclusive: true, mode: "exclusive" })
+    Ok(Opened { client, fmt, buffer_frames, period_frames: buffer_frames, exclusive: true, mode: "exclusive", fallback: None })
 }
 
 unsafe fn open_shared(dev: &IMMDevice) -> Result<Opened, String> {
@@ -320,15 +322,18 @@ unsafe fn open_shared(dev: &IMMDevice) -> Result<Opened, String> {
             let buffer_frames = c3.GetBufferSize().map_err(|e| hr_text(&e))?;
             log!("shared engine periods: default {def}, min {min}, fundamental {fund}, max {max} frames at {} Hz", fmt.rate);
             let mode = if min < def { "low-latency shared" } else { "shared" };
-            Ok(Opened { client: c3.cast().map_err(|e| hr_text(&e))?, fmt, buffer_frames, period_frames: min, exclusive: false, mode })
+            Ok(Opened { client: c3.cast().map_err(|e| hr_text(&e))?, fmt, buffer_frames, period_frames: min, exclusive: false, mode, fallback: None })
         })();
         CoTaskMemFree(Some(mix as _));
         r
     })();
-    match low {
+    let low_err = match low {
         Ok(o) => return Ok(o),
-        Err(e) => log!("low-latency shared mode unavailable ({e}); using regular shared mode"),
-    }
+        Err(e) => {
+            log!("low-latency shared mode unavailable ({e}); using regular shared mode");
+            e
+        }
+    };
     let client: IAudioClient = dev.Activate(CLSCTX_ALL, None).map_err(|e| hr_text(&e))?;
     let mix = client.GetMixFormat().map_err(|e| hr_text(&e))?;
     let r = (|| {
@@ -338,7 +343,15 @@ unsafe fn open_shared(dev: &IMMDevice) -> Result<Opened, String> {
         client.GetDevicePeriod(Some(&mut def), None).map_err(|e| hr_text(&e))?;
         let buffer_frames = client.GetBufferSize().map_err(|e| hr_text(&e))?;
         let period_frames = (def as f64 * fmt.rate as f64 / 10_000_000.0).round() as u32;
-        Ok(Opened { client: client.clone(), fmt, buffer_frames, period_frames, exclusive: false, mode: "shared" })
+        Ok(Opened {
+            client: client.clone(),
+            fmt,
+            buffer_frames,
+            period_frames,
+            exclusive: false,
+            mode: "shared",
+            fallback: Some(format!("low-latency shared mode unavailable: {low_err}")),
+        })
     })();
     CoTaskMemFree(Some(mix as _));
     r
@@ -348,7 +361,12 @@ unsafe fn open(dev: &IMMDevice, exclusive: bool) -> Result<Opened, String> {
     if exclusive {
         match open_exclusive(dev) {
             Ok(o) => return Ok(o),
-            Err(e) => log!("exclusive mode unavailable ({e}); trying shared"),
+            Err(e) => {
+                log!("exclusive mode unavailable ({e}); trying shared");
+                let mut o = open_shared(dev)?;
+                o.fallback = Some(format!("exclusive mode refused: {e}"));
+                return Ok(o);
+            }
         }
     }
     open_shared(dev)
@@ -363,13 +381,23 @@ struct WasapiStream {
     info: StreamInfo,
     stop: Arc<AtomicBool>,
     join: Option<JoinHandle<()>>,
+    glitches: Arc<AtomicU64>,
 }
 
 impl Stream for WasapiStream {
     fn info(&self) -> &StreamInfo {
         &self.info
     }
+
+    fn glitches(&self) -> u64 {
+        self.glitches.load(Ordering::Relaxed)
+    }
 }
+
+/// Stream threads that missed their start deadline and were abandoned, per direction. One may
+/// still be inside the driver holding the device; opening the same device again before it lets
+/// go collides with it, so a new open waits until the old thread has finished.
+static STALE: Mutex<Vec<(bool, JoinHandle<()>)>> = Mutex::new(Vec::new());
 
 impl Drop for WasapiStream {
     fn drop(&mut self) {
@@ -382,6 +410,21 @@ impl Drop for WasapiStream {
 
 /// Opens the device on its own thread (where it will run), and returns once it is streaming.
 fn spawn(flow: EDataFlow, id: &str, exclusive: bool, cb: Callback, on_error: ErrorFn) -> Result<Box<dyn Stream>, String> {
+    let render = flow == eRender;
+    {
+        let mut stale = STALE.lock().unwrap();
+        let (done, waiting): (Vec<_>, Vec<_>) = stale.drain(..).partition(|(_, j)| j.is_finished());
+        for (_, j) in done {
+            let _ = j.join();
+        }
+        let busy = waiting.iter().any(|(r, _)| *r == render);
+        *stale = waiting;
+        if busy {
+            return Err("the previous attempt to open this device is still starting".into());
+        }
+    }
+    let glitches = Arc::new(AtomicU64::new(0));
+    let glitches2 = glitches.clone();
     let (ready_tx, ready_rx) = std::sync::mpsc::channel::<Result<StreamInfo, String>>();
     let stop = Arc::new(AtomicBool::new(false));
     let id = id.to_string();
@@ -405,6 +448,7 @@ fn spawn(flow: EDataFlow, id: &str, exclusive: bool, cb: Callback, on_error: Err
                     period_ms,
                     device_ms: (latency - period_ms).max(0.0) + queued_ms.max(0.0),
                     mode: o.mode.into(),
+                    fallback: o.fallback.clone(),
                 };
                 log!("{name}: {} {:?}, buffer {} frames, period {} frames, stream latency {latency:.2} ms", info.mode, o.fmt, o.buffer_frames, o.period_frames);
                 Ok::<_, String>((o, info))
@@ -422,13 +466,13 @@ fn spawn(flow: EDataFlow, id: &str, exclusive: bool, cb: Callback, on_error: Err
                 let r = match cb {
                     Callback::Capture(make) => {
                         let f = make(&info);
-                        run_capture(&o, f, &stop2, || {
+                        run_capture(&o, f, &stop2, &glitches2, || {
                             let _ = ready_tx.send(Ok(info.clone()));
                         })
                     }
                     Callback::Render(make) => {
                         let f = make(&info);
-                        run_render(&o, f, &stop2, || {
+                        run_render(&o, f, &stop2, &glitches2, || {
                             let _ = ready_tx.send(Ok(info.clone()));
                         })
                     }
@@ -446,14 +490,17 @@ fn spawn(flow: EDataFlow, id: &str, exclusive: bool, cb: Callback, on_error: Err
         })
         .map_err(|e| e.to_string())?;
     match ready_rx.recv_timeout(Duration::from_secs(5)) {
-        Ok(Ok(info)) => Ok(Box::new(WasapiStream { info, stop, join: Some(join) })),
+        Ok(Ok(info)) => Ok(Box::new(WasapiStream { info, stop, join: Some(join), glitches })),
         Ok(Err(e)) => {
             let _ = join.join();
             Err(e)
         }
         Err(_) => {
+            // Let the thread finish on its own (it stops as soon as it gets going), and keep
+            // its handle so the next open of this direction waits for it.
             stop.store(true, Ordering::Relaxed);
-            Err("the device did not start".into())
+            STALE.lock().unwrap().push((render, join));
+            Err("the device did not start within 5 s".into())
         }
     }
 }
@@ -483,7 +530,7 @@ unsafe fn wait(ev: &Event, stop: &AtomicBool, misses: &mut u32) -> Result<bool, 
     Ok(false)
 }
 
-unsafe fn run_capture(o: &Opened, mut f: InputFn, stop: &AtomicBool, started: impl FnOnce()) -> Result<(), String> {
+unsafe fn run_capture(o: &Opened, mut f: InputFn, stop: &AtomicBool, glitches: &AtomicU64, started: impl FnOnce()) -> Result<(), String> {
     let ev = Event(CreateEventW(None, false, false, None).map_err(|e| hr_text(&e))?);
     o.client.SetEventHandle(ev.0).map_err(|e| hr_text(&e))?;
     let cap: IAudioCaptureClient = o.client.GetService().map_err(|e| hr_text(&e))?;
@@ -509,6 +556,10 @@ unsafe fn run_capture(o: &Opened, mut f: InputFn, stop: &AtomicBool, started: im
                 let mut flags = 0u32;
                 cap.GetBuffer(&mut data, &mut frames, &mut flags, None, None).map_err(|e| hr_text(&e))?;
                 let frames = frames as usize;
+                if flags & (AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY.0 as u32) != 0 {
+                    // Windows dropped input because this thread didn't collect it in time.
+                    glitches.fetch_add(1, Ordering::Relaxed);
+                }
                 if mono.len() < frames {
                     mono.resize(frames, 0.0);
                 }
@@ -539,7 +590,7 @@ fn render_queue(o: &Opened) -> u32 {
     (o.period_frames * 2).clamp(1, o.buffer_frames)
 }
 
-unsafe fn run_render(o: &Opened, mut f: OutputFn, stop: &AtomicBool, started: impl FnOnce()) -> Result<(), String> {
+unsafe fn run_render(o: &Opened, mut f: OutputFn, stop: &AtomicBool, glitches: &AtomicU64, started: impl FnOnce()) -> Result<(), String> {
     let ev = Event(CreateEventW(None, false, false, None).map_err(|e| hr_text(&e))?);
     o.client.SetEventHandle(ev.0).map_err(|e| hr_text(&e))?;
     let ren: IAudioRenderClient = o.client.GetService().map_err(|e| hr_text(&e))?;
@@ -562,7 +613,12 @@ unsafe fn run_render(o: &Opened, mut f: OutputFn, stop: &AtomicBool, started: im
             let frames = if o.exclusive {
                 o.buffer_frames
             } else {
-                queue.saturating_sub(o.client.GetCurrentPadding().map_err(|e| hr_text(&e))?)
+                let padding = o.client.GetCurrentPadding().map_err(|e| hr_text(&e))?;
+                if padding == 0 {
+                    // Everything queued has played: the speakers ran dry before this write.
+                    glitches.fetch_add(1, Ordering::Relaxed);
+                }
+                queue.saturating_sub(padding)
             } as usize;
             if frames == 0 {
                 continue;

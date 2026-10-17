@@ -212,6 +212,13 @@ try {
   s = await waitFor((x) => x.outDb > -40, 3000);
   check(s.outDb > -40, `engine: Output through the pedals (${s.outDb.toFixed(1)} dBFS)`);
   check(s.st.latency?.totalMs > 0 && s.st.latency.totalMs < 30, `engine: delay ${s.st.latency?.totalMs.toFixed(1)} ms`);
+  // The Engine tab shows the engine's own account: each stream's timing, the buffer, events.
+  await page.getByText('Calls every').first().waitFor({ timeout: 5000 }).catch(() => {});
+  const health = (await page.locator('section', { hasText: 'Engine health' }).first().innerText().catch(() => '')).replace(/\s+/g, ' ');
+  check(/Holds [\d.]+ ms/.test(health) && /Calls every/.test(health), `engine: health shows the buffer and stream timing (${health.slice(0, 200)})`);
+  const evs = await page.getByRole('list', { name: 'Engine events' }).innerText().catch(() => '');
+  check(/Guitar input open/.test(evs) && /Speakers open/.test(evs), `engine: events list the streams that opened (${evs.replace(/\s+/g, ' ').slice(0, 200)})`);
+  if (process.env.SHOT_DIR) await page.screenshot({ path: join(process.env.SHOT_DIR, 'engine-tab.png'), fullPage: true });
   await call('actions.setOutput', false);
   await sleep(500);
   await call('engine.pluck', 196, 0, 1.2);

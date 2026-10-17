@@ -13,12 +13,13 @@
 //! takes with `try_lock`, the noise floor through atomics, meters come back the same way.
 
 use crate::audio::{Backend, Stream};
+use crate::health::{event, CallClock, EventLog, Events, StreamWatch, Timing};
 use crate::log;
 use crate::model::Model;
 use crossbeam_channel::{Receiver, Sender};
-use fretline_core::drift::DriftReader;
+use fretline_core::drift::{DriftReader, DriftStats};
 use fretline_core::ml::MlWindow;
-use fretline_core::protocol::{ChannelMsg, ControlMsg, DeviceInfo, Latency, Meters, MlState, MlStatus, Status, StreamInfo, PROTOCOL};
+use fretline_core::protocol::{BufferHealth, ChannelMsg, ControlMsg, DeviceInfo, Latency, Meters, MlState, MlStatus, Status, StreamInfo, Telemetry, PROTOCOL};
 use fretline_core::session::Session;
 use fretline_core::sides::{AudioCmd, AudioSide, Capture, ListenCmd, MlSide, TrackerSide};
 use std::path::PathBuf;
@@ -27,6 +28,9 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// The largest the monitor buffer may grow, seconds.
+const MAX_BUFFER_SEC: f64 = 0.04;
 
 pub enum Event {
     Connected { id: u64, tx: Sender<String> },
@@ -67,6 +71,12 @@ struct Shared {
     /// Current monitor backlog target, input samples.
     buffer: AtomicUsize,
     underruns: AtomicU64,
+    /// The monitor buffer's measurements, and each stream's call timing (audio threads write
+    /// with `try_lock`).
+    drift: Mutex<DriftStats>,
+    in_timing: Mutex<Timing>,
+    out_timing: Mutex<Timing>,
+    events: EventLog,
     audio: Mutex<Option<AudioSide>>,
     pending: Mutex<Vec<AudioCmd>>,
     meters: Mutex<Meters>,
@@ -122,6 +132,22 @@ pub struct Supervisor {
     listening: bool,
     error: Option<String>,
     last_status: Option<Status>,
+    in_watch: StreamWatch,
+    out_watch: StreamWatch,
+    /// Buffer figures already reported as events.
+    told: Told,
+    last_telemetry: Instant,
+}
+
+#[derive(Default)]
+struct Told {
+    underruns: u64,
+    overflows: u64,
+    /// The size last announced, and how many ticks the size has held still.
+    target: usize,
+    still: u32,
+    last_seen: usize,
+    limited: bool,
 }
 
 impl Supervisor {
@@ -134,6 +160,10 @@ impl Supervisor {
             ana_tx: Mutex::new(ana_tx),
             buffer: AtomicUsize::new(0),
             underruns: AtomicU64::new(0),
+            drift: Mutex::new(DriftStats::default()),
+            in_timing: Mutex::new(Timing::default()),
+            out_timing: Mutex::new(Timing::default()),
+            events: Mutex::new(Events::default()),
             audio: Mutex::new(None),
             pending: Mutex::new(Vec::new()),
             meters: Mutex::new(Meters { out_db: -120.0, ..Default::default() }),
@@ -172,6 +202,10 @@ impl Supervisor {
             listening: false,
             error: None,
             last_status: None,
+            in_watch: StreamWatch::default(),
+            out_watch: StreamWatch::default(),
+            told: Told::default(),
+            last_telemetry: now,
         };
         (sup, analysis)
     }
@@ -202,6 +236,10 @@ impl Supervisor {
             }
             self.reconcile();
             self.publish(false);
+            if self.last_telemetry.elapsed() >= Duration::from_millis(500) {
+                self.last_telemetry = Instant::now();
+                self.telemetry(connected);
+            }
         }
     }
 
@@ -232,7 +270,13 @@ impl Supervisor {
                 self.update_listening();
             }
             Event::StreamError { output, msg } => {
-                log!("{} stream error: {msg}", if output { "output" } else { "input" });
+                let (source, who) = if output { ("output", "Speakers") } else { ("input", "Guitar input") };
+                self.event("error", source, format!("{who} stopped: {msg}. Reopening it."));
+                if output {
+                    self.out_watch.restarts += 1;
+                } else {
+                    self.in_watch.restarts += 1;
+                }
                 self.error = Some(msg);
                 let retry = Instant::now() + Duration::from_secs(1);
                 if output {
@@ -336,13 +380,13 @@ impl Supervisor {
             self.output_upgrade_tried = false;
         }
         if self.input_upgrade.is_some_and(|t| now >= t) && self.input.is_some() {
-            log!("retrying exclusive input");
+            self.event("info", "input", "Trying exclusive mode for the guitar input once more".into());
             self.input = None;
             self.input_upgrade = None;
             self.input_upgrade_tried = true;
         }
         if self.output_upgrade.is_some_and(|t| now >= t) && self.output.is_some() {
-            log!("retrying exclusive output");
+            self.event("info", "output", "Trying exclusive mode for the speakers once more".into());
             self.output = None;
             self.output_upgrade = None;
             self.output_upgrade_tried = true;
@@ -351,6 +395,8 @@ impl Supervisor {
             match self.open_input() {
                 Ok(s) => {
                     log!("input open: {:?}", s.info());
+                    self.in_watch.reset();
+                    self.opened("input", "Guitar input", s.info());
                     let missed = self.session.state.exclusive_input && s.info().mode != "exclusive" && s.info().mode != "test";
                     self.input_upgrade = (missed && !self.input_upgrade_tried).then(|| now + Duration::from_secs(3));
                     let _ = self.ana.send(AnaMsg::Input(s.info().rate));
@@ -363,7 +409,7 @@ impl Supervisor {
                     self.output = None;
                 }
                 Err(e) => {
-                    log!("input failed: {e}");
+                    self.event("error", "input", format!("Guitar input could not open: {e}"));
                     self.error = Some(format!("Guitar input: {e}"));
                     self.input_retry = now + Duration::from_secs(2);
                 }
@@ -373,6 +419,9 @@ impl Supervisor {
             match self.open_output() {
                 Ok(s) => {
                     log!("output open: {:?}", s.info());
+                    self.out_watch.reset();
+                    self.told = Told::default();
+                    self.opened("output", "Speakers", s.info());
                     let missed = exclusive_output && s.info().mode != "exclusive" && s.info().mode != "test";
                     self.output_upgrade = (missed && !self.output_upgrade_tried).then(|| now + Duration::from_secs(3));
                     self.output = Some(s);
@@ -386,7 +435,7 @@ impl Supervisor {
                     }
                 }
                 Err(e) => {
-                    log!("output failed: {e}");
+                    self.event("error", "output", format!("Speakers could not open: {e}"));
                     self.error = Some(format!("Speakers: {e}"));
                     self.output_retry = now + Duration::from_secs(2);
                 }
@@ -396,14 +445,18 @@ impl Supervisor {
 
     fn open_input(&mut self) -> Result<Box<dyn Stream>, String> {
         let shared = self.shared.clone();
-        let make = Box::new(move |_: &StreamInfo| -> crate::audio::InputFn {
+        *shared.in_timing.lock().unwrap() = Timing::default();
+        let make = Box::new(move |info: &StreamInfo| -> crate::audio::InputFn {
+            let mut clock = CallClock::new(info.period_ms);
             Box::new(move |block: &[f32]| {
+                let t = clock.begin();
                 if let Ok(mut p) = shared.mon_tx.try_lock() {
                     push_ring(&mut p, block);
                 }
                 if let Ok(mut p) = shared.ana_tx.try_lock() {
                     push_ring(&mut p, block);
                 }
+                clock.end(t, &shared.in_timing);
             })
         });
         let tx = self.events.clone();
@@ -419,15 +472,23 @@ impl Supervisor {
         let shared = self.shared.clone();
         let input = self.input.as_ref().map(|s| (s.info().rate, s.info().period_ms));
         let init = self.session.initial().audio;
+        *shared.out_timing.lock().unwrap() = Timing::default();
         let make = Box::new(move |info: &StreamInfo| -> crate::audio::OutputFn {
             let rout = info.rate;
             let (rin, in_ms) = input.unwrap_or((rout, 0.0));
             let in_frames = (in_ms * rin as f32 / 1000.0) as usize;
             let out_in_frames = (info.period_ms * rin as f32 / 1000.0) as usize;
-            let target = in_frames + out_in_frames / 2 + 48;
+            // A safe first guess (both blocks plus 1 ms); the reader measures the real need and
+            // settles to it within seconds.
+            let target = in_frames + out_in_frames + rin as usize / 1000;
             let mut reader = DriftReader::with_rates(target, rin as f64 / rout as f64);
-            reader.allow_growth(in_frames * 4 + out_in_frames + 256);
+            reader.set_input_rate(rin as f64);
+            reader.allow_growth((rin as f64 * MAX_BUFFER_SEC) as usize);
             shared.buffer.store(target, Ordering::Relaxed);
+            if let Ok(mut d) = shared.drift.lock() {
+                *d = reader.stats();
+            }
+            let mut clock = CallClock::new(info.period_ms);
             {
                 // The AudioSide outlives output streams (loops keep playing across a device
                 // change) unless the rate changes.
@@ -453,6 +514,7 @@ impl Supervisor {
             let mut last_underruns = 0;
             let mut level = (0u32, 0u32);
             Box::new(move |out: &mut [f32]| {
+                let t = clock.begin();
                 if let Ok(mut c) = shared.mon_rx.try_lock() {
                     let n = c.slots();
                     if let Ok(chunk) = c.read_chunk(n) {
@@ -465,7 +527,10 @@ impl Supervisor {
                 if reader.underruns != last_underruns {
                     last_underruns = reader.underruns;
                     shared.underruns.fetch_add(1, Ordering::Relaxed);
-                    shared.buffer.store(reader.target(), Ordering::Relaxed);
+                }
+                shared.buffer.store(reader.target(), Ordering::Relaxed);
+                if let Ok(mut d) = shared.drift.try_lock() {
+                    *d = reader.stats();
                 }
                 if let Ok(mut q) = shared.pending.try_lock() {
                     if !q.is_empty() {
@@ -473,7 +538,10 @@ impl Supervisor {
                     }
                 }
                 let Ok(mut slot) = shared.audio.lock() else { return };
-                let Some(side) = slot.as_mut() else { return };
+                let Some(side) = slot.as_mut() else {
+                    clock.end(t, &shared.out_timing);
+                    return;
+                };
                 for c in local.drain(..) {
                     side.apply(c);
                 }
@@ -491,6 +559,8 @@ impl Supervisor {
                     }
                     shared.synth_active.store(side.synth_active(), Ordering::Relaxed);
                 }
+                drop(slot);
+                clock.end(t, &shared.out_timing);
             })
         });
         let tx = self.events.clone();
@@ -540,6 +610,103 @@ impl Supervisor {
         };
         *self.tray.lock().unwrap() = tray;
         self.last_status = Some(s);
+    }
+
+    fn event(&self, level: &str, source: &str, text: String) {
+        event(&self.shared.events, level, source, text);
+    }
+
+    /// Announces a stream that just opened, and a mode it didn't get.
+    fn opened(&self, source: &str, who: &str, i: &StreamInfo) {
+        self.event("info", source, format!("{who} open: {}, {} mode, {} Hz, {:.1} ms period", i.name, i.mode, i.rate, i.period_ms));
+        if let Some(f) = &i.fallback {
+            self.event("warn", source, format!("{who}: {f}"));
+        }
+    }
+
+    /// Twice a second: collects timing and buffer figures, turns news into events, and sends it all.
+    fn telemetry(&mut self, connected: bool) {
+        let glitches = |s: &Option<Box<dyn Stream>>| s.as_ref().map(|s| s.glitches()).unwrap_or(0);
+        let (gi, go) = (glitches(&self.input), glitches(&self.output));
+        self.in_watch.tick(&self.shared.in_timing, gi);
+        self.out_watch.tick(&self.shared.out_timing, go);
+        let in_info = self.input.as_ref().map(|s| s.info().clone());
+        let out_info = self.output.as_ref().map(|s| s.info().clone());
+
+        for (watch, info, source, who) in [(&mut self.in_watch, &in_info, "input", "Guitar input"), (&mut self.out_watch, &out_info, "output", "Speakers")] {
+            let Some(i) = info else { continue };
+            let Some((late, glitches)) = watch.news() else { continue };
+            let h = watch.health(i.period_ms);
+            if late > 0 {
+                let what = match (source, late) {
+                    ("input", 1) => "1 block of guitar audio arrived late".to_string(),
+                    ("input", n) => format!("{n} blocks of guitar audio arrived late"),
+                    (_, 1) => "1 request for audio came late".to_string(),
+                    (_, n) => format!("{n} requests for audio came late"),
+                };
+                event(&self.shared.events, "warn", source, format!("{who}: {what} (worst gap {:.1} ms for a {:.1} ms period)", h.worst_gap_ms, i.period_ms));
+            }
+            if glitches > 0 {
+                let what = if source == "input" { "Windows dropped guitar input because the engine collected it late" } else { "the speakers ran dry before the engine wrote" };
+                let times = if glitches == 1 { "once".to_string() } else { format!("{glitches} times") };
+                event(&self.shared.events, "warn", source, format!("{who}: {what} ({times})"));
+            }
+        }
+
+        let rate = in_info.as_ref().map(|i| i.rate).unwrap_or(48000).max(1) as f32;
+        let ms = |samples: f64| samples as f32 * 1000.0 / rate;
+        let buffer = out_info.as_ref().map(|_| {
+            let d = *self.shared.drift.lock().unwrap();
+            BufferHealth {
+                target_ms: ms(d.target as f64),
+                needed_ms: ms(d.needed as f64),
+                margin_ms: ms(d.margin as f64),
+                lowest_ms: ms(d.lowest as f64),
+                max_ms: ms(d.max_target as f64),
+                drift_ppm: d.drift_ppm,
+                underruns: d.underruns,
+                last_short_ms: ms(d.last_short as f64),
+                overflows: d.overflows,
+                limited: d.limited,
+            }
+        });
+        if let Some(b) = &buffer {
+            let d = *self.shared.drift.lock().unwrap();
+            let t = &mut self.told;
+            if d.underruns > t.underruns {
+                let n = d.underruns - t.underruns;
+                let times = if n == 1 { String::new() } else { format!(" {n} times") };
+                event(&self.shared.events, "warn", "buffer", format!("Speakers ran out of guitar audio{times}, short by {:.1} ms. Buffer raised to {:.1} ms", b.last_short_ms, b.target_ms));
+                t.underruns = d.underruns;
+                t.target = d.target;
+            }
+            if d.overflows > t.overflows {
+                event(&self.shared.events, "warn", "buffer", format!("Guitar audio piled up while the speakers stalled; skipped ahead to {:.1} ms", b.target_ms));
+                t.overflows = d.overflows;
+            }
+            if d.limited && !t.limited {
+                event(&self.shared.events, "error", "buffer", format!("The buffer would need more than {:.0} ms: the input or speakers are stalling far too long", b.max_ms));
+            }
+            t.limited = d.limited;
+            // A size that held still for 2 s and moved by 0.5 ms or more since the last report.
+            t.still = if d.target == t.last_seen { t.still + 1 } else { 0 };
+            t.last_seen = d.target;
+            if t.still == 4 && (ms(d.target as f64) - ms(t.target as f64)).abs() >= 0.5 {
+                event(&self.shared.events, "info", "buffer", format!("Buffer settled at {:.1} ms: {:.1} ms for the worst moment in the last 30 s plus {:.1} ms margin", b.target_ms, b.needed_ms, b.margin_ms));
+                t.target = d.target;
+            }
+        }
+
+        if !connected {
+            return;
+        }
+        let msg = Telemetry {
+            input: in_info.as_ref().map(|i| self.in_watch.health(i.period_ms)),
+            output: out_info.as_ref().map(|i| self.out_watch.health(i.period_ms)),
+            buffer,
+            events: self.shared.events.lock().unwrap().list(),
+        };
+        broadcast(&self.clients, &json(&ChannelMsg::Telemetry(msg)), false);
     }
 }
 
@@ -664,14 +831,14 @@ impl Analysis {
                         Ok((f, o, secs)) => {
                             broadcast(clients, &json(&ChannelMsg::Notes(side.decode(&w, &f, &o))), true);
                             if side.note_inference(secs) {
-                                log!("ML too slow ({secs:.2} s per window); pausing it");
+                                event(&self.shared.events, "warn", "engine", format!("Chord and tab detection paused: this computer took {secs:.2} s for a 2 s window"));
                                 side.on = false;
                                 ml.lock().unwrap().model = MlState::Slow;
                                 publish_ml(&ml, clients, false);
                             }
                         }
                         Err(e) => {
-                            log!("ML failed: {e}");
+                            event(&self.shared.events, "error", "engine", format!("Chord and tab detection failed: {e}"));
                             side.on = false;
                         }
                     }

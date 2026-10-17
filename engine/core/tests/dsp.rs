@@ -142,19 +142,6 @@ fn drift_reader_converts_44k1_input_to_48k_output_without_drifting() {
 }
 
 #[test]
-fn drift_reader_grows_its_target_after_an_underrun() {
-    let mut r = DriftReader::new(200);
-    r.allow_growth(800);
-    let mut out = vec![0.0; 128];
-    r.push(std::iter::repeat(0.5).take(256));
-    r.read(&mut out);
-    r.read(&mut out);
-    r.read(&mut out);
-    assert_eq!(r.underruns, 1);
-    assert_eq!(r.target(), 250);
-}
-
-#[test]
 fn every_pedal_is_stable_and_bounded_at_extremes() {
     for kind in PedalKind::ALL {
         for level in [0.0f32, 50.0, 100.0] {

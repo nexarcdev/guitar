@@ -21,6 +21,11 @@ pub type ErrorFn = Box<dyn Fn(String) + Send>;
 /// A running stream; dropping it stops the device and joins its thread.
 pub trait Stream: Send {
     fn info(&self) -> &StreamInfo;
+    /// Glitches the device reported so far (input data lost, or speakers that ran dry before the
+    /// engine wrote), where the backend can tell.
+    fn glitches(&self) -> u64 {
+        0
+    }
 }
 
 pub trait Backend: Send {

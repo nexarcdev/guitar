@@ -15,6 +15,7 @@
 
 mod audio;
 mod engine;
+mod health;
 mod logging;
 mod model;
 mod protocol;

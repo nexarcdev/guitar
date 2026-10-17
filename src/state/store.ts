@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { engine, type EngineStatus, type LatencyMode } from '../audio/engine';
 import { DEFAULT_PEDALS, toStates, withTypes, type Pedal } from '../audio/pedals';
-import { type Analysis, type FloorSetting, type LooperView, type Notes, type SessionState, type StatePatch } from '../core/protocol';
+import { type Analysis, type FloorSetting, type LooperView, type Notes, type SessionState, type StatePatch, type Telemetry } from '../core/protocol';
 import {
   chordFromChroma, fretMidi, identifyFrets, identifyMidi, midiHz, openStrings, pcOf, sameArr, STD_SETUP, TUNINGS,
   type ChordName, type Offsets, type Setup, type Frets,
@@ -62,6 +62,8 @@ export interface State {
   /** Mirrors session.output (set at once on a local change). */
   output: boolean;
   engine: EngineStatus;
+  /** The native engine's timing, buffer and recent events, twice a second (null on the web channel or an older engine). */
+  telemetry: Telemetry | null;
   /** The active channel's shared settings (pedals, Output, gate, noise floor, ML, devices). */
   session: SessionState | null;
   level: number;
@@ -119,6 +121,7 @@ const initial: State = {
   listening: true,
   output: false,
   engine: engine.status,
+  telemetry: null,
   session: null,
   level: 0,
   levels: { floorDb: -80, measuredDb: -80, floorMode: 'auto', measuring: null, peakDb: -100, gate: false, gainDb: 0 },
@@ -263,6 +266,7 @@ export function attachEngine() {
     set(patch);
   });
   engine.on('looper', (v) => set({ looper: v }));
+  engine.on('telemetry', (t) => set({ telemetry: t }));
   engine.on('cond', (v) => {
     const l = get().levels;
     if (Math.abs(v.gainDb - l.gainDb) > 0.5) set({ levels: { ...l, gainDb: v.gainDb } });

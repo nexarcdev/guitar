@@ -141,6 +141,9 @@ pub struct StreamInfo {
     pub device_ms: f32,
     /// "exclusive" | "low-latency shared" | "shared" | "browser" | "test"
     pub mode: String,
+    /// Why the stream isn't in the mode asked for (e.g. exclusive refused), when it isn't.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
@@ -221,6 +224,78 @@ pub struct Analysis {
     pub out: TrackerOutput,
 }
 
+/// How one device stream has been keeping time. Gaps and work are the worst in the last 10 s.
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct StreamHealth {
+    /// The device's period: how often it should call, ms.
+    pub period_ms: f32,
+    /// Longest time between two calls, ms.
+    pub worst_gap_ms: f32,
+    /// Longest the engine took to handle one call, ms (over the period = can't keep up).
+    pub worst_work_ms: f32,
+    /// Calls that came more than half a period (and 1 ms) late, since the stream opened.
+    pub late: u64,
+    /// Glitches Windows reported: input data lost, or speakers that ran dry before we wrote.
+    pub glitches: u64,
+    /// Times the stream failed and was reopened since the engine started.
+    pub restarts: u64,
+}
+
+/// The buffer between the guitar input and the speakers.
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct BufferHealth {
+    /// What it holds now, ms.
+    pub target_ms: f32,
+    /// What the worst moment in the last 30 s needed, ms.
+    pub needed_ms: f32,
+    /// Safety margin on top, ms (widens for a while after the speakers ran dry).
+    pub margin_ms: f32,
+    /// Least audio left over in the last 30 s, ms (negative = ran dry by that much).
+    pub lowest_ms: f32,
+    /// The largest it may grow, ms.
+    pub max_ms: f32,
+    /// The input clock against the speakers' clock, ppm.
+    pub drift_ppm: f32,
+    /// Times the speakers ran out of guitar audio since the speakers opened.
+    pub underruns: u64,
+    /// How much the latest of those was short by, ms.
+    pub last_short_ms: f32,
+    /// Times audio piled up (the speakers stalled) and was skipped.
+    pub overflows: u64,
+    /// It wanted to be larger than `max_ms`.
+    pub limited: bool,
+}
+
+/// Something the engine did or ran into, for the player to read without opening a log.
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EngineEvent {
+    /// Increments per event.
+    pub seq: u64,
+    /// ms since 1970.
+    pub at: f64,
+    /// "info" | "warn" | "error"
+    pub level: String,
+    /// "input" | "output" | "buffer" | "engine"
+    pub source: String,
+    pub text: String,
+    /// How many times in a row it happened (`at` is the latest).
+    pub repeat: u32,
+}
+
+/// Engine only, twice a second: timing, buffer and recent events.
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Telemetry {
+    pub input: Option<StreamHealth>,
+    pub output: Option<StreamHealth>,
+    pub buffer: Option<BufferHealth>,
+    /// The latest events, oldest first.
+    pub events: Vec<EngineEvent>,
+}
+
 /// Channel → client.
 #[derive(Serialize, Clone, Debug)]
 #[serde(tag = "type", rename_all = "camelCase")]
@@ -231,6 +306,7 @@ pub enum ChannelMsg {
     Notes(MlNotes),
     Ml(MlStatus),
     Meters(Meters),
+    Telemetry(Telemetry),
 }
 
 #[cfg(test)]

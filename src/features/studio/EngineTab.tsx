@@ -4,6 +4,7 @@ import { ENGINE_DOWNLOAD } from '../../audio/engineChannel';
 import { actions, useStore } from '../../state/store';
 import { Options, Section } from './Section';
 import { Breakdown } from './DiagnosticsTab';
+import { EngineHealth } from './EngineHealth';
 import s from './Studio.module.css';
 
 /**
@@ -118,6 +119,7 @@ export function EngineTab() {
               ]}
             />
           </Section>
+          <EngineHealth />
         </>
       )}
     </>

@@ -64,7 +64,7 @@ fn paced(rate: u32, stop: Arc<AtomicBool>, mut tick: impl FnMut() + Send + 'stat
 }
 
 fn stream_info(id: &str, name: &str, rate: u32) -> StreamInfo {
-    StreamInfo { id: id.into(), name: name.into(), rate, period_ms: BLOCK as f32 * 1000.0 / rate as f32, device_ms: 0.0, mode: "test".into() }
+    StreamInfo { id: id.into(), name: name.into(), rate, period_ms: BLOCK as f32 * 1000.0 / rate as f32, device_ms: 0.0, mode: "test".into(), fallback: None }
 }
 
 fn load_wav(path: &PathBuf) -> Result<(Vec<f32>, u32), String> {

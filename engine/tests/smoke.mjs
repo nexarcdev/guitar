@@ -42,13 +42,14 @@ async function connect(origin) {
 }
 
 function collect(ws) {
-  const c = { status: null, state: null, ml: null, analysis: 0, clocks: [], notes: [], heard: new Set(), meters: [], levels: null };
+  const c = { status: null, state: null, ml: null, analysis: 0, clocks: [], notes: [], heard: new Set(), meters: [], levels: null, telemetry: null };
   ws.on('message', (data) => {
     const m = JSON.parse(data.toString());
     if (m.type === 'status') c.status = m;
     else if (m.type === 'state') c.state = m;
     else if (m.type === 'ml') c.ml = m;
     else if (m.type === 'meters') c.meters.push(m);
+    else if (m.type === 'telemetry') c.telemetry = m;
     else if (m.type === 'notes') c.notes.push(...m.notes.map((n) => n.midi));
     else if (m.type === 'analysis') {
       c.analysis++;
@@ -95,6 +96,12 @@ try {
   check(lm.looper.slots[0].state === 'playing' && Math.abs(lm.looper.len / 48000 - 1) < 0.1, `loop ${lm.looper.slots[0].state}, ${(lm.looper.len / 48000).toFixed(2)} s`);
   check(c.meters.slice(-20).some((m) => m.outDb > -40), 'guitar through the pedals reaches the speakers');
   check(c.status.latency?.totalMs > 0 && c.status.latency.totalMs < 30, `latency estimate ${c.status.latency?.totalMs?.toFixed(1)} ms`);
+
+  // Telemetry: both streams' timing, the buffer as measured, and events naming what opened.
+  const t = c.telemetry;
+  check(t?.input?.periodMs > 0 && t?.output?.periodMs > 0, `stream timing reported (input ${t?.input?.periodMs} ms, output ${t?.output?.periodMs} ms)`);
+  check(t?.buffer?.targetMs > 0 && t.buffer.targetMs < 20 && t.buffer.neededMs > 0, `buffer reported (${t?.buffer?.targetMs?.toFixed(2)} ms for a need of ${t?.buffer?.neededMs?.toFixed(2)} ms)`);
+  check(t?.events?.some((e) => e.source === 'input' && /open/.test(e.text)) && t.events.some((e) => e.source === 'output' && /open/.test(e.text)), `events name the opened streams (${t?.events?.map((e) => e.text).join(' | ')})`);
 
   // The synth plays through the engine even with Output off.
   send({ type: 'set', state: { output: false } });

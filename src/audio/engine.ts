@@ -11,7 +11,7 @@
 import type { AudioChannel, MicState } from './channel';
 import { EngineChannel, type EngineConn } from './engineChannel';
 import { WebChannel, type LatencyMode, type WebOptions } from './webChannel';
-import type { Analysis, ChannelMsg, ControlMsg, LooperView, MlState, Notes, NoteSpec, SessionState, StatePatch, Status } from '../core/protocol';
+import type { Analysis, ChannelMsg, ControlMsg, LooperView, MlState, Notes, NoteSpec, SessionState, StatePatch, Status, Telemetry } from '../core/protocol';
 
 export type { LatencyMode, MicState };
 
@@ -58,6 +58,8 @@ type Events = {
   notes: Notes;
   looper: LooperView;
   cond: { gainDb: number };
+  /** The engine's timing, buffer and events (null when the engine isn't in charge). */
+  telemetry: Telemetry | null;
 };
 type Listener<K extends keyof Events> = (v: Events[K]) => void;
 
@@ -102,7 +104,7 @@ class AudioEngine {
   private link = new EngineChannel();
   private engineOn = false;
   private active: AudioChannel | null = null;
-  private listeners: { [K in keyof Events]: Set<Listener<K>> } = { status: new Set(), state: new Set(), analysis: new Set(), notes: new Set(), looper: new Set(), cond: new Set() };
+  private listeners: { [K in keyof Events]: Set<Listener<K>> } = { status: new Set(), state: new Set(), analysis: new Set(), notes: new Set(), looper: new Set(), cond: new Set(), telemetry: new Set() };
   private clockMap = new ClockMap();
   private clockAt = 0;
   private listening = true;
@@ -152,6 +154,7 @@ class AudioEngine {
     this.clockMap.reset();
     this.reconcilePending = true;
     if (ch === this.web) {
+      this.emit('telemetry', null);
       this.web.setActive(true);
       this.state = this.states.web ?? null;
       if (this.state) this.reconcile(this.state);
@@ -236,6 +239,9 @@ class AudioEngine {
         this.levels.outAt = performance.now();
         this.emit('looper', m.looper);
         this.emit('cond', { gainDb: m.gainDb });
+        return;
+      case 'telemetry':
+        this.emit('telemetry', m);
         return;
     }
   }

@@ -35,7 +35,7 @@ two **audio channels** speaking the same protocol:
             ControlMsg (set, listen, recalibrate, loop, play, stop)
   app ─────────────────────────────────────────────────────────────▶ channel
       ◀───────────────────────────────────────────────────────────── 
-            ChannelMsg (state, status, analysis, notes, ml, meters)
+            ChannelMsg (state, status, analysis, notes, ml, meters, telemetry)
 
   channel = Session (shared state)  +  AudioSide (conditioner → pedals → looper, + synth)
           + Capture (listening clock) → TrackerSide (YIN, chroma, onsets, noise floor)
@@ -119,8 +119,18 @@ runs the engine channel natively.
   Windows effects in the path), else low-latency shared mode (`IAudioClient3`), else regular
   shared mode. Exclusive input is the default: it bypasses input "enhancements" such as Realtek AI
   noise reduction. Speakers default to shared so other apps keep playing. The two devices' clocks
-  are bridged by a small resampling buffer that holds a constant backlog
-  (`engine/core/src/drift.rs`) and grows only after an underrun.
+  are bridged by a small resampling buffer (`engine/core/src/drift.rs`) sized from measurement:
+  before every read it knows how much input has arrived and how much the read consumes, so it
+  holds the worst need of the last 30 s (never less than the two block sizes imply) plus a 0.5 ms
+  margin. Worse timing raises it at once by the measured amount (a stall is measured for as long
+  as it lasts); each underrun widens the margin for a while and fades the sound out and in
+  instead of cutting it; calm timing brings it back down. It stays under 40 ms.
+- **Health.** Twice a second the engine sends `telemetry`: each stream's period, worst gap
+  between calls, worst time spent in one, late calls, glitches Windows reported (input lost,
+  shared speakers run dry) and restarts; the buffer's size, need, margin, closest call, drift and
+  underruns; and the latest events (streams opening and the mode they got, exclusive refused,
+  running dry, the buffer settling, errors). Studio → Engine shows it all, so nobody has to open
+  the log.
 - **Security.** The socket listens on 127.0.0.1 only and accepts Fretline's own origins
   (`https://nexarcdev.github.io`, `http://localhost:*`); any other page gets a 403.
 

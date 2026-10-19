@@ -156,7 +156,7 @@ try {
   check(s.outDb > -25, `web: reference tone from the core synth (${s.outDb.toFixed(1)} dBFS)`);
 
   // Chords: following the phrase's A major strum, then judging it against a target.
-  await page.getByRole('button', { name: 'Chords' }).first().click();
+  await page.getByRole('link', { name: 'Chords', exact: true }).first().click();
   s = await waitFor((x) => x.heardName === 'A', 9500);
   check(s.heardName === 'A' && s.progression?.includes('A') && !s.locked, `web: followed the A strum (${s.progression?.join(' ') || 'nothing heard'})`);
   // The phrase's single plucks get verdicts too; the ones that matter here are on the A strum.
@@ -166,13 +166,13 @@ try {
   await call('actions.setTarget', [-1, 0, 2, 2, 1, 0], 1);
   s = await waitFor((x) => x.verdict != null && x.heardName === 'A', 9500);
   check(s.verdict === 'different' && s.heardName === 'A', `web: A against an Am target is different, heard ${s.heardName}${s.fixes?.length ? ' (' + s.fixes.join(', ') + ')' : ''}`);
-  await page.getByRole('button', { name: /^Locked/ }).click();
+  await page.getByRole('button', { name: 'Identify', exact: true }).click();
   s = await waitFor((x) => !x.locked, 1500);
-  check(!s.locked, 'web: the padlock unlocks');
-  await page.getByRole('button', { name: 'Tuner' }).first().click();
+  check(!s.locked, 'web: Identify stops judging against the board');
+  await page.getByRole('link', { name: 'Tuner', exact: true }).first().click();
 
   // Noise floor through the Studio: fixed floor, keyboard on the threshold, back to following.
-  await page.getByRole('button', { name: 'Studio', exact: true }).filter({ visible: true }).first().click();
+  await page.getByRole('link', { name: 'Studio', exact: true }).filter({ visible: true }).first().click();
   await page.getByRole('tab', { name: 'Input' }).filter({ visible: true }).first().click();
   await page.getByRole('button', { name: /^Fixed/ }).click();
   s = await waitFor((x) => x.session?.floor.mode === 'manual' && x.levels.floorMode === 'manual', 3000);

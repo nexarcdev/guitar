@@ -115,7 +115,7 @@ export function Meter({ label, height = 18, quiet = '#4db6a4', color = '#e9a23b'
           off
         </span>
       </div>
-      <div className={s.track} style={{ height }} {...trackProps}>
+      <div {...trackProps} className={cx(s.track, trackProps?.className)} style={{ height, ...trackProps?.style }}>
         <div ref={dim} className={s.dim} />
         <div ref={fill} className={s.fill} />
         <div ref={peak} className={s.peak} />

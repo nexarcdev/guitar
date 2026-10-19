@@ -1,10 +1,11 @@
 // The Studio: everything about your guitar, your audio and how Fretline listens, full screen.
-// Desktop: a tab rail on the left. Mobile: a top bar with Done and a bottom tab bar.
+// An aluminum tab rail on the left (a strip across the top on phones), sections on the right.
 
 import { useEffect, useRef } from 'react';
 import { useStore, type StudioTab } from '../../state/store';
 import { closeStudio, navigate, tabRoute } from '../../state/router';
-import { setupStr } from '../../theory/music';
+import { tuningName } from '../../theory/music';
+import { Button, Lamp } from '../../ui';
 import { GuitarTab } from './GuitarTab';
 import { InputTab } from './InputTab';
 import { SoundTab } from './SoundTab';
@@ -13,12 +14,12 @@ import { BUILT, DiagnosticsTab } from './DiagnosticsTab';
 import { Contained } from '../shell/Contained';
 import s from './Studio.module.css';
 
-const TABS: Array<[StudioTab, string, string]> = [
-  ['guitar', 'Guitar', '♩'],
-  ['input', 'Input', '◐'],
-  ['sound', 'Sound', '♫'],
-  ['engine', 'Engine', '⚡'],
-  ['diagnostics', 'Diagnostics', 'ⓘ'],
+const TABS: Array<[StudioTab, string]> = [
+  ['guitar', 'Guitar'],
+  ['input', 'Input'],
+  ['sound', 'Sound'],
+  ['engine', 'Engine'],
+  ['diagnostics', 'Diagnostics'],
 ];
 const TITLES: Record<StudioTab, string> = { guitar: 'Your guitar', input: 'Input', sound: 'Sound', engine: 'Low-latency engine', diagnostics: 'Diagnostics' };
 
@@ -26,14 +27,16 @@ export function Studio() {
   const open = useStore((x) => x.setupOpen);
   const tab = useStore((x) => x.studioTab);
   const setup = useStore((x) => x.setup);
-  const done = useRef<HTMLButtonElement>(null);
+  const top = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const close = () => closeStudio(tabRoute(useStore.getState()));
 
   useEffect(() => {
     if (!open) return;
-    done.current?.focus();
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    top.current?.querySelector<HTMLButtonElement>('[data-done]')?.focus();
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
   }, [open]);
@@ -44,36 +47,29 @@ export function Studio() {
 
   if (!open) return null;
   const select = (t: StudioTab) => navigate({ kind: 'studio', tab: t }, { replace: true });
-  const tabs = (
-    <>
-      {TABS.map(([id, label, icon]) => (
-        <button key={id} role="tab" id={'studio-tab-' + id} aria-selected={tab === id} aria-controls="studio-panel" className={s.tabBtn} onClick={() => select(id)}>
-          <span className={s.tabIcon} aria-hidden>
-            {icon}
-          </span>
-          {label}
-        </button>
-      ))}
-    </>
-  );
 
   return (
     <div className={s.studio} role="dialog" aria-modal="true" aria-label="Studio">
-      <nav className={s.side} role="tablist" aria-label="Studio sections" aria-orientation="vertical">
-        <div className={s.sideTitle}>Studio</div>
-        <div className={s.sideSub}>{setupStr(setup)}</div>
-        {tabs}
-        <div style={{ marginTop: 'auto', padding: '0 10px', fontSize: 11, color: 'var(--muted-2)' }}>{'Fretline ' + __APP_VERSION__ + ' · ' + BUILT}</div>
+      <nav className={s.rail} role="tablist" aria-label="Studio sections" aria-orientation="vertical">
+        <div className={s.railTitle}>Studio</div>
+        <div className={s.railSub}>{tuningName(setup.offsets) + ' · A440 · ' + (setup.capo ? 'capo ' + setup.capo : 'no capo')}</div>
+        {TABS.map(([id, label]) => (
+          <button key={id} type="button" role="tab" id={'studio-tab-' + id} aria-selected={tab === id} aria-controls="studio-panel" className={s.tab} onClick={() => select(id)}>
+            <Lamp shape="bar" length={4} size={22} tone={tab === id ? 'on' : 'off'} surface="alu" />
+            {label}
+          </button>
+        ))}
+        <div className={s.railFoot}>{'Fretline ' + __APP_VERSION__ + ' · built ' + BUILT}</div>
       </nav>
       <div className={s.body}>
-        <div className={s.topBar}>
-          <div style={{ minWidth: 0 }}>
-            <div className={s.topSub}>STUDIO</div>
-            <div className={s.topTitle}>{TITLES[tab]}</div>
+        <div ref={top} className={s.top}>
+          <div className={s.topTitles}>
+            <div className={s.kicker}>Studio</div>
+            <div className={s.heading}>{TITLES[tab]}</div>
           </div>
-          <button ref={done} className={s.done} onClick={close}>
+          <Button data-done variant="primary" className={s.done} onClick={close}>
             Done
-          </button>
+          </Button>
         </div>
         <div ref={content} className={s.content} id="studio-panel" role="tabpanel" aria-labelledby={'studio-tab-' + tab}>
           <div className={s.inner}>
@@ -86,9 +82,6 @@ export function Studio() {
             </Contained>
           </div>
         </div>
-        <nav className={s.bottomTabs} role="tablist" aria-label="Studio sections">
-          {tabs}
-        </nav>
       </div>
     </div>
   );

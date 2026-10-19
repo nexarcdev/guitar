@@ -3,7 +3,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { engine } from '../../audio/engine';
 import { diagnose, playStep, STEPS, type StepId, type Verdict } from '../../audio/soundTest';
 import { useStore } from '../../state/store';
-import { Section } from './Section';
+import { Button, Note, Window } from '../../ui';
+import { Section, Warn } from './Section';
 import s from './Studio.module.css';
 
 export const IS_WINDOWS =
@@ -22,7 +23,8 @@ export function DiagnosticsTab() {
   const khz = (r?: number) => (r ? Math.round(r / 100) / 10 + ' kHz' : '');
   return (
     <>
-      <Section title="This setup" desc="What Fretline is using right now.">
+      <Section surface="dark" title="This setup" desc="What Fretline is using right now. Copy it into a bug report.">
+        <Window surface="glass" pad="12px 14px">
         <dl className={s.kv}>
           <dt>Fretline</dt>
           <dd>{__APP_VERSION__ + ' · built ' + BUILT}</dd>
@@ -39,40 +41,41 @@ export function DiagnosticsTab() {
           {st?.error && (
             <>
               <dt>Problem</dt>
-              <dd style={{ color: 'var(--red-ink)' }}>{st.error}</dd>
+              <dd className={s.bad}>{st.error}</dd>
             </>
           )}
         </dl>
+        </Window>
       </Section>
 
-      <Section title="Delay through Output" desc="Where the time from string to speaker goes.">
+      <Section surface="dark" title="Delay through Output" desc="Where the time from string to speaker goes.">
         <Breakdown />
       </Section>
 
       {!onEngine && (
-        <Section title="Sound test" desc="Sound breaking up or missing? This plays a tone a few different ways and finds what's causing it. About 30 seconds.">
+        <Section surface="dark" title="Sound test" desc="Sound breaking up or missing? This plays a tone a few different ways and finds what's causing it. About 30 seconds.">
           <SoundTest />
         </Section>
       )}
 
       {IS_WINDOWS && (
         <Section title="Windows audio help">
-          <div className={s.help} style={{ marginTop: 0 }}>
+          <Note>
             <div className={s.helpTitle}>Sound cutting out after a moment, or sounding different, once the input is on?</div>
             <InputEffectsSteps />
-            <div className={s.helpTitle} style={{ marginTop: 10 }}>Other apps going quieter?</div>
+            <div className={s.helpTitle}>Other apps going quieter?</div>
             <div>
               Press <kbd>Win</kbd> + <kbd>R</kbd>, type <kbd>mmsys.cpl</kbd>, open the <b>Communications</b> tab and choose <b>Do nothing</b>.
             </div>
             {onEngine && (
               <>
-                <div className={s.helpTitle} style={{ marginTop: 10 }}>Engine log</div>
+                <div className={s.helpTitle}>Engine log</div>
                 <div>
                   <kbd>%LOCALAPPDATA%\Fretline\engine.log</kbd>
                 </div>
               </>
             )}
-          </div>
+          </Note>
         </Section>
       )}
     </>
@@ -105,11 +108,16 @@ export function Breakdown() {
           ['Output', lb.outputMs, 'speakers / driver'],
         ]
       : [];
-  if (!rows.length) return <p className={s.desc} style={{ margin: 0 }}>Shown once the input and speakers are open.</p>;
+  if (!rows.length)
+    return (
+      <Window surface="glass" pad="12px 14px">
+        <p className={s.glassDesc}>Shown once the input and speakers are open.</p>
+      </Window>
+    );
   const total = rows.reduce((a, r) => a + r[1], 0);
   return (
-    <>
-      <div className={s.desc} style={{ margin: 0 }}>{'About ' + Math.round(total) + ' ms' + (onEngine ? ' (engine estimate; your driver can add a little)' : '')}</div>
+    <Window surface="glass" pad="12px 14px" gap={10}>
+      <div className={s.glassDesc}>{'About ' + Math.round(total) + ' ms' + (onEngine ? ' (engine estimate; your driver can add a little)' : '')}</div>
       <div className={s.breakdown} aria-label="Where the delay comes from">
         {rows.map(([name, ms, note]) => (
           <div key={name} className={s.bdRow}>
@@ -122,7 +130,7 @@ export function Breakdown() {
           </div>
         ))}
       </div>
-    </>
+    </Window>
   );
 }
 
@@ -194,46 +202,70 @@ function SoundTest() {
   if (!active)
     return (
       <div className={s.row}>
-        <button className={s.testOk} onClick={start}>
+        <Button variant="primary" size="sm" className={s.mid} onClick={start}>
           Run the sound test
-        </button>
+        </Button>
       </div>
     );
 
   const d = diagnose(res);
   const done = i >= STEPS.length;
   return (
-    <div className={s.test} role="region" aria-label="Sound test" style={{ marginTop: 0 }}>
-      <ol className={s.testSteps}>
-        {STEPS.map((st, k) => (
-          <li key={st.id} data-state={res[st.id] ?? (k === i ? 'now' : 'todo')}>
-            <span className={s.testMark} aria-hidden>{res[st.id] === 'clear' ? '✓' : res[st.id] === 'bad' ? '✕' : k + 1}</span>
-            <span>
-              <b>{st.title}</b>
-              <span className={s.testDetail}>{st.detail}</span>
-            </span>
-          </li>
-        ))}
-      </ol>
-      {!done && (
-        <div className={s.testAsk}>
-          <span>{playing ? 'Playing…' : 'How did that sound?'}</span>
-          <button className={s.testBtn} onClick={() => play(i)} disabled={playing}>Play again</button>
-          <button className={s.testOk} onClick={() => answer('clear')} disabled={playing}>Clear</button>
-          <button className={s.testBad} onClick={() => answer('bad')} disabled={playing}>Choppy or silent</button>
-        </div>
-      )}
-      {err && <div className={s.warn}>{err}</div>}
-      {done && (
-        <div className={s.help}>
-          <div className={s.helpTitle}>{d ? 'Result' : 'All clear'}</div>
-          <div>{d ? d.text : 'Every step sounded clean.'}</div>
-          {d?.kind === 'device' && <InputEffectsSteps />}
-          {d?.kind === 'safe' && <div style={{ marginTop: 8 }}><button className={s.testOk} onClick={() => location.reload()}>Reload to apply</button></div>}
-          <div style={{ marginTop: 10 }}><button className={s.testBtn} onClick={finish}>Done</button></div>
-        </div>
-      )}
-      {!done && <button className={s.testLink} onClick={finish}>Cancel test</button>}
+    <div role="region" aria-label="Sound test">
+      <Window surface="glass" pad="12px 14px" gap={12}>
+        <ol className={s.testSteps}>
+          {STEPS.map((st, k) => (
+            <li key={st.id} data-state={res[st.id] ?? (k === i ? 'now' : 'todo')}>
+              <span className={s.testMark} aria-hidden>
+                {res[st.id] === 'clear' ? '✓' : res[st.id] === 'bad' ? '✕' : k + 1}
+              </span>
+              <span>
+                <b>{st.title}</b>
+                <span className={s.testDetail}>{st.detail}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+        {!done && (
+          <div className={s.row}>
+            <span className={s.glassDesc}>{playing ? 'Playing…' : 'How did that sound?'}</span>
+            <Button variant="dark" size="sm" className={s.mid} onClick={() => play(i)} disabled={playing}>
+              Play again
+            </Button>
+            <Button variant="primary" size="sm" className={s.mid} onClick={() => answer('clear')} disabled={playing}>
+              Clear
+            </Button>
+            <Button variant="danger" size="sm" className={s.mid} onClick={() => answer('bad')} disabled={playing}>
+              Choppy or silent
+            </Button>
+          </div>
+        )}
+        {err && <Warn>{err}</Warn>}
+        {done && (
+          <div className={s.result}>
+            <div className={s.resultTitle}>{d ? 'Result' : 'All clear'}</div>
+            <div>{d ? d.text : 'Every step sounded clean.'}</div>
+            {d?.kind === 'device' && <InputEffectsSteps />}
+            <div className={s.row}>
+              {d?.kind === 'safe' && (
+                <Button variant="primary" size="sm" className={s.mid} onClick={() => location.reload()}>
+                  Reload to apply
+                </Button>
+              )}
+              <Button variant="dark" size="sm" className={s.mid} onClick={finish}>
+                Done
+              </Button>
+            </div>
+          </div>
+        )}
+        {!done && (
+          <div className={s.row}>
+            <button type="button" className={s.link} onClick={finish}>
+              Cancel test
+            </button>
+          </div>
+        )}
+      </Window>
     </div>
   );
 }

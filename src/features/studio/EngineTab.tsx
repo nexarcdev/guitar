@@ -2,7 +2,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { engine } from '../../audio/engine';
 import { ENGINE_DOWNLOAD } from '../../audio/engineChannel';
 import { actions, useStore } from '../../state/store';
-import { Options, Section } from './Section';
+import { Button, Note } from '../../ui';
+import { Options, Section, Warn } from './Section';
 import { Breakdown } from './DiagnosticsTab';
 import { EngineHealth } from './EngineHealth';
 import s from './Studio.module.css';
@@ -39,14 +40,14 @@ export function EngineTab() {
         {!on && (
           <>
             <div className={s.row}>
-              <a className={s.testOk} href={ENGINE_DOWNLOAD}>
+              <Button variant="tutor" className={s.download} href={ENGINE_DOWNLOAD}>
                 Download for Windows
-              </a>
-              <button className={s.testBtn} onClick={() => set(true)}>
+              </Button>
+              <Button variant="cream" size="sm" className={s.tall} onClick={() => set(true)}>
                 I've installed it, connect
-              </button>
+              </Button>
             </div>
-            <div className={s.help}>
+            <Note>
               <div>
                 The installer isn't code-signed yet. If Windows SmartScreen warns, choose <b>More info</b>, then <b>Run anyway</b>.
               </div>
@@ -54,29 +55,29 @@ export function EngineTab() {
                 When Chrome asks to let this site connect to devices on your network, choose <b>Allow</b>: that's how Fretline reaches the engine on
                 this computer. Nothing leaves your machine.
               </div>
-            </div>
+            </Note>
           </>
         )}
         {on && !onEngine && (
           <>
-            <p className={s.desc} style={{ margin: 0 }}>
+            <p className={s.desc}>
               {conn === 'outdated'
                 ? 'The engine on this computer (' + (version || 'unknown') + ') is from an older Fretline. Install the latest one; the installer replaces it.'
                 : 'Start Fretline Engine from the Start menu; it sits in the notification area. Until then, Fretline uses the browser’s audio.'}
             </p>
             {conn === 'absent' && (
-              <p className={s.desc} style={{ margin: 0 }}>
+              <p className={s.desc}>
                 Engine running but still not found? Click the icon left of the address bar, open <b>Site settings</b>, and allow <b>Local network access</b>.
               </p>
             )}
             <div className={s.row}>
-              <a className={s.testOk} href={ENGINE_DOWNLOAD}>
+              <Button variant="tutor" className={s.download} href={ENGINE_DOWNLOAD}>
                 Download
-              </a>
-              <button className={s.testBtn} onClick={() => engine.retryEngine()}>
+              </Button>
+              <Button variant="cream" size="sm" className={s.tall} onClick={() => engine.retryEngine()}>
                 Try again
-              </button>
-              <button className={s.testLink} onClick={() => set(false)}>
+              </Button>
+              <button type="button" className={s.link} onClick={() => set(false)}>
                 Stop using the engine
               </button>
             </div>
@@ -84,10 +85,10 @@ export function EngineTab() {
         )}
         {onEngine && (
           <>
-            {st?.error && <div className={s.warn}>{st.error}</div>}
+            {st?.error && <Warn>{st.error}</Warn>}
             <Breakdown />
             <div className={s.row}>
-              <button className={s.testLink} onClick={() => set(false)}>
+              <button type="button" className={s.link} onClick={() => set(false)}>
                 Stop using the engine
               </button>
             </div>

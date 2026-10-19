@@ -84,7 +84,6 @@ export interface State {
   freq: number;
   voiced: boolean;
   tuned: number[];
-  headstock: 'split' | 'inline';
   /** Browser audio buffer size: 'lowest', 'interactive' or 'playback'. Applies on reload. */
   latency: LatencyMode;
   /** Use the native engine when it's running (opt-in: probing localhost can prompt). */
@@ -141,7 +140,6 @@ const initial: State = {
   freq: 0,
   voiced: false,
   tuned: [],
-  headstock: 'split',
   latency: 'lowest',
   engineOn: false,
   frets: [-1, 3, 2, 0, 1, 0],
@@ -175,7 +173,7 @@ const set = useStore.setState;
 // Client preferences live here. Shared settings belong to the audio channel's session: the web
 // channel saves its own (key 'webSession'), the engine keeps its own on disk.
 // Where you are lives in the URL, not here.
-const PERSIST: Array<keyof State> = ['setup', 'timeSig', 'gapBeats', 'progression', 'headstock', 'latency', 'engineOn'];
+const PERSIST: Array<keyof State> = ['setup', 'timeSig', 'gapBeats', 'progression', 'latency', 'engineOn'];
 /** Keys from before the channel kept the session, read once to seed it. */
 const LEGACY = ['pedals', 'gateLevel', 'mlOn', 'deviceId', 'outputId', 'nativeOn'] as const;
 

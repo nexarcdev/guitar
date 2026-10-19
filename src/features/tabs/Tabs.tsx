@@ -8,16 +8,19 @@ import {
   type Layout, type SaveKind, type TabNote, type TimeSig,
 } from '../../theory/stream';
 import type { Riff } from '../../state/db';
+import { Button, Chip, Note, Panel, Segment, Well, Window, cx } from '../../ui';
 import s from './Tabs.module.css';
 
 const PPS = 130;
-const LEFT = 56;
-const LINE0 = 32;
-const GAP = 32;
+const LEFT = 48;
+const LINE0 = 24;
+const GAP = 26;
 const ORIGIN = LEFT + 0.3 * PPS;
 const yOf = (str: number) => LINE0 + (5 - str) * GAP;
 const X = (p: number) => Math.round(ORIGIN + p * PPS);
 const SAVE_OPTS: Array<[SaveKind, string]> = [[2, '2 bars'], [4, '4 bars'], [8, '8 bars'], ['phrase', 'Phrase']];
+/** Staff height: six lines with a margin above and below. */
+const STAFF_H = LINE0 * 2 + 5 * GAP;
 
 export function Tabs() {
   const st = useStore(
@@ -139,7 +142,7 @@ export function Tabs() {
       return (
         <div
           key={n.t + ':' + n.s + ':' + (n.p ? 'p' : 'm')}
-          className={`${s.note} ${fresh ? s.noteLive : ''} ${n.p && dim ? s.noteGuess : ''}`}
+          className={cx(s.note, fresh && s.noteLive, n.p && dim && s.noteGuess)}
           style={{ left: X(layout.pos[i]), top: yOf(n.s) }}
         >
           {n.f}
@@ -158,7 +161,7 @@ export function Tabs() {
   const rs = riff ? riff.setup ?? STD_SETUP : null;
   const mismatch = !!rs && !sameSetup(rs, setup);
   const canSave = isLive && buf.length > 0;
-  const chipColor = isRiff ? (rplaying ? 'var(--gold)' : 'var(--muted)') : L && live ? 'var(--red)' : 'var(--muted)';
+  const chipTone = isRiff ? (rplaying ? 'on' : 'muted') : L && live ? 'live' : 'muted';
   const chipText = isRiff ? (rplaying ? fmtTime(actions.playhead()) + ' / ' + fmtTime(riffDur(notes)) : fmtTime(riffDur(notes))) : !L ? 'PAUSED' : live ? 'LIVE' : 'NO INPUT';
   const mlNote =
     ml === 'loading' ? ' · Loading chord detection'
@@ -166,18 +169,25 @@ export function Tabs() {
     : ml === 'unavailable' ? ' · Chord detection isn’t available in this browser, so single notes only'
     : '';
 
+  const title = isRiff ? riff.name : L ? 'Everything you play' : hasNotes ? 'Paused, scroll back through it' : 'Paused';
+  const meta = isRiff
+    ? plural(riff.notes.length, 'note') + ' · ' + fmtTime(riffDur(riff.notes))
+    : buf.length
+      ? '~' + bpm + ' BPM · ' + timeSig + ' · ' + plural(buf.length, 'note') + ' kept'
+      : timeSig + ' · last 60 s';
+
   return (
     <div className={s.page}>
-      <div className={s.col}>
-        <div className={s.head}>
-          <div className={s.titleBox}>
-            <div className="kicker">{isRiff ? 'SAVED RIFF' : 'ROLLING RIFF · LAST 60 S'}</div>
-            <div className={s.title}>{isRiff ? riff.name : L ? 'Everything you play' : hasNotes ? 'Paused, scroll back through it' : 'Paused'}</div>
-          </div>
-          <div className={s.right}>
+      <Panel
+        title={isRiff ? 'Saved riff' : 'Rolling riff · last 60 s'}
+        lamp={isLive ? (L && live ? 'live' : 'off') : rplaying ? 'on' : 'off'}
+        pulse={isLive && L && live}
+        minHeight={560}
+        meta={
+          <>
             {canSave && (
-              <div className="segmented" role="group" aria-label="Save">
-                <span className={s.saveLabel}>SAVE</span>
+              <div className={s.save} role="group" aria-label="Save">
+                <span className={s.saveLabel}>Save</span>
                 {SAVE_OPTS.map(([k, label]) => (
                   <button
                     key={label}
@@ -194,99 +204,90 @@ export function Tabs() {
                 ))}
               </div>
             )}
-            <div className={s.chip} style={{ color: chipColor }}>
-              <span className={s.chipDot} style={{ background: chipColor, animation: isLive && L && live ? 'recPulse 1s ease-in-out infinite' : 'none' }} />
-              <span ref={timeRef}>{chipText}</span>
-            </div>
+            <Chip tone={chipTone} pulse={isLive && L && live} label={<span ref={timeRef}>{chipText}</span>} />
             {isLive && <StreamSettings timeSig={timeSig} gapBeats={gapBeats} open={st.settingsOpen} />}
-          </div>
-        </div>
+          </>
+        }
+      >
         {mismatch && rs && (
-          <div className="notice" style={{ padding: '10px 14px', marginBottom: 12 }}>
+          <div className={s.notice}>
             <span>{'Recorded in ' + setupStr(rs) + '. Your guitar is in ' + setupStr(setup) + '.'}</span>
-            <button className="notice-btn" onClick={() => actions.saveSetup({ offsets: rs.offsets, capo: rs.capo })}>
+            <Button variant="primary" size="sm" onClick={() => actions.saveSetup({ offsets: rs.offsets, capo: rs.capo })}>
               Set my guitar up like this
-            </button>
+            </Button>
           </div>
         )}
-        <div ref={vpRef} className={s.vp}>
-          <div className={s.labels}>
-            {T.map((x, i) => (
-              <div key={i} className={s.label} style={{ top: yOf(i) }}>
-                {stringLabel(x.note, i)}
-              </div>
+        <Window surface="paper" title={title} titleSize={26} meta={meta}>
+          <div ref={vpRef} className={s.vp} style={{ height: STAFF_H }}>
+            {T.map((_, i) => (
+              <div key={i} className={s.line} style={{ top: yOf(i) }} />
             ))}
-          </div>
-          {((isLive && L) || (isRiff && rplaying)) && (
-            <div
-              className={s.nowLine}
-              style={{ left: isLive ? vpW - 48 : Math.round(vpW * 0.3), background: isLive ? 'var(--red)' : 'var(--gold)', boxShadow: '0 0 14px ' + (isLive ? 'var(--red)' : 'var(--gold)') }}
-            />
-          )}
-          <div ref={scRef} className={s.scroller} style={{ overflowX: mode === 'scroll' ? 'auto' : 'hidden' }}>
-            <div ref={trackRef} className={s.track} style={{ width: Math.round(innerW) }}>
-              {divs.map((p, i) => (
-                <div key={i} className={s.divider} style={{ left: X(p) }} />
+            <div className={s.labels}>
+              {T.map((x, i) => (
+                <div key={i} className={s.label} style={{ top: yOf(i) }}>
+                  {stringLabel(x.note, i)}
+                </div>
               ))}
-              {showBracket && br && (
-                <div ref={brRef} className={s.bracket} style={{ left: X(br.start), width: Math.max(8, Math.round((br.end - br.start) * PPS)) }}>
-                  <div className={s.bracketTop} />
-                  <div className={s.bracketLabel}>
-                    {(hoverSpan === 'phrase' ? 'Whole phrase' : plural(br.bars, 'bar')) + ' · ' + plural(br.idx.length, 'note')}
+            </div>
+            {((isLive && L) || (isRiff && rplaying)) && <div className={s.nowLine} style={{ left: isLive ? vpW - 48 : Math.round(vpW * 0.3) }} />}
+            <div ref={scRef} className={s.scroller} style={{ overflowX: mode === 'scroll' ? 'auto' : 'hidden' }}>
+              <div ref={trackRef} className={s.track} style={{ width: Math.round(innerW) }}>
+                {divs.map((p, i) => (
+                  <div key={i} className={s.divider} style={{ left: X(p) }} />
+                ))}
+                {showBracket && br && (
+                  <div ref={brRef} className={s.bracket} style={{ left: X(br.start), width: Math.max(8, Math.round((br.end - br.start) * PPS)) }}>
+                    <div className={s.bracketLabel}>{(hoverSpan === 'phrase' ? 'Whole phrase' : plural(br.bars, 'bar')) + ' · ' + plural(br.idx.length, 'note')}</div>
+                  </div>
+                )}
+                {noteEls}
+              </div>
+            </div>
+            {toast && <div className={s.toast}>{toast.text}</div>}
+            {!hasNotes && (
+              <div className={s.empty}>
+                <div className={s.emptyMsg}>
+                  {!L
+                    ? 'Listening is paused. Resume in the top bar to keep capturing.'
+                    : live
+                      ? 'Just play. Every note lands here as you play it, and the last minute is always kept.'
+                      : 'Waiting for your guitar. Once the microphone is on, every note lands here.'}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className={s.foot}>
+            {isLive ? (
+              <>
+                <div className={s.footText}>
+                  <div className={s.takeTitle}>{resting && L ? 'Resting · stream paused' : L ? 'Always recording' : 'Listening paused'}</div>
+                  <div className={s.takeInfo}>
+                    {(buf.length ? 'Hover or focus a save button to see which bars it keeps' : 'Keeps the last minute of whatever you play · stop for a few beats and the stream pauses') + mlNote}
                   </div>
                 </div>
-              )}
-              {noteEls}
-            </div>
-          </div>
-          {toast && <div className={s.toast}>{toast.text}</div>}
-          {!hasNotes && (
-            <div className={s.empty}>
-              <div className={s.emptyMsg}>
-                {!L
-                  ? 'Listening is paused. Resume in the top bar to keep capturing.'
-                  : live
-                    ? 'Just play. Every note lands here as you play it, and the last minute is always kept.'
-                    : 'Waiting for your guitar. Once the microphone is on, every note lands here.'}
-              </div>
-            </div>
-          )}
-        </div>
-        <div className={s.foot}>
-          {isLive ? (
-            <>
-              <div style={{ flex: 1, minWidth: 160 }}>
-                <div className={s.takeTitle}>{resting && L ? 'Resting · stream paused' : L ? 'Always recording' : 'Listening paused'}</div>
-                <div className={s.takeInfo}>
-                  {(buf.length
-                    ? '~' + bpm + ' BPM · ' + timeSig + ' · ' + plural(buf.length, 'note') + ' kept · hover or focus a save button to see which bars it keeps'
-                    : 'Keeps the last minute of whatever you play · stop for a few beats and the stream pauses') + mlNote}
-                </div>
-              </div>
-              {canSave && (
-                <button className={s.clear} onClick={() => useStore.setState({ buf: [], hoverSpan: null })}>
+                <Button variant="paper" size="sm" disabled={!canSave} onClick={() => useStore.setState({ buf: [], hoverSpan: null })}>
                   Clear
-                </button>
-              )}
-            </>
-          ) : (
-            riff && (
-              <>
-                <button className={s.bigPlay} aria-label={rplaying ? 'Pause' : 'Play'} onClick={actions.togglePlay}>
-                  {rplaying ? '❚❚' : '▶'}
-                </button>
-                <div style={{ flex: 1, minWidth: 140 }}>
-                  <div className={s.takeTitle}>{plural(riff.notes.length, 'note') + ' · ' + fmtTime(riffDur(riff.notes))}</div>
-                  <div className={s.takeInfo}>{'Saved ' + dateLabel(riff)}</div>
-                </div>
-                <button className={s.backLive} onClick={actions.closeRiff}>
-                  ● Back to live
-                </button>
+                </Button>
               </>
-            )
-          )}
-        </div>
-      </div>
+            ) : (
+              riff && (
+                <>
+                  <button className={s.bigPlay} data-on={rplaying} aria-label={rplaying ? 'Pause' : 'Play'} onClick={actions.togglePlay}>
+                    {rplaying ? '❚❚' : '▶'}
+                  </button>
+                  <div className={s.footText}>
+                    <div className={s.takeTitle}>{plural(riff.notes.length, 'note') + ' · ' + fmtTime(riffDur(riff.notes))}</div>
+                    <div className={s.takeInfo}>{'Saved ' + dateLabel(riff)}</div>
+                  </div>
+                  <Button variant="paper" size="sm" onClick={actions.closeRiff}>
+                    ● Back to live
+                  </Button>
+                </>
+              )
+            )}
+          </div>
+        </Window>
+      </Panel>
       <RiffList />
     </div>
   );
@@ -311,31 +312,25 @@ function StreamSettings({ timeSig, gapBeats, open }: { timeSig: TimeSig; gapBeat
   }, [open]);
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <button className={s.gear} aria-label="Stream settings" aria-expanded={open} onClick={() => useStore.setState({ streamSettingsOpen: !open })}>
+      <Button variant="dark" size="sm" icon className={s.gear} aria-label="Stream settings" aria-expanded={open} onClick={() => useStore.setState({ streamSettingsOpen: !open })}>
         ⚙
-      </button>
+      </Button>
       {open && (
         <div className={s.pop} role="dialog" aria-label="Stream settings">
           <div className={s.popRow}>
-            <div className="kicker">TIME SIGNATURE</div>
-            <div className="segmented">
-              {(['4/4', '3/4', '6/8'] as const).map((t) => (
-                <button key={t} className={s.seg} aria-pressed={timeSig === t} onClick={() => useStore.setState({ timeSig: t })}>
-                  {t}
-                </button>
-              ))}
-            </div>
+            <div className={s.popLabel}>Time signature</div>
+            <Segment label="Time signature" options={['4/4', '3/4', '6/8'] as const} value={timeSig} onChange={(t) => useStore.setState({ timeSig: t })} />
           </div>
           <div className={s.popRow}>
-            <div className="kicker">PAUSE AFTER</div>
+            <div className={s.popLabel}>Pause after</div>
             <div className={s.stepper}>
-              <button className={s.step} aria-label="Fewer beats" disabled={gapBeats <= 1} onClick={() => useStore.setState({ gapBeats: gapBeats - 1 })}>
+              <Button variant="dark" size="sm" icon aria-label="Fewer beats" disabled={gapBeats <= 1} onClick={() => useStore.setState({ gapBeats: gapBeats - 1 })}>
                 −
-              </button>
-              <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', minWidth: 64, textAlign: 'center' }}>{plural(gapBeats, 'beat')}</span>
-              <button className={s.step} aria-label="More beats" disabled={gapBeats >= 8} onClick={() => useStore.setState({ gapBeats: gapBeats + 1 })}>
+              </Button>
+              <span className={s.stepValue}>{plural(gapBeats, 'beat')}</span>
+              <Button variant="dark" size="sm" icon aria-label="More beats" disabled={gapBeats >= 8} onClick={() => useStore.setState({ gapBeats: gapBeats + 1 })}>
                 +
-              </button>
+              </Button>
             </div>
             <div className={s.popNote}>Stop playing for this many beats of rest and the stream pauses with a divider. Saves never cross a divider.</div>
           </div>
@@ -358,33 +353,31 @@ function RiffList() {
     (r.setup && !sameSetup(r.setup, STD_SETUP) ? ' · ' + setupStr(r.setup) : '');
 
   return (
-    <div>
+    <Panel surface="ivory" aria-label="Riffs" minHeight={560}>
       <div className={s.listHead}>
-        <div role="tablist" className="segmented">
-          {([['saved', 'Saved', saved.length], ['deleted', 'Deleted', deleted.length]] as const).map(([id, label, n]) => (
-            <button key={id} role="tab" aria-selected={riffTab === id} className={s.tabBtn} onClick={() => useStore.setState({ riffTab: id })}>
-              <span>{label}</span>
-              <span className={s.count}>{n}</span>
-            </button>
-          ))}
-        </div>
+        <Segment
+          label="Riffs"
+          surface="ivory"
+          options={[
+            { id: 'saved', label: 'Saved', n: saved.length },
+            { id: 'deleted', label: 'Deleted', n: deleted.length },
+          ]}
+          value={riffTab}
+          onChange={(id) => useStore.setState({ riffTab: id })}
+        />
         <div className={s.listActions}>
           {onDeleted ? (
-            deleted.length > 0 && (
-              <button className={s.danger} onClick={actions.emptyDeleted}>
-                Empty deleted
-              </button>
-            )
+            <Button variant="danger" size="sm" disabled={deleted.length === 0} onClick={actions.emptyDeleted}>
+              Empty deleted
+            </Button>
           ) : (
             <>
-              <button className={s.outline} onClick={() => fileRef.current?.click()}>
+              <Button variant="cream" size="sm" onClick={() => fileRef.current?.click()}>
                 Import
-              </button>
-              {saved.length > 0 && (
-                <button className={s.outline} onClick={actions.exportRiffs}>
-                  Export
-                </button>
-              )}
+              </Button>
+              <Button variant="cream" size="sm" disabled={saved.length === 0} onClick={actions.exportRiffs}>
+                Export
+              </Button>
               <input
                 ref={fileRef}
                 type="file"
@@ -401,9 +394,7 @@ function RiffList() {
         </div>
       </div>
       {rows.length === 0 && (
-        <div className={s.listEmpty}>
-          {onDeleted ? 'Nothing deleted. Removed riffs wait here until you empty the list.' : 'Nothing saved yet. Play something, then tap a save button above the stream.'}
-        </div>
+        <Note>{onDeleted ? 'Nothing deleted. Removed riffs wait here until you empty the list.' : 'Nothing saved yet. Play something, then tap a save button above the stream.'}</Note>
       )}
       <div className={s.rows}>
         {rows.map((r) => {
@@ -415,30 +406,31 @@ function RiffList() {
           ));
           if (onDeleted)
             return (
-              <div key={r.id} className={s.row} data-deleted>
-                <div style={{ minWidth: 0, gridColumn: '1/3', paddingLeft: 8 }}>
-                  <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
-                  <div className={s.meta} style={{ color: 'var(--muted-2)' }}>{meta(r)}</div>
+              <Well key={r.id} className={cx(s.row, s.deleted)}>
+                <div className={s.deletedName}>
+                  <div className={s.rowName}>{r.name}</div>
+                  <div className={s.meta}>{meta(r)}</div>
                 </div>
-                <div className={s.strip} style={{ opacity: 0.5 }}>{dots}</div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button className={s.restore} onClick={() => actions.restoreRiff(r.id)}>
+                <div className={s.strip}>{dots}</div>
+                <div className={s.rowActions}>
+                  <Button variant="cream" size="sm" onClick={() => actions.restoreRiff(r.id)}>
                     Restore
-                  </button>
-                  <button className={s.forever} aria-label="Delete forever" title="Delete forever" onClick={() => actions.forgetRiff(r.id)}>
+                  </Button>
+                  <Button variant="danger" size="sm" icon aria-label="Delete forever" title="Delete forever" onClick={() => actions.forgetRiff(r.id)}>
                     ✕
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </Well>
             );
           return (
-            <div
+            <Well
               key={r.id}
               className={s.row}
-              data-active={active}
+              active={active}
               role="button"
               tabIndex={0}
               aria-label={'Open ' + r.name}
+              aria-current={active || undefined}
               onClick={() => !active && actions.openRiff(r.id, false)}
               onKeyDown={(e) => {
                 if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
@@ -463,6 +455,7 @@ function RiffList() {
                 <input
                   key={r.name}
                   className={s.name}
+                  data-active={active}
                   type="text"
                   defaultValue={r.name}
                   aria-label="Riff name"
@@ -491,10 +484,13 @@ function RiffList() {
               >
                 ✕
               </button>
-            </div>
+            </Well>
           );
         })}
       </div>
-    </div>
+      <Note className={s.help}>
+        <strong>Saving a span</strong> keeps those bars as a riff. Hover a save button to see which bars it takes; saves never cross a rest divider.
+      </Note>
+    </Panel>
   );
 }

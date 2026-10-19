@@ -4,7 +4,9 @@ A guitar web app: tuner, chords, tab stream and pedalboard with a looper. It lis
 microphone or audio interface, runs all analysis in the browser, and works offline as an installable PWA.
 
 The visual design comes from a Claude Design handoff, kept for reference in [`design/`](design/)
-(`design/project/Guitar App.dc.html` plus the chat transcripts that explain the intent).
+(`design/project/Fretline App.dc.html` for every view, `Fretline Components.dc.html` for the
+component sheet, `CLAUDE.md` for the locked system rules, plus the chat transcripts that explain
+the intent).
 
 ## Run it
 

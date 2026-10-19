@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;flex-direction:column;gap:8px;min-width:0;width:100%">
+  <div style="position:relative;display:grid;grid-template-columns:{{ cols }};gap:0;border-radius:4px;overflow:hidden;background:rgba(0,0,0,0.3);box-shadow:inset 0 0 0 1px rgba(255,235,210,0.08)">
+    <sc-for list="{{ cells }}" as="c" hint-placeholder-count="16">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 0 10px;background:{{ c.bg }};border-left:{{ c.border }};min-width:0">
+        <span style="font-family:'Barlow',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;color:{{ c.numColor }};line-height:1;height:10px">{{ c.num }}</span>
+        <span style="font-family:'Big Shoulders Display','Barlow',sans-serif;font-weight:800;font-size:{{ arrowSize }}px;line-height:1;color:{{ c.arrowColor }};text-shadow:{{ c.arrowGlow }}">{{ c.arrow }}</span>
+        <span style="position:relative;width:70%;height:6px;border-radius:3px;background:rgba(255,235,210,0.08)">
+          <span style="position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:rgba(239,228,200,0.35)"></span>
+          <span style="position:absolute;top:-3px;left:{{ c.hitLeft }}%;width:4px;height:12px;margin-left:-2px;border-radius:2px;background:{{ c.hitColor }};box-shadow:{{ c.hitGlow }};opacity:{{ c.hitOp }}"></span>
+        </span>
+      </div>
+    </sc-for>
+    <div style="position:absolute;top:0;bottom:0;width:3px;left:{{ playLeft }}%;margin-left:-1.5px;background:#d4442c;box-shadow:0 0 8px rgba(212,68,44,0.7);opacity:{{ playOp }};transition:left .1s linear"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#8f8272;font-weight:600"><span>← early</span><span>{{ legend }}</span><span>late →</span></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:640,&quot;height&quot;:120},&quot;sub&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:4,&quot;options&quot;:[1,2,3,4],&quot;tsType&quot;:&quot;1|2|3|4&quot;},&quot;current&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:9,&quot;min&quot;:-1,&quot;max&quot;:32,&quot;tsType&quot;:&quot;number&quot;},&quot;steps&quot;:{&quot;editor&quot;:null,&quot;default&quot;:[{&quot;stroke&quot;:&quot;D&quot;,&quot;hit&quot;:4},{&quot;stroke&quot;:&quot;-&quot;},{&quot;stroke&quot;:&quot;D&quot;,&quot;hit&quot;:-12},{&quot;stroke&quot;:&quot;U&quot;,&quot;hit&quot;:18},{&quot;stroke&quot;:&quot;-&quot;},{&quot;stroke&quot;:&quot;U&quot;,&quot;hit&quot;:31},{&quot;stroke&quot;:&quot;D&quot;,&quot;hit&quot;:-6},{&quot;stroke&quot;:&quot;U&quot;,&quot;hit&quot;:58},{&quot;stroke&quot;:&quot;D&quot;,&quot;hit&quot;:2},{&quot;stroke&quot;:&quot;-&quot;},{&quot;stroke&quot;:&quot;D&quot;},{&quot;stroke&quot;:&quot;U&quot;},{&quot;stroke&quot;:&quot;-&quot;},{&quot;stroke&quot;:&quot;U&quot;},{&quot;stroke&quot;:&quot;D&quot;},{&quot;stroke&quot;:&quot;U&quot;}],&quot;tsType&quot;:&quot;Array&lt;{stroke: 'D'|'U'|'-'|'x', hit?: number|null}&gt;&quot;},&quot;legend&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const steps = p.steps ?? [], per = Number(p.sub ?? 4), cur = Number(p.current ?? -1);
+    const amber = '#e9a23b', teal = '#4db6a4', cherry = '#d4442c', ink = '#efe4c8';
+    const SUB = { 1: [''], 2: ['', '&'], 3: ['', '&', 'a'], 4: ['', 'e', '&', 'a'] }[per] ?? [''];
+    const cells = steps.map((st, i) => {
+      const stroke = st.stroke ?? '-', hit = st.hit, beat = i % per === 0, played = i < cur, now = i === cur, rest = stroke === '-' || stroke === 'x';
+      const abs = Math.abs(hit ?? 0);
+      const hitColor = hit == null ? 'transparent' : abs <= 20 ? teal : abs <= 50 ? amber : cherry;
+      const missed = !rest && hit == null && played;
+      return {
+        num: beat ? String(i / per + 1) : SUB[i % per], numColor: beat ? ink : '#8f8272',
+        arrow: stroke === 'D' ? '↓' : stroke === 'U' ? '↑' : stroke === 'x' ? '×' : '·',
+        arrowColor: now ? cherry : rest ? '#5e564d' : missed ? `${cherry}99` : played ? ink : '#b8a994',
+        arrowGlow: now ? `0 0 10px ${cherry}` : 'none',
+        hitLeft: 50 + Math.max(-80, Math.min(80, hit ?? 0)) * 0.5, hitColor, hitGlow: hit == null ? 'none' : `0 0 8px ${hitColor}`, hitOp: hit == null ? 0 : 1,
+        bg: now ? 'rgba(212,68,44,0.10)' : beat ? 'rgba(255,235,210,0.02)' : 'transparent',
+        border: beat && i > 0 ? '1px solid rgba(239,228,200,0.22)' : i > 0 ? '1px solid rgba(239,228,200,0.06)' : 'none',
+      };
+    });
+    const n = Math.max(1, steps.length);
+    return { cells, cols: `repeat(${n}, minmax(0,1fr))`, arrowSize: p.arrowSize ?? 22, playLeft: ((cur + 0.5) / n) * 100, playOp: cur >= 0 && cur < n ? 1 : 0, legend: p.legend ?? 'teal ±20 ms · amber ±50 · cherry beyond' };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#140b0c;color:#f7efe8;font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#e9b949}a:hover{color:#f6d98a}
+button{font-family:inherit;cursor:pointer}
+@keyframes recPulse{0%,100%{opacity:1}50%{opacity:.35}}
+</style>
+</helmet>
+<div data-screen-label="Fretline current" style="min-height:100vh;display:flex;color:#f7efe8;user-select:none;background:radial-gradient(900px 600px at -10% -10%, rgba(224,64,64,0.35), transparent 60%),radial-gradient(800px 600px at 110% 110%, rgba(233,185,73,0.22), transparent 60%),linear-gradient(160deg,#1c0e10 0%,#140b0c 50%,#0f0a0b 100%)">
+  <nav aria-label="Sections" style="position:sticky;top:0;height:100vh;padding:20px 12px;display:flex;flex-direction:column;gap:8px;border-right:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);flex:none;width:220px">
+    <div style="display:flex;align-items:center;gap:12px;padding:8px 10px 24px">
+      <div style="width:36px;height:36px;border-radius:12px;flex:none;background:linear-gradient(135deg,#e9b949,#e04040);box-shadow:0 6px 18px rgba(224,64,64,0.4)"></div>
+      <div style="font-weight:700;letter-spacing:0.14em;font-size:14px">FRETLINE</div>
+    </div>
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+      <button onClick="{{ n.go }}" style="display:flex;align-items:center;gap:12px;height:48px;padding:0 12px;border-radius:14px;border:1px solid {{ n.border }};background:{{ n.bg }};color:{{ n.color }};font-size:15px;font-weight:500;text-align:left;width:100%">
+        <span style="font-size:20px;width:24px;text-align:center;flex:none">{{ n.icon }}</span>
+        <span>{{ n.label }}</span>
+      </button>
+    </sc-for>
+    <button style="margin-top:auto;display:flex;align-items:center;gap:12px;height:48px;padding:0 12px;border-radius:14px;border:1px solid transparent;background:transparent;color:#b9a9a3;font-size:15px;font-weight:500;text-align:left;width:100%" style-hover="background:rgba(255,255,255,0.08)">
+      <span style="font-size:20px;width:24px;text-align:center;flex:none">⚙</span>
+      <span>Studio</span>
+    </button>
+  </nav>
+  <main style="flex:1;min-width:0;padding:20px clamp(16px,3vw,40px) 32px;max-width:1200px;margin:0 auto;width:100%">
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px;flex:1 1 auto;min-width:0">
+        <div style="flex:1 1 auto;min-width:0">
+          <div style="font-size:12px;letter-spacing:0.18em;color:#b9a9a3;font-weight:500">FRETLINE</div>
+          <h1 style="margin:0;font-size:clamp(24px,3vw,32px);font-weight:600;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ title }}</h1>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex:none;flex-wrap:wrap">
+        <button aria-label="Levels" style="display:flex;flex-direction:column;justify-content:center;gap:5px;width:112px;height:36px;padding:0 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05)">
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:22px;font-size:9px;letter-spacing:0.08em;color:#b9a9a3;text-align:left">IN</span><span style="position:relative;flex:1;height:6px;border-radius:999px;background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.08);overflow:hidden"><span style="position:absolute;inset:0;width:46%;background:linear-gradient(to right,rgba(247,239,232,0.22) 0%,rgba(247,239,232,0.22) 60%,#d9a030 60%,#f6d98a 94%,#e04040 94%)"></span></span></span>
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:22px;font-size:9px;letter-spacing:0.08em;color:#b9a9a3;text-align:left">OUT</span><span style="position:relative;flex:1;height:6px;border-radius:999px;background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.08)"></span></span>
+        </button>
+        <button style="display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:999px;border:1px solid rgba(233,185,73,0.45);background:rgba(233,185,73,0.12);font-size:13px;font-weight:600;color:#f6d98a;white-space:nowrap;min-width:132px;justify-content:center"><span style="font-size:15px;line-height:1">♩</span>Standard</button>
+        <button style="display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:999px;border:1px solid rgba(224,64,64,0.5);background:rgba(224,64,64,0.16);font-size:13px;font-weight:600;color:#ffcfcf;white-space:nowrap;min-width:132px;justify-content:center"><span style="width:8px;height:8px;border-radius:50%;flex:none;background:#e04040;animation:recPulse 1.4s ease-in-out infinite"></span>Listening</button>
+        <button style="display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);font-size:13px;font-weight:600;color:#b9a9a3;white-space:nowrap;min-width:132px;justify-content:center"><span style="width:8px;height:8px;border-radius:2px;flex:none;background:rgba(255,255,255,0.35)"></span>Output off</button>
+      </div>
+    </header>
+
+    <sc-if value="{{ isTuner }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Tuner" style="display:grid;gap:clamp(16px,3vw,40px);grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:stretch">
+        <div style="display:flex;flex-direction:column;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px">
+            <div style="font-size:12px;letter-spacing:0.18em;color:#b9a9a3;font-weight:500">LISTENING · MIC</div>
+            <button style="display:flex;align-items:center;gap:10px;height:34px;padding:0 4px 0 12px;border-radius:999px;border:none;background:transparent;color:#b9a9a3;font-size:12px;letter-spacing:0.14em;font-weight:500"><span>AUTO</span><span style="width:46px;height:26px;border-radius:999px;position:relative;display:block;background:#e9b949"><span style="position:absolute;top:3px;left:23px;width:20px;height:20px;border-radius:50%;background:#fff"></span></span></button>
+          </div>
+          <div style="position:relative;flex:1;min-height:480px;border-radius:20px;overflow:hidden;background-color:rgba(0,0,0,0.22);background-image:linear-gradient(rgba(255,255,255,0.055) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.055) 1px,transparent 1px);background-size:28px 28px;background-position:center top">
+            <div style="position:absolute;left:0;right:0;top:0;height:40px;display:flex;justify-content:space-between;align-items:center;padding:0 18px;color:#b9a9a3;font-size:26px;font-weight:300"><span>♭</span><span>♯</span></div>
+            <div style="position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;background:#e9b949;box-shadow:0 0 16px rgba(233,185,73,0.6)"></div>
+            <div style="position:absolute;top:14px;left:51.7%;width:68px;height:68px;margin-left:-34px">
+              <div style="width:68px;height:68px;border-radius:50%;border:3px solid #e9b949;background:rgba(233,185,73,0.22);display:grid;place-items:center;font-size:24px;font-weight:600;color:#f6d98a;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;box-shadow:0 0 24px rgba(233,185,73,0.45)">+2</div>
+              <div style="width:0;height:0;margin:-3px auto 0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:9px solid #e9b949"></div>
+            </div>
+            <div style="position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px">
+              <div style="width:92px;height:92px;border-radius:50%;border:2px solid rgba(255,255,255,0.14);background:rgba(20,11,12,0.85);display:grid;place-items:center;font-size:48px;font-weight:600;line-height:1;letter-spacing:-0.02em;color:#f6d98a">E</div>
+              <div style="color:#b9a9a3;font-size:13px;font-variant-numeric:tabular-nums">82.5 Hz</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:14px;padding:0 4px">
+            <div style="font-size:18px;font-weight:600;color:#e9b949;flex:none;white-space:nowrap">In tune</div>
+            <div style="color:#b9a9a3;font-size:13px;min-width:0;text-align:right">Play one string at a time.</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:center;width:100%;max-width:440px;flex:1">
+            <div style="display:flex;flex-direction:column;flex:none;gap:40px">
+              <sc-for list="{{ pegsLeft }}" as="p" hint-placeholder-count="3">
+                <button style="width:72px;height:72px;border-radius:50%;border:2px solid {{ p.border }};background:{{ p.bg }};color:{{ p.color }};font-size:22px;font-weight:600;display:grid;place-items:center;box-shadow:{{ p.shadow }}">{{ p.label }}</button>
+              </sc-for>
+            </div>
+            <div style="flex:1;min-width:0;display:flex;justify-content:center;align-items:center;align-self:stretch">
+              <svg width="280" height="420" viewBox="0 0 200 300" style="display:block;flex:none;overflow:visible" aria-hidden="true">
+                <defs>
+                  <linearGradient id="hsWood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a0603a"></stop><stop offset=".55" stop-color="#7a4224"></stop><stop offset="1" stop-color="#52290f"></stop></linearGradient>
+                  <linearGradient id="hsChrome" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fafafa"></stop><stop offset=".5" stop-color="#9c9c9c"></stop><stop offset="1" stop-color="#e6e6e6"></stop></linearGradient>
+                </defs>
+                <path d="M62 300 L62 196 C62 176 48 164 50 132 L50 62 C50 46 60 42 68 44 L84 47 C92 48 95 34 100 32 C105 34 108 48 116 47 L132 44 C140 42 150 46 150 62 L150 132 C152 164 138 176 138 196 L138 300 Z" fill="url(#hsWood)" stroke="#e9dcc6" stroke-width="2.5" stroke-linejoin="round"></path>
+                <path d="M100 186 C92 186 92 240 100 258 C108 240 108 186 100 186 Z" fill="rgba(0,0,0,.45)"></path>
+                <rect x="62" y="268" width="76" height="6" fill="#f1e7d2"></rect>
+                <line x1="66" y1="230" x2="72" y2="300" stroke="#f6d98a" stroke-width="2.2" stroke-linecap="round"></line>
+                <line x1="66" y1="150" x2="83.2" y2="300" stroke="rgba(235,235,235,.8)" stroke-width="1.96" stroke-linecap="round"></line>
+                <line x1="66" y1="70" x2="94.4" y2="300" stroke="rgba(235,235,235,.8)" stroke-width="1.72" stroke-linecap="round"></line>
+                <line x1="134" y1="70" x2="105.6" y2="300" stroke="rgba(235,235,235,.8)" stroke-width="1.48" stroke-linecap="round"></line>
+                <line x1="134" y1="150" x2="116.8" y2="300" stroke="rgba(235,235,235,.8)" stroke-width="1.24" stroke-linecap="round"></line>
+                <line x1="134" y1="230" x2="128" y2="300" stroke="rgba(235,235,235,.8)" stroke-width="1" stroke-linecap="round"></line>
+                <sc-for list="{{ posts }}" as="q" hint-placeholder-count="6">
+                  <g>
+                    <circle cx="{{ q.x }}" cy="{{ q.y }}" r="13" fill="none" stroke="{{ q.ring }}" stroke-width="2.5"></circle>
+                    <circle cx="{{ q.x }}" cy="{{ q.y }}" r="9" fill="url(#hsChrome)" stroke="#555" stroke-width=".8"></circle>
+                    <circle cx="{{ q.x }}" cy="{{ q.y }}" r="3" fill="#2a2a2a"></circle>
+                  </g>
+                </sc-for>
+              </svg>
+            </div>
+            <div style="display:flex;flex-direction:column;flex:none;gap:40px">
+              <sc-for list="{{ pegsRight }}" as="p" hint-placeholder-count="3">
+                <button style="width:72px;height:72px;border-radius:50%;border:2px solid {{ p.border }};background:{{ p.bg }};color:{{ p.color }};font-size:22px;font-weight:600;display:grid;place-items:center;box-shadow:{{ p.shadow }}">{{ p.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;justify-content:center">
+            <button style="height:48px;padding:0 24px;border-radius:999px;border:none;background:linear-gradient(135deg,#e9b949,#d9a030);color:#1c0e10;font-size:15px;font-weight:600;box-shadow:0 8px 24px rgba(233,185,73,0.3)">Play reference</button>
+            <button style="height:48px;padding:0 20px;border-radius:999px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#f7efe8;font-size:15px;font-weight:500">Start over</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isChords }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Chord identifier">
+        <div role="group" style="display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);width:fit-content;margin-bottom:18px">
+          <button style="height:36px;padding:0 18px;border-radius:999px;border:none;background:rgba(233,185,73,0.2);color:#f6d98a;font-size:14px;font-weight:600">Identify</button>
+          <button style="height:36px;padding:0 18px;border-radius:999px;border:none;background:transparent;color:#b9a9a3;font-size:14px;font-weight:600">Confirm</button>
+        </div>
+        <div style="display:grid;gap:clamp(16px,3vw,40px);grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);align-items:start">
+          <div style="display:flex;flex-direction:column;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:0 4px;font-size:12px;letter-spacing:0.18em;color:#b9a9a3;font-weight:500"><span style="width:8px;height:8px;border-radius:50%;background:#e04040;animation:recPulse 1.4s ease-in-out infinite"></span>HEARING</div>
+            <div style="position:relative;min-height:260px;border-radius:20px;background:rgba(0,0,0,0.22);border:1px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:28px 20px;text-align:center">
+              <div style="font-size:clamp(56px,9vw,88px);font-weight:600;line-height:1;letter-spacing:-0.02em;background:linear-gradient(135deg,#f6d98a,#e9b949 50%,#e04040);-webkit-background-clip:text;background-clip:text;color:transparent">G</div>
+              <div style="color:#b9a9a3;font-size:15px;min-height:22px">G major</div>
+              <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px">
+                <span style="padding:8px 14px;border-radius:999px;font-size:14px;font-weight:600;background:rgba(233,185,73,0.25);color:#f6d98a;border:1px solid transparent">G</span>
+                <span style="padding:8px 14px;border-radius:999px;font-size:14px;font-weight:600;background:rgba(255,255,255,0.08);color:#f7efe8;border:1px solid transparent">B</span>
+                <span style="padding:8px 14px;border-radius:999px;font-size:14px;font-weight:600;background:rgba(255,255,255,0.08);color:#f7efe8;border:1px solid transparent">D</span>
+              </div>
+            </div>
+            <div style="margin-top:14px;padding:0 4px">
+              <div style="font-size:12px;letter-spacing:0.18em;color:#b9a9a3;font-weight:500;margin-bottom:10px">PROGRESSION · TAP ONE TO SEE ITS SHAPE</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <sc-for list="{{ history }}" as="h" hint-placeholder-count="4">
+                  <button style="height:40px;padding:0 16px;border-radius:999px;border:1px solid {{ h.border }};background:{{ h.bg }};color:{{ h.color }};font-size:15px;font-weight:600">{{ h.name }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px;padding:0 4px">
+              <div style="font-size:12px;letter-spacing:0.18em;color:#b9a9a3;font-weight:500">SHAPE</div>
+              <div style="min-width:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-size:18px;font-weight:600;color:#f6d98a">G</span><span style="color:#b9a9a3;font-size:13px;margin-left:8px">G major</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:48px repeat(5,minmax(0,1fr)) 48px;align-items:center;margin-bottom:6px;height:40px">
+              <button aria-label="Lower frets" disabled style="justify-self:start;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#f7efe8;font-size:16px;opacity:0.35">‹</button>
+              <div style="text-align:center;font-size:13px;font-weight:600;color:#b9a9a3">1</div>
+              <div style="text-align:center;font-size:13px;font-weight:600;color:#b9a9a3">2</div>
+              <div style="text-align:center;font-size:13px;font-weight:600;color:#b9a9a3">3</div>
+              <div style="text-align:center;font-size:13px;font-weight:600;color:#b9a9a3">4</div>
+              <div style="text-align:center;font-size:13px;font-weight:600;color:#b9a9a3">5</div>
+              <button aria-label="Higher frets" style="justify-self:end;width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#f7efe8;font-size:16px">›</button>
+            </div>
+            <div style="border-radius:18px;overflow:hidden;margin-right:48px;background:linear-gradient(180deg,rgba(60,30,28,0.7),rgba(30,16,16,0.8))">
+              <sc-for list="{{ board }}" as="row" hint-placeholder-count="6">
+                <div style="display:grid;grid-template-columns:48px repeat(5,minmax(0,1fr));height:46px">
+                  <button style="border:none;border-right:4px solid #e9b949;background:rgba(0,0,0,0.25);color:{{ row.nutColor }};font-weight:700;font-size:16px;display:grid;grid-template-columns:1fr 1fr;align-items:center;padding:0"><span style="font-size:12px;font-weight:500;text-align:center;color:#b9a9a3">{{ row.label }}</span><span style="text-align:center">{{ row.mark }}</span></button>
+                  <sc-for list="{{ row.cells }}" as="c" hint-placeholder-count="5">
+                    <button style="border:none;border-right:2px solid rgba(255,255,255,0.18);background:linear-gradient(transparent 47%,rgba(255,255,255,0.35) 47%,rgba(255,255,255,0.35) 53%,transparent 53%);display:grid;place-items:center;padding:0">
+                      <span style="width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f6d98a,#e9b949 50%,#b8862a);box-shadow:0 4px 12px rgba(0,0,0,0.5);transform:{{ c.scale }};opacity:{{ c.opacity }}"></span>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;padding:0 4px">
+              <button style="height:48px;padding:0 24px;border-radius:999px;border:none;background:linear-gradient(135deg,#e9b949,#d9a030);color:#1c0e10;font-size:15px;font-weight:600;box-shadow:0 8px 24px rgba(233,185,73,0.3)">Strum</button>
+              <button style="height:48px;padding:0 20px;border-radius:999px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#f7efe8;font-size:15px;font-weight:500">Clear</button>
+            </div>
+            <div style="margin-top:22px;padding:0 4px">
+              <div style="font-size:12px;letter-spacing:0.18em;color:#b9a9a3;font-weight:500;margin-bottom:10px">COMMON SHAPES</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <sc-for list="{{ presets }}" as="p" hint-placeholder-count="11">
+                  <button style="height:44px;padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:#f7efe8;font-size:15px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1" style-hover="background:rgba(233,185,73,0.2);border-color:rgba(233,185,73,0.5)">{{ p }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isTabs }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Tab stream" style="display:flex;flex-direction:column;gap:36px">
+        <div style="display:flex;flex-direction:column;min-width:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:0 4px">
+            <div style="min-width:0;flex:1 1 180px">
+              <div style="font-size:12px;letter-spacing:0.18em;color:#b9a9a3;font-weight:500">ROLLING RIFF · LAST 60 S</div>
+              <div style="font-size:22px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Everything you play</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:relative">
+              <div role="group" style="display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);width:fit-content">
+                <span style="font-size:11px;letter-spacing:0.16em;font-weight:600;color:#b9a9a3;padding:0 6px 0 10px">SAVE</span>
+                <button style="height:34px;padding:0 13px;border-radius:999px;border:1px solid transparent;background:transparent;color:#f7efe8;font-size:13px;font-weight:600;white-space:nowrap">2 bars</button>
+                <button style="height:34px;padding:0 13px;border-radius:999px;border:1px solid transparent;background:transparent;color:#f7efe8;font-size:13px;font-weight:600;white-space:nowrap">4 bars</button>
+                <button style="height:34px;padding:0 13px;border-radius:999px;border:1px solid transparent;background:transparent;color:#f7efe8;font-size:13px;font-weight:600;white-space:nowrap">8 bars</button>
+                <button style="height:34px;padding:0 13px;border-radius:999px;border:1px solid transparent;background:transparent;color:#f7efe8;font-size:13px;font-weight:600;white-space:nowrap">Phrase</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:999px;background:rgba(0,0,0,0.3);font-size:13px;font-weight:600;letter-spacing:0.06em;color:#e04040"><span style="width:8px;height:8px;border-radius:50%;background:#e04040;animation:recPulse 1s ease-in-out infinite"></span><span>LIVE</span></div>
+              <button aria-label="Stream settings" style="width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,0.12);background:rgba(0,0,0,0.3);color:#b9a9a3;font-size:15px;display:grid;place-items:center">⚙</button>
+            </div>
+          </div>
+          <div style="position:relative;height:224px;border-radius:20px;overflow:hidden;background:rgba(0,0,0,0.22) repeating-linear-gradient(180deg,transparent 0 31px,rgba(255,255,255,0.2) 31px 32px) 0 16px / 100% 192px no-repeat">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:40px;z-index:3;background:linear-gradient(90deg,rgba(20,11,12,0.95) 60%,rgba(20,11,12,0))">
+              <sc-for list="{{ tabLabels }}" as="l" hint-placeholder-count="6">
+                <div style="position:absolute;left:12px;top:{{ l.top }}px;transform:translateY(-50%);font-size:13px;font-weight:600;color:#e9b949">{{ l.label }}</div>
+              </sc-for>
+            </div>
+            <div style="position:absolute;top:0;bottom:0;width:2px;z-index:2;right:48px;background:#e04040;box-shadow:0 0 14px #e04040"></div>
+            <div style="position:absolute;inset:0">
+              <sc-for list="{{ tabNotes }}" as="n" hint-placeholder-count="8">
+                <div style="position:absolute;z-index:2;left:{{ n.left }}%;top:{{ n.top }}px;transform:translate(-50%,-50%);min-width:24px;height:24px;line-height:24px;padding:0 5px;text-align:center;border-radius:7px;font-weight:600;font-size:15px;font-variant-numeric:tabular-nums;background:{{ n.bg }};color:{{ n.color }}">{{ n.f }}</div>
+              </sc-for>
+              <div style="position:absolute;top:0;bottom:0;width:0;border-left:2px dashed rgba(255,255,255,0.28);left:38%"></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap;padding:0 4px">
+            <div style="flex:1;min-width:160px">
+              <div style="font-weight:600;font-size:16px">Always recording</div>
+              <div style="color:#b9a9a3;font-size:13px">~96 BPM · 4/4 · 14 notes kept · hover or focus a save button to see which bars it keeps</div>
+            </div>
+            <button style="height:40px;padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,0.14);background:transparent;color:#b9a9a3;font-size:14px;font-weight:500">Clear</button>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+            <div role="tablist" style="display:flex;align-items:center;gap:4px;padding:4px;border-radius:999px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);width:fit-content">
+              <button style="height:36px;padding:0 16px;border-radius:999px;border:none;background:rgba(255,255,255,0.1);color:#f7efe8;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px"><span>Saved</span><span style="font-size:12px;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,0.1);color:#f6d98a">3</span></button>
+              <button style="height:36px;padding:0 16px;border-radius:999px;border:none;background:transparent;color:#b9a9a3;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px"><span>Deleted</span><span style="font-size:12px;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,0.1);color:#b9a9a3">0</span></button>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button style="height:36px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.14);background:transparent;color:#b9a9a3;font-size:13px;font-weight:600">Import</button>
+              <button style="height:36px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.14);background:transparent;color:#b9a9a3;font-size:13px;font-weight:600">Export</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <sc-for list="{{ riffs }}" as="r" hint-placeholder-count="3">
+              <div style="display:grid;grid-template-columns:40px minmax(0,1fr) minmax(0,120px) auto;gap:12px;align-items:center;min-height:60px;padding:8px 10px 8px 8px;border-radius:16px;background:{{ r.bg }};border:1px solid {{ r.border }};cursor:pointer">
+                <button style="width:40px;height:40px;border-radius:50%;border:none;background:{{ r.playBg }};color:{{ r.playColor }};font-size:14px;display:grid;place-items:center;box-shadow:{{ r.playShadow }}">{{ r.playIcon }}</button>
+                <div style="min-width:0">
+                  <div style="font-weight:600;font-size:15px;color:{{ r.nameColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+                  <div style="color:#b9a9a3;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.meta }}</div>
+                </div>
+                <div style="position:relative;height:32px;border-radius:7px;background:rgba(0,0,0,0.3) repeating-linear-gradient(180deg,transparent 0 5px,rgba(255,255,255,0.18) 5px 6px);background-position:0 1px;overflow:hidden">
+                  <sc-for list="{{ r.dots }}" as="d" hint-placeholder-count="10">
+                    <span style="position:absolute;width:4px;height:4px;border-radius:2px;background:#e9b949;left:{{ d.left }}%;top:{{ d.top }}px"></span>
+                  </sc-for>
+                </div>
+                <button aria-label="Delete riff" style="width:40px;height:40px;border-radius:50%;border:none;background:transparent;color:#b9a9a3;font-size:16px;display:grid;place-items:center">✕</button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isPedals }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Pedalboard" style="display:flex;flex-direction:column;gap:24px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:12px;min-height:22px"><div style="font-size:12px;letter-spacing:0.18em;color:#b9a9a3;font-weight:500">SIGNAL CHAIN · MIC → OUTPUT OFF</div><span style="margin-left:auto;white-space:nowrap;font-size:12px;color:#f6d98a"></span></div>
+          <div style="font-size:13px;color:#b9a9a3">Drag the grip to reorder · drag a knob to adjust · tap the footswitch</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,300px));gap:12px;justify-content:center">
+          <sc-for list="{{ vus }}" as="v" hint-placeholder-count="2">
+            <figure style="margin:0;min-width:0;padding:10px 12px 6px;border-radius:16px;background:radial-gradient(120% 100% at 50% 100%,#2a1b16 0%,#1a100f 70%);border:1px solid rgba(255,255,255,0.12);box-shadow:inset 0 1px 0 rgba(255,255,255,0.04)">
+              <svg viewBox="0 0 200 124" role="img" style="display:block;width:100%;height:auto">
+                <path d="{{ v.dim }}" fill="none" stroke="rgba(247,239,232,0.18)" stroke-width="6"></path>
+                <path d="{{ v.gold }}" fill="none" stroke="#e9b949" stroke-width="6"></path>
+                <path d="{{ v.red }}" fill="none" stroke="#e04040" stroke-width="6"></path>
+                <sc-for list="{{ v.ticks }}" as="t" hint-placeholder-count="7">
+                  <g>
+                    <line x1="{{ t.x1 }}" y1="{{ t.y1 }}" x2="{{ t.x2 }}" y2="{{ t.y2 }}" stroke="#b9a9a3" stroke-width="1.2"></line>
+                    <text x="{{ t.tx }}" y="{{ t.ty }}" fill="#8f807b" font-size="8" text-anchor="middle" font-family="Outfit, sans-serif">{{ t.db }}</text>
+                  </g>
+                </sc-for>
+                <g style="{{ v.needleStyle }}"><line x1="100" y1="108" x2="100" y2="22" stroke="#f7efe8" stroke-width="2" stroke-linecap="round"></line></g>
+                <circle cx="100" cy="108" r="5" fill="#c9952f"></circle>
+                <text x="14" y="120" fill="#b9a9a3" font-size="10" letter-spacing="1" font-family="Outfit, sans-serif">{{ v.name }}</text>
+                <text x="186" y="120" fill="#f7efe8" font-size="11" text-anchor="end" font-family="Outfit, sans-serif">{{ v.read }}</text>
+              </svg>
+            </figure>
+          </sc-for>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-radius:16px;background:rgba(233,185,73,0.1);border:1px solid rgba(233,185,73,0.35);font-size:14px;line-height:1.45">
+          <span style="flex:1;min-width:200px">Output is off. Turn it on to hear your guitar through this board. Use headphones so the mic doesn’t feed back.</span>
+          <button style="height:40px;padding:0 16px;border-radius:12px;border:none;background:linear-gradient(135deg,#e9b949,#c9952f);color:#140b0c;font-size:14px;font-weight:600;white-space:nowrap">Turn on output</button>
+        </div>
+        <div style="display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr))">
+          <sc-for list="{{ pedals }}" as="p" hint-placeholder-count="8">
+            <div style="padding:6px 14px 16px;border-radius:22px;background:{{ p.bg }};border:1px solid {{ p.border }};box-shadow:{{ p.shadow }};display:flex;flex-direction:column;align-items:center;gap:8px;position:relative">
+              <button style="width:100%;height:28px;display:grid;place-items:center;cursor:grab;color:rgba(255,255,255,0.35);letter-spacing:2px;font-size:14px;line-height:1;border:none;background:transparent;padding:0">••••</button>
+              <div style="text-align:center">
+                <div style="font-weight:700;font-size:16px;color:{{ p.nameColor }}">{{ p.name }}</div>
+                <div style="font-size:11px;letter-spacing:0.12em;color:#b9a9a3;font-weight:500;margin-top:2px">{{ p.type }}</div>
+              </div>
+              <div role="slider" style="width:92px;height:92px;border-radius:50%;display:grid;place-items:center;cursor:ns-resize;margin:4px 0;background:{{ p.ring }}">
+                <div style="width:72px;height:72px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#3a2626,#160c0d);border:1px solid rgba(255,255,255,0.14);box-shadow:0 6px 16px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.1);display:grid;place-items:center;font-weight:600;font-size:20px;font-variant-numeric:tabular-nums;color:{{ p.nameColor }}">{{ p.level }}</div>
+              </div>
+              <button aria-label="Footswitch" style="width:56px;height:56px;border-radius:50%;border:3px solid rgba(255,255,255,0.22);background:radial-gradient(circle at 40% 35%,#6a5556,#2a1a1b);box-shadow:0 5px 14px rgba(0,0,0,0.55),inset 0 2px 3px rgba(255,255,255,0.25)"></button>
+            </div>
+          </sc-for>
+        </div>
+        <section aria-label="Looper" style="padding:20px;border-radius:28px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);box-shadow:0 10px 40px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.15)">
+          <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px">
+            <div style="font-size:12px;letter-spacing:0.18em;color:#b9a9a3;font-weight:500">LOOPER · 4.2 S LOOP</div>
+            <div style="font-size:13px;color:#b9a9a3">Tap a slot: record → play → overdub · ■ stops it</div>
+          </div>
+          <div style="display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr))">
+            <sc-for list="{{ slots }}" as="s" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+                <button style="width:112px;height:112px;border-radius:50%;border:none;padding:6px;background:{{ s.ring }};box-shadow:{{ s.shadow }}">
+                  <span style="display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 40% 35%,#2b1a1b,#140b0c);font-size:13px;font-weight:700;letter-spacing:0.08em;color:{{ s.color }}">{{ s.label }}</span>
+                </button>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <span style="font-size:14px;font-weight:500;color:#b9a9a3;margin-right:2px">{{ s.name }}</span>
+                  <button style="width:32px;height:32px;border-radius:8px;border:none;background:transparent;color:#b9a9a3;font-size:13px;visibility:{{ s.vis }}">■</button>
+                  <button style="width:32px;height:32px;border-radius:8px;border:none;background:transparent;color:#b9a9a3;font-size:13px;visibility:{{ s.vis }}">✕</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;tab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;tuner&quot;,&quot;options&quot;:[&quot;tuner&quot;,&quot;chords&quot;,&quot;tabs&quot;,&quot;pedals&quot;],&quot;tsType&quot;:&quot;'tuner'|'chords'|'tabs'|'pedals'&quot;}}">
+class Component extends DCLogic {
+  state = { tab: 'tuner' };
+  renderVals() {
+    const tab = this.props.tab ?? this.state.tab;
+    const go = (id) => () => this.setState({ tab: id });
+    const NAV = [['tuner','Tuner','◎'],['chords','Chords','⌗'],['tabs','Tabs','≣'],['pedals','Pedals','▣']];
+    const TITLES = { tuner:'Tuner', chords:'Chord identifier', tabs:'Tab stream', pedals:'Pedalboard' };
+    const nav = NAV.map(([id,label,icon]) => ({ id,label,icon,go:go(id), bg: tab===id?'linear-gradient(135deg,rgba(224,64,64,0.9),rgba(179,32,42,0.9))':'transparent', color: tab===id?'#fff':'#b9a9a3', border: tab===id?'rgba(255,255,255,0.15)':'transparent' }));
+    // Tuner
+    const names = ['E','A','D','G','B','e'];
+    const active = 0, tuned = [];
+    const peg = (i) => ({ label:names[i], border: i===active?'#e9b949':tuned.includes(i)?'rgba(233,185,73,0.55)':'rgba(255,255,255,0.14)', bg: i===active?'rgba(233,185,73,0.16)':'rgba(255,255,255,0.06)', color: i===active||tuned.includes(i)?'#f6d98a':'#f7efe8', shadow: i===active?'0 0 24px rgba(233,185,73,0.35)':'none' });
+    const SPLIT = [[66,230],[66,150],[66,70],[134,70],[134,150],[134,230]];
+    const posts = SPLIT.map(([x,y],i)=>({x,y,ring:i===active?'#e9b949':'transparent'}));
+    // Chords: G shape [3,2,0,0,0,3]
+    const G = [3,2,0,0,0,3];
+    const board = [5,4,3,2,1,0].map(i => { const f = G[i]; return { label:names[i], mark: f===-1?'✕':f===0?'○':'', nutColor: f===-1?'#e04040':f===0?'#e9b949':'#b9a9a3', cells:[1,2,3,4,5].map(n=>({scale:f===n?'scale(1)':'scale(0.4)',opacity:f===n?1:0})) }; });
+    const history = ['G','Em','C','D'].map((name,i,a)=>({name, bg:i===a.length-1?'rgba(233,185,73,0.2)':'rgba(255,255,255,0.06)', border:i===a.length-1?'rgba(233,185,73,0.6)':'rgba(255,255,255,0.12)', color:i===a.length-1?'#f6d98a':'#f7efe8'}));
+    const presets = ['C','G','D','A','E','Am','Em','Dm','F','E7','Cmaj7'];
+    // Tabs
+    const yOf = (s) => 32 + (5-s)*32;
+    const tabLabels = names.map((n,i)=>({label:n, top:yOf(i)}));
+    const raw = [[12,0,3],[20,2,0],[26,1,1],[33,2,0],[46,1,1],[52,2,2],[58,3,0],[66,1,3],[74,2,2],[82,1,3],[88,2,2]];
+    const tabNotes = raw.map(([left,s,f],i)=>({left, top:yOf(s), f, bg:i===raw.length-1?'#e9b949':'#1d1112', color:i===raw.length-1?'#140b0c':'#f7efe8'}));
+    const mk = (n) => Array.from({length:n},(_,k)=>({left: 2 + (k/n)*94, top: 1 + ((k*7)%6)*5 }));
+    const riffs = [['Blues turnaround','18 notes · 0:06 · Oct 6', true],['Em arpeggio','24 notes · 0:11 · Oct 4', false],['Chorus idea','31 notes · 0:14 · Oct 1', false]].map(([name,meta,on])=>({name,meta,dots:mk(18), bg:on?'rgba(233,185,73,0.12)':'rgba(255,255,255,0.05)', border:on?'rgba(233,185,73,0.5)':'rgba(255,255,255,0.08)', playBg:on?'linear-gradient(135deg,#e9b949,#d9a030)':'rgba(255,255,255,0.1)', playColor:on?'#1c0e10':'#f7efe8', playShadow:on?'0 6px 18px rgba(233,185,73,0.35)':'none', playIcon:on?'❚❚':'▶', nameColor:on?'#f6d98a':'#f7efe8'}));
+    // Pedals VU (geometry from Gauges.tsx)
+    const VU_MIN=-60, SWEEP=50, CX=100, CY=108, R=82;
+    const ang = (db) => (Math.max(0,Math.min(1,(db-VU_MIN)/-VU_MIN))*2-1)*SWEEP;
+    const pt = (a,r) => [CX + r*Math.sin(a*Math.PI/180), CY - r*Math.cos(a*Math.PI/180)];
+    const arc = (a0,a1) => { const [x0,y0]=pt(a0,R), [x1,y1]=pt(a1,R); return `M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${R} ${R} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`; };
+    const tick = (db) => { const a=ang(db); const [x1,y1]=pt(a,R-12), [x2,y2]=pt(a,R-4), [tx,ty]=pt(a,R-22); return {db, x1:x1.toFixed(1),y1:y1.toFixed(1),x2:x2.toFixed(1),y2:y2.toFixed(1),tx:tx.toFixed(1),ty:(ty+3).toFixed(1)}; };
+    const vu = (name, th, level) => ({ name, dim: arc(-SWEEP, ang(th)), gold: arc(ang(th), ang(-6)), red: arc(ang(-6), SWEEP), ticks:[-60,-48,-36,-24,-12,-6,0].map(tick), needleStyle:`transform-origin:100px 108px;transform:rotate(${ang(level)}deg)`, read: level<VU_MIN?'−∞':level+' dB' });
+    const vus = [vu('IN',-42,-18), vu('OUT',-60,-120)];
+    vus[1].read = 'off';
+    const PED = [['Compressor','DYNAMICS',55,false],['Overdrive','GAIN',62,true],['Distortion','GAIN',70,false],['Fuzz','GAIN',48,false],['Chorus','MOD',40,false],['Phaser','MOD',35,false],['Delay','TIME',45,true],['Reverb','SPACE',58,false]];
+    const pedals = PED.map(([name,type,level,on])=>({name,type,level, bg:on?'linear-gradient(180deg,rgba(233,185,73,0.16),rgba(233,185,73,0.06))':'rgba(255,255,255,0.05)', border:on?'rgba(233,185,73,0.55)':'rgba(255,255,255,0.12)', shadow:on?'0 10px 40px rgba(233,185,73,0.2),inset 0 1px 0 rgba(255,255,255,0.15)':'0 10px 40px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.12)', nameColor:on?'#f6d98a':'#f7efe8', ring:`conic-gradient(from 225deg,${on?'#e9b949':'rgba(255,255,255,.35)'} 0deg ${level*2.7}deg,rgba(255,255,255,.1) ${level*2.7}deg 270deg,transparent 270deg 360deg)`}));
+    const SL = [['playing',1],['recording',0.4],['empty',0],['empty',0]];
+    const slots = SL.map(([st,prog],i)=>{ const rec=st==='recording'; const deg = st==='empty'?0:Math.round(prog*360); const ring = rec?'#e04040':st==='empty'?'rgba(255,255,255,.1)':'#e9b949'; return { name:'Loop '+(i+1), label: st==='empty'?'RECORD':rec?'● REC':'PLAYING', color: st==='empty'?'#b9a9a3':rec?'#e04040':'#e9b949', ring:`conic-gradient(${ring} ${deg}deg,rgba(255,255,255,.1) 0)`, shadow: st==='playing'?'0 0 28px rgba(233,185,73,.35)':rec?'0 0 28px rgba(224,64,64,.4)':'0 8px 20px rgba(0,0,0,.4)', vis: st==='empty'||rec?'hidden':'visible' }; });
+    return { nav, title: TITLES[tab], isTuner: tab==='tuner', isChords: tab==='chords', isTabs: tab==='tabs', isPedals: tab==='pedals', pegsLeft:[2,1,0].map(peg), pegsRight:[3,4,5].map(peg), posts, board, history, presets, tabLabels, tabNotes, riffs, vus, pedals, slots };
+  }
+}
+</script>
+</body>
+</html>

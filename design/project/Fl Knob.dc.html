@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px;width:max-content">
+  <div style="position:relative;width:{{ size }}px;height:{{ size }}px;border-radius:50%;background:{{ ringBg }};background-image:repeating-linear-gradient(0deg,rgba(255,235,210,0.018) 0 1px,transparent 1px 2px),{{ ringBg }};box-shadow:inset 0 2px 4px rgba(0,0,0,0.6),0 1px 0 rgba(255,255,255,0.08);display:grid;place-items:center">
+    <div style="position:absolute;inset:0;border-radius:50%;background:{{ arcBg }};-webkit-mask:radial-gradient(circle,transparent 62%,#000 63%);mask:radial-gradient(circle,transparent 62%,#000 63%)"></div>
+    <div style="position:absolute;inset:0;border-radius:50%;box-shadow:{{ glow }};pointer-events:none"></div>
+    <div style="position:relative;width:{{ capSize }}px;height:{{ capSize }}px;border-radius:50%;background:{{ capBg }};border:1px solid {{ capEdge }};box-shadow:0 4px 10px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.18),inset 0 -2px 0 rgba(0,0,0,0.35);overflow:hidden">
+      <div style="position:absolute;inset:0;border-radius:50%;background:{{ knurl }};transform:rotate({{ deg }}deg);transition:transform .08s linear">
+        <div style="position:absolute;top:5px;left:50%;width:3px;height:36%;margin-left:-1.5px;border-radius:2px;background:{{ pointer }}"></div>
+      </div>
+      <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 38% 28%, rgba(255,255,255,0.22), transparent 55%);pointer-events:none"></div>
+    </div>
+  </div>
+  <div style="font-family:'Big Shoulders Display','Barlow',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:{{ labelColor }};text-align:center;line-height:1">{{ label }}</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:140,&quot;height&quot;:140},&quot;value&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:62,&quot;min&quot;:0,&quot;max&quot;:100,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;DRIVE&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:84,&quot;min&quot;:40,&quot;max&quot;:160,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;color&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#e9a23b&quot;,&quot;options&quot;:[&quot;#e9a23b&quot;,&quot;#d4442c&quot;,&quot;#4db6a4&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;cap&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;black&quot;,&quot;options&quot;:[&quot;black&quot;,&quot;cream&quot;,&quot;chrome&quot;],&quot;tsType&quot;:&quot;'black'|'cream'|'chrome'&quot;},&quot;on&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const value = Math.max(0, Math.min(100, p.value ?? 50));
+    const size = p.size ?? 84;
+    const color = p.color ?? '#e9a23b';
+    const cap = p.cap ?? 'black';
+    const on = p.on ?? true;
+    const sweep = 270, start = 225;
+    const deg = -135 + value * 2.7;
+    const fillDeg = value * 2.7;
+    const track = 'rgba(255,255,255,0.16)';
+    const arcBg = `conic-gradient(from ${start}deg, ${on ? color : 'rgba(255,255,255,0.3)'} 0deg ${fillDeg}deg, ${track} ${fillDeg}deg ${sweep}deg, transparent ${sweep}deg 360deg)`;
+    const ringBg = p.ring ?? 'radial-gradient(circle at 50% 40%, #3a322c 0%, #231d1a 70%)';
+    const capBg = cap === 'cream'
+      ? 'radial-gradient(circle at 38% 30%, #f6ecd4, #d9c69a 60%, #b39e6e)'
+      : cap === 'chrome'
+        ? 'conic-gradient(from 0deg, #d8d8d8, #7a7a7a 25%, #e8e8e8 50%, #6f6f6f 75%, #d8d8d8)'
+        : 'radial-gradient(circle at 38% 30%, #3b322d, #1b1614 65%, #0e0b0a)';
+    const capEdge = cap === 'cream' ? '#8e7a50' : cap === 'chrome' ? '#444' : '#000';
+    const pointer = cap === 'cream' ? '#3a2a1a' : cap === 'chrome' ? '#1a1a1a' : '#efe4c8';
+    // Rotating layer: a faint radial knurl so the turn reads; lighting stays on the static cap.
+    const knurlInk = cap === 'black' ? 'rgba(255,235,210,0.07)' : 'rgba(60,40,10,0.09)';
+    const knurl = `repeating-conic-gradient(from 0deg, ${knurlInk} 0deg 3deg, transparent 3deg 10deg)`;
+    const glow = on ? `0 0 ${Math.round(size / 5)}px ${color}55` : 'none';
+    return { value, size, capSize: Math.round(size * 0.6), deg, arcBg, ringBg, capBg, capEdge, pointer, glow, knurl, label: p.label ?? '', labelColor: p.labelColor ?? '#b8a994' };
+  }
+}
+</script>
+</body>
+</html>

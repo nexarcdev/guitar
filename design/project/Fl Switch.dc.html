@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<button onClick="{{ toggle }}" aria-pressed="{{ on }}" aria-label="{{ aria }}" style="display:flex;flex-direction:{{ dir }};align-items:center;gap:{{ gap }}px;border:none;background:transparent;padding:0;cursor:pointer;color:{{ labelColor }};font-family:'Big Shoulders Display','Barlow',sans-serif;font-weight:700;font-size:{{ labelSize }}px;letter-spacing:0.16em;line-height:1;text-transform:uppercase;text-shadow:{{ labelShadow }}">
+  <sc-if value="{{ labelFirst }}" hint-placeholder-val="{{ false }}"><span>{{ label }}</span></sc-if>
+  <span style="position:relative;flex:none;width:{{ w }}px;height:{{ h }}px;border-radius:{{ r }}px;background:{{ track }};box-shadow:{{ trackShadow }}">
+    <span style="position:absolute;left:{{ lampL }}px;top:{{ lampT }}px;display:flex;transition:left .15s,top .15s"><dc-import name="Fl Lamp" tone="{{ lampTone }}" color="{{ lampColor }}" size="6" surface="well" pulse="{{ pulse }}" hint-size="6px,6px"></dc-import></span>
+    <span style="position:absolute;left:{{ capL }}px;top:{{ capT }}px;width:{{ capW }}px;height:{{ capH }}px;border-radius:3px;background:linear-gradient(180deg,#f3ead2,#d9c69a);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6);transition:left .15s,top .15s"></span>
+  </span>
+  <sc-if value="{{ labelAfter }}" hint-placeholder-val="{{ true }}"><span>{{ label }}</span></sc-if>
+</button>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:120,&quot;height&quot;:90},&quot;on&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;COUNT-IN&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;vertical&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;surface&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;dark&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;ivory&quot;,&quot;alu&quot;],&quot;tsType&quot;:&quot;'dark'|'ivory'|'alu'&quot;},&quot;tone&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;on&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;on&quot;,&quot;ok&quot;],&quot;tsType&quot;:&quot;'live'|'on'|'ok'&quot;},&quot;labelSide&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;below&quot;,&quot;options&quot;:[&quot;below&quot;,&quot;left&quot;,&quot;right&quot;,&quot;none&quot;],&quot;tsType&quot;:&quot;'below'|'left'|'right'|'none'&quot;},&quot;pulse&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onToggle&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;(on: boolean) =&gt; void&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const on = !!(p.on ?? false), vertical = !!(p.vertical ?? false), surface = p.surface ?? 'dark';
+    const side = p.labelSide ?? (vertical ? 'below' : 'below');
+    const TRACK = { dark: ['#0d0b0a', 'inset 0 2px 4px rgba(0,0,0,0.8)'], ivory: ['#2d2622', 'inset 0 2px 4px rgba(0,0,0,0.6),0 1px 0 rgba(255,255,255,0.6)'], alu: ['#1a1512', 'inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)'] };
+    const LABEL = { dark: '#b8a994', ivory: '#6b5636', alu: '#2a2420' };
+    const [track, trackShadow] = TRACK[surface] ?? TRACK.dark;
+    // One geometry per orientation; the cream cap slides, the lamp sits in the vacated end.
+    const g = vertical
+      ? { w: 22, h: 40, capW: 16, capH: 18, capL: 3, capT: on ? 3 : 19, lampL: 8, lampT: on ? 27 : 7 }
+      : { w: 38, h: 20, capW: 15, capH: 14, capL: on ? 20 : 3, capT: 3, lampL: on ? 8 : 24, lampT: 7 };
+    const tone = p.tone ?? 'on';
+    return {
+      ...g, r: vertical ? 4 : 3, on, track, trackShadow,
+      lampTone: on ? tone : 'off', lampColor: p.lampColor ?? '', pulse: !!p.pulse,
+      dir: side === 'left' ? 'row' : side === 'right' ? 'row' : 'column',
+      gap: side === 'below' ? (vertical ? 6 : 8) : 8,
+      labelFirst: side === 'left', labelAfter: side !== 'left' && side !== 'none',
+      label: p.label ?? '', labelColor: p.labelColor ?? LABEL[surface] ?? LABEL.dark, labelSize: p.labelSize ?? (vertical ? 10 : 12),
+      labelShadow: surface === 'alu' ? '0 1px 0 rgba(255,255,255,0.5)' : 'none',
+      aria: p.label || 'Switch',
+      toggle: () => { if (typeof p.onToggle === 'function') p.onToggle(!on); },
+    };
+  }
+}
+</script>
+</body>
+</html>

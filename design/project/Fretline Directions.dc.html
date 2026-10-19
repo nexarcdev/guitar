@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yellowtail&family=Big+Shoulders+Display:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#0e0c0b;color:#efe4c8;font-family:'Barlow',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#e9a23b}a:hover{color:#f3c36a}
+button{font-family:inherit;cursor:pointer}
+@keyframes lamp{0%,100%{opacity:1}50%{opacity:.55}}
+</style>
+</helmet>
+<section style="padding:40px;display:flex;flex-direction:column;gap:24px;border-bottom:1px solid #2c2521">
+  <div style="display:flex;align-items:baseline;gap:16px;color:#b8a994;font-size:13px;letter-spacing:0.14em;text-transform:uppercase;font-weight:600;flex-wrap:wrap">
+    <span style="color:#efe4c8">Turn 3 · Two materials, one rule</span><span>Ivory where you touch (controls), dark glass where you read, paper where you learn. Same shell as <a href="#2b" style="color:#e9a23b;text-decoration:none">2b</a>.</span>
+  </div>
+  <div style="display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start">
+
+    <!-- 3a Tuner -->
+    <div id="3a" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px"><a href="#3a" style="display:inline-grid;place-items:center;height:24px;padding:0 10px;border-radius:4px;background:#e9a23b;color:#1c1612;font-weight:700;font-size:12px;letter-spacing:0.08em;text-decoration:none">3a</a><span style="font-weight:600;font-size:14px;color:#efe4c8">Tuner</span><span style="font-size:13px;color:#b8a994">reading panel dark, control panel ivory</span></div>
+      <div data-screen-label="3a Tuner" style="width:1024px;height:768px;position:relative;overflow:hidden;background:radial-gradient(900px 520px at 12% 0%,rgba(212,68,44,0.30),transparent 65%),radial-gradient(700px 520px at 100% 100%,rgba(77,182,164,0.14),transparent 65%),#221c19;color:#efe4c8;font-family:'Barlow',sans-serif;border-radius:6px;box-shadow:0 30px 80px rgba(0,0,0,0.6)">
+        <header style="position:absolute;top:0;left:0;right:0;height:76px;display:grid;grid-template-columns:170px minmax(0,1fr) auto;align-items:center;padding:0 18px;gap:14px;background-color:#c9c4ba;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,0.05) 0 1px,transparent 1px 2px),linear-gradient(180deg,#dcd8cf,#b8b3a9);box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 3px 0 #15110f">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(160deg,#d4442c 0%,#e9a23b 55%,#f0c46b 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),0 2px 3px rgba(0,0,0,0.45);display:grid;place-items:center"><div style="width:22px;height:22px;border-radius:4px;background:#efe4c8;background-image:repeating-linear-gradient(90deg,#1c1612 0 2px,transparent 2px 6px);background-size:18px 14px;background-position:center;background-repeat:no-repeat"></div></div>
+            <div style="font-family:'Yellowtail',cursive;font-size:30px;line-height:1;color:#2a2420;text-shadow:0 1px 0 rgba(255,255,255,0.6)">Fretline</div>
+          </div>
+          <nav style="display:flex;align-items:stretch;justify-content:center;gap:6px;height:76px">
+            <sc-for list="{{ navAlu }}" as="n" hint-placeholder-count="5">
+              <button style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:0 14px;border:none;background:transparent;color:{{ n.color }};font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.14em;text-transform:uppercase;text-shadow:0 1px 0 rgba(255,255,255,0.5)"><span style="width:30px;height:4px;border-radius:2px;background:{{ n.lamp }};box-shadow:{{ n.lampGlow }}"></span>{{ n.label }}</button>
+            </sc-for>
+          </nav>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:112px;display:flex;flex-direction:column;gap:5px;padding:5px 8px;border-radius:4px;background:#1a1512;box-shadow:inset 0 1px 3px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)">
+              <dc-import name="Fl Meter" label="In" value="{{ inDb }}" peak="-16" threshold="-48" height="7" hint-size="96px,28px"></dc-import>
+              <dc-import name="Fl Meter" label="Out" value="-120" live="{{ false }}" height="7" hint-size="96px,28px"></dc-import>
+            </div>
+            <div style="height:44px;padding:0 14px;display:flex;flex-direction:column;justify-content:center;border-radius:4px;background:#1a1512;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><div style="font-size:10px;letter-spacing:0.18em;color:#8f8272;font-weight:600">TUNING</div><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.08em;color:#e9a23b;line-height:1.1;white-space:nowrap">STANDARD · 440</div></div>
+            <div style="display:flex;gap:10px">
+              <button style="display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:transparent;padding:0;color:#2a2420"><span style="width:46px;height:24px;border-radius:4px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><span style="position:absolute;top:3px;left:24px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#f3ead2,#d9c69a);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:9px;left:8px;width:7px;height:7px;border-radius:50%;background:#d4442c;box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span></span><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em;text-shadow:0 1px 0 rgba(255,255,255,0.5)">LISTEN</span></button>
+              <button style="display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:transparent;padding:0;color:#2a2420"><span style="width:46px;height:24px;border-radius:4px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><span style="position:absolute;top:3px;left:3px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#f3ead2,#d9c69a);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:9px;right:8px;width:7px;height:7px;border-radius:50%;background:#3a302a"></span></span><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em;text-shadow:0 1px 0 rgba(255,255,255,0.5)">OUTPUT</span></button>
+            </div>
+          </div>
+        </header>
+        <div style="position:absolute;top:79px;left:0;right:0;height:3px;background:linear-gradient(90deg,#d4442c 0%,#e9a23b 45%,#f0c46b 70%,#4db6a4 100%)"></div>
+        <main style="position:absolute;top:82px;bottom:46px;left:0;right:0;padding:22px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:22px">
+          <div style="position:relative;border-radius:8px;background:#2d2622;padding:16px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.09),0 2px 0 #0f0c0b,0 10px 24px rgba(0,0,0,0.35);display:flex;flex-direction:column;gap:12px">
+            <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 8px">
+              <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#e9a23b"><span style="width:7px;height:7px;border-radius:50%;background:#d4442c;box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span>LISTENING · MIC</div>
+              <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.16em;color:#b8a994">AUTO<span style="width:38px;height:20px;border-radius:3px;background:#0d0b0a;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8)"><span style="position:absolute;top:3px;left:20px;width:15px;height:14px;border-radius:2px;background:#e9a23b;box-shadow:0 0 8px rgba(233,162,59,0.6)"></span></span></div>
+            </div>
+            <div style="position:relative;flex:1;border-radius:6px;background:radial-gradient(120% 80% at 50% 100%,#15110f,#070605 80%);box-shadow:inset 0 3px 10px rgba(0,0,0,0.95),inset 0 0 0 1px rgba(0,0,0,0.8),0 1px 0 rgba(255,235,210,0.06);overflow:hidden">
+              <div style="position:absolute;left:40px;right:40px;top:34px;height:46px;background-image:linear-gradient(90deg,rgba(239,228,200,0.55) 0 1px,transparent 1px),linear-gradient(90deg,rgba(239,228,200,0.25) 0 1px,transparent 1px);background-size:calc(100% / 4) 100%,calc(100% / 20) 55%;background-repeat:repeat-x;background-position:0 0,0 100%;box-shadow:inset -1px 0 0 rgba(239,228,200,0.55)"></div>
+              <div style="position:absolute;left:40px;right:40px;top:12px;display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:#8f8272;font-variant-numeric:tabular-nums"><span>−50</span><span>−25</span><span style="color:#efe4c8">0</span><span>+25</span><span>+50</span></div>
+              <div style="position:absolute;top:30px;height:60px;width:2px;left:50%;margin-left:-1px;background:#efe4c8;opacity:0.4"></div>
+              <div style="position:absolute;top:26px;height:70px;width:3px;left:{{ needleLeft }}%;margin-left:-1.5px;background:#e9a23b;box-shadow:0 0 10px #e9a23b,0 0 24px rgba(233,162,59,0.6);border-radius:2px"></div>
+              <div style="position:absolute;left:0;right:0;top:120px;display:flex;flex-direction:column;align-items:center;gap:4px">
+                <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:220px;line-height:0.85;color:#e9a23b;text-shadow:0 0 30px rgba(233,162,59,0.45)">E</div>
+                <div style="font-size:16px;color:#b8a994;font-variant-numeric:tabular-nums;letter-spacing:0.04em">82.4 Hz · <span style="color:#efe4c8">{{ centsText }}</span></div>
+              </div>
+              <div style="position:absolute;left:0;right:0;bottom:22px;display:flex;justify-content:center"><div style="display:flex;align-items:center;gap:10px;padding:8px 18px;border-radius:4px;background:rgba(77,182,164,0.12);box-shadow:inset 0 0 0 1px rgba(77,182,164,0.5);font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:18px;letter-spacing:0.16em;color:#4db6a4;text-shadow:0 0 12px rgba(77,182,164,0.6)"><span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 10px #4db6a4"></span>IN TUNE</div></div>
+            </div>
+          </div>
+          <div style="position:relative;border-radius:8px;background:linear-gradient(180deg,#ebe0c6,#dccfae);padding:18px 20px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),inset 0 -1px 0 rgba(90,60,20,0.25),0 2px 0 #8e7a50,0 10px 24px rgba(0,0,0,0.4);display:flex;flex-direction:column;gap:16px;color:#2b1d10">
+            <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px"><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#8a5a12">STRINGS</div><div style="font-size:12px;color:#6b5636">2 of 6 in tune</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;padding:0 4px">
+              <sc-for list="{{ stringsBlonde }}" as="s" hint-placeholder-count="6">
+                <button style="display:flex;align-items:center;gap:14px;height:64px;padding:0 14px;border:none;border-radius:6px;background-color:#2d2622;background-image:repeating-linear-gradient(0deg,rgba(255,235,210,0.018) 0 1px,transparent 1px 2px);box-shadow:inset 0 2px 4px rgba(0,0,0,0.5),inset 0 0 0 1px {{ s.edgeDark }},0 1px 0 rgba(255,255,255,0.6);color:{{ s.colorDark }}">
+                  <span style="width:14px;height:14px;border-radius:50%;background:{{ s.lamp }};box-shadow:{{ s.glow }};flex:none"></span>
+                  <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:30px;line-height:1">{{ s.label }}</span>
+                  <span style="margin-left:auto;font-size:12px;letter-spacing:0.12em;font-weight:700;color:{{ s.subDark2 }}">{{ s.sub }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-around;padding:6px 4px 0;border-top:1px solid rgba(90,60,20,0.25);box-shadow:0 -1px 0 rgba(255,255,255,0.6)">
+              <dc-import name="Fl Knob" label="A4 · 440" value="50" size="78" cap="cream" color="#d9902a" label-color="#6b5636" hint-size="100px,110px"></dc-import>
+              <dc-import name="Fl Knob" label="Capo · 0" value="0" size="78" cap="cream" color="#1f8c7c" on="{{ false }}" label-color="#6b5636" hint-size="100px,110px"></dc-import>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:auto">
+              <button style="flex:1;height:50px;border:none;border-radius:6px;background:linear-gradient(180deg,#f0b650,#d9902a);color:#1c1612;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),inset 0 -2px 0 rgba(0,0,0,0.25),0 3px 0 #7a4e12">PLAY REFERENCE</button>
+              <button style="flex:1;height:50px;border-radius:6px;border:none;background:linear-gradient(180deg,#3a302a,#1c1612);color:#efe4c8;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,235,210,0.15),0 3px 0 #0b0908">START OVER</button>
+            </div>
+          </div>
+        </main>
+        <footer style="position:absolute;bottom:0;left:0;right:0;height:46px;display:flex;align-items:center;gap:14px;padding:0 22px;background:#0f0c0b;box-shadow:inset 0 1px 0 rgba(255,235,210,0.06)">
+          <span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 8px #4db6a4"></span>
+          <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.18em;color:#4db6a4">TUTOR</span>
+          <span style="font-size:14px;color:#efe4c8">Low E is holding. Mute it and pluck A, your 5th string.</span>
+          <span style="margin-left:auto;font-size:12px;color:#8f8272;letter-spacing:0.06em">Today · Open chords <span style="color:#e9a23b;font-weight:700">72</span> · 2 strings left in this tune-up</span>
+        </footer>
+      </div>
+    </div>
+
+    <!-- 3b Lesson -->
+    <div id="3b" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px"><a href="#3b" style="display:inline-grid;place-items:center;height:24px;padding:0 10px;border-radius:4px;background:#e9a23b;color:#1c1612;font-weight:700;font-size:12px;letter-spacing:0.08em;text-decoration:none">3b</a><span style="font-weight:600;font-size:14px;color:#efe4c8">Lesson</span><span style="font-size:13px;color:#b8a994">paper stays in a dark frame; skills and play-along go ivory</span></div>
+      <div data-screen-label="3b Lesson" style="width:1024px;height:768px;position:relative;overflow:hidden;background:radial-gradient(900px 520px at 12% 0%,rgba(212,68,44,0.30),transparent 65%),radial-gradient(700px 520px at 100% 100%,rgba(77,182,164,0.14),transparent 65%),#221c19;color:#efe4c8;font-family:'Barlow',sans-serif;border-radius:6px;box-shadow:0 30px 80px rgba(0,0,0,0.6)">
+        <header style="position:absolute;top:0;left:0;right:0;height:76px;display:grid;grid-template-columns:170px minmax(0,1fr) auto;align-items:center;padding:0 18px;gap:14px;background-color:#c9c4ba;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,0.05) 0 1px,transparent 1px 2px),linear-gradient(180deg,#dcd8cf,#b8b3a9);box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 3px 0 #15110f">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(160deg,#d4442c 0%,#e9a23b 55%,#f0c46b 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),0 2px 3px rgba(0,0,0,0.45);display:grid;place-items:center"><div style="width:22px;height:22px;border-radius:4px;background:#efe4c8;background-image:repeating-linear-gradient(90deg,#1c1612 0 2px,transparent 2px 6px);background-size:18px 14px;background-position:center;background-repeat:no-repeat"></div></div>
+            <div style="font-family:'Yellowtail',cursive;font-size:30px;line-height:1;color:#2a2420;text-shadow:0 1px 0 rgba(255,255,255,0.6)">Fretline</div>
+          </div>
+          <nav style="display:flex;align-items:stretch;justify-content:center;gap:6px;height:76px">
+            <sc-for list="{{ lessonNav }}" as="n" hint-placeholder-count="5">
+              <button style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:0 14px;border:none;background:transparent;color:{{ n.color }};font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.14em;text-transform:uppercase;text-shadow:0 1px 0 rgba(255,255,255,0.5)"><span style="width:30px;height:4px;border-radius:2px;background:{{ n.lamp }};box-shadow:{{ n.lampGlow }}"></span>{{ n.label }}</button>
+            </sc-for>
+          </nav>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:112px;display:flex;flex-direction:column;gap:5px;padding:5px 8px;border-radius:4px;background:#1a1512;box-shadow:inset 0 1px 3px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)">
+              <dc-import name="Fl Meter" label="In" value="-20" peak="-12" threshold="-48" height="7" hint-size="96px,28px"></dc-import>
+              <dc-import name="Fl Meter" label="Out" value="-120" live="{{ false }}" height="7" hint-size="96px,28px"></dc-import>
+            </div>
+            <div style="height:44px;padding:0 14px;display:flex;flex-direction:column;justify-content:center;border-radius:4px;background:#1a1512;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><div style="font-size:10px;letter-spacing:0.18em;color:#8f8272;font-weight:600">TUNING</div><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.08em;color:#e9a23b;line-height:1.1;white-space:nowrap">STANDARD · 440</div></div>
+            <div style="display:flex;gap:10px">
+              <button style="display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:transparent;padding:0;color:#2a2420"><span style="width:46px;height:24px;border-radius:4px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><span style="position:absolute;top:3px;left:24px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#f3ead2,#d9c69a);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:9px;left:8px;width:7px;height:7px;border-radius:50%;background:#d4442c;box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span></span><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em;text-shadow:0 1px 0 rgba(255,255,255,0.5)">LISTEN</span></button>
+              <button style="display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:transparent;padding:0;color:#2a2420"><span style="width:46px;height:24px;border-radius:4px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><span style="position:absolute;top:3px;left:3px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#f3ead2,#d9c69a);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:9px;right:8px;width:7px;height:7px;border-radius:50%;background:#3a302a"></span></span><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em;text-shadow:0 1px 0 rgba(255,255,255,0.5)">OUTPUT</span></button>
+            </div>
+          </div>
+        </header>
+        <div style="position:absolute;top:79px;left:0;right:0;height:3px;background:linear-gradient(90deg,#d4442c 0%,#e9a23b 45%,#f0c46b 70%,#4db6a4 100%)"></div>
+        <main style="position:absolute;top:82px;bottom:46px;left:0;right:0;padding:22px;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:22px">
+          <div style="position:relative;border-radius:8px;background:#2d2622;padding:16px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.09),0 2px 0 #0f0c0b,0 10px 24px rgba(0,0,0,0.35);display:flex;flex-direction:column;gap:12px;min-height:0">
+            <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 8px">
+              <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#e9a23b"><span style="width:7px;height:7px;border-radius:50%;background:#d4442c;box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span>LESSON 4 · PLAYING ALONG</div>
+              <div style="display:flex;gap:2px;padding:3px;border-radius:5px;background:#0d0b0a;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8)"><button style="height:28px;padding:0 12px;border:none;border-radius:3px;background:#e9a23b;color:#1c1612;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:12px;letter-spacing:0.14em;box-shadow:0 0 10px rgba(233,162,59,0.5)">CHARTS</button><button style="height:28px;padding:0 12px;border:none;border-radius:3px;background:transparent;color:#b8a994;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:12px;letter-spacing:0.14em">TAB</button></div>
+            </div>
+            <div style="position:relative;flex:1;min-height:0;padding:22px 24px 18px;border-radius:3px;background:radial-gradient(120% 90% at 50% 40%,#e8d6ad 0%,#dcc492 55%,#c9ad74 100%);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.25),inset 0 0 60px rgba(90,60,20,0.4),0 2px 0 rgba(0,0,0,0.35),0 10px 24px rgba(0,0,0,0.45);color:#3a2a1a;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+              <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(80,50,10,0.05) 0 1px,transparent 1px 3px);pointer-events:none;mix-blend-mode:multiply"></div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;position:relative">
+                <div><div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#6b5636;font-weight:700">Open chords · part 2 of 3</div><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:34px;line-height:1;color:#2b1d10;margin-top:4px">G · Em · C · D</div></div>
+                <div style="text-align:right;font-size:12px;color:#6b5636;font-weight:600;line-height:1.5">Key of G · 4/4 · 72 BPM<br>One bar each, strum down on every beat</div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;position:relative">
+                <sc-for list="{{ charts }}" as="c" hint-placeholder-count="4">
+                  <div style="position:relative;border-radius:4px;box-shadow:{{ c.ring }};width:max-content;justify-self:center">
+                    <dc-import name="Fl Chord Chart" chord="{{ c.name }}" sub="{{ c.sub }}" frets="{{ c.frets }}" fingers="{{ c.fingers }}" width="128" hint-size="128px,180px"></dc-import>
+                    <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);padding:2px 8px;border-radius:3px;background:{{ c.tagBg }};color:#f6ecd4;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:11px;letter-spacing:0.16em;opacity:{{ c.tagOpacity }};box-shadow:0 1px 2px rgba(0,0,0,0.4)">{{ c.tag }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="position:relative;margin-top:auto">
+                <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#6b5636;margin-bottom:8px"><span>Progression · bar 2 of 4</span><span>Changes landed: <span style="color:#1f8c7c">3</span> / 4 on time</span></div>
+                <div style="position:relative;height:56px;display:grid;grid-template-columns:repeat(4,1fr);border:2px solid #2b1d10;border-radius:2px;background:rgba(255,255,255,0.12)">
+                  <sc-for list="{{ bars }}" as="b" hint-placeholder-count="4">
+                    <div style="position:relative;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-right:1.5px solid #3a2a1a;background:{{ b.bg }}"><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:26px;color:{{ b.color }}">{{ b.name }}</span><span style="display:flex;gap:6px"><sc-for list="{{ b.beats }}" as="d" hint-placeholder-count="4"><span style="width:9px;height:9px;border-radius:50%;background:{{ d }}"></span></sc-for></span></div>
+                  </sc-for>
+                  <div style="position:absolute;top:-6px;bottom:-6px;width:3px;left:{{ playLeft }}%;margin-left:-1.5px;background:#c8431f;box-shadow:0 0 6px rgba(200,67,31,0.6)"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:22px;min-height:0">
+            <div style="position:relative;border-radius:8px;background:linear-gradient(180deg,#ebe0c6,#dccfae);padding:18px 20px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),inset 0 -1px 0 rgba(90,60,20,0.25),0 2px 0 #8e7a50,0 10px 24px rgba(0,0,0,0.4);display:flex;flex-direction:column;gap:14px;color:#2b1d10">
+              <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px"><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#8a5a12">YOUR SKILLS</div><div style="font-size:12px;color:#6b5636">Updated as you play</div></div>
+              <div style="display:flex;justify-content:space-around;padding:0 4px">
+                <dc-import name="Fl Skill Ring" label="Open chords" score="72" size="88" color="#1f8c7c" label-color="#6b5636" hint-size="100px,120px"></dc-import>
+                <dc-import name="Fl Skill Ring" label="Chord changes" score="58" size="88" color="#d9902a" label-color="#6b5636" hint-size="100px,120px"></dc-import>
+                <dc-import name="Fl Skill Ring" label="Timing" score="81" size="88" color="#1f8c7c" label-color="#6b5636" hint-size="100px,120px"></dc-import>
+              </div>
+            </div>
+            <div style="position:relative;flex:1;min-height:0;border-radius:8px;background:linear-gradient(180deg,#ebe0c6,#dccfae);padding:18px 20px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),inset 0 -1px 0 rgba(90,60,20,0.25),0 2px 0 #8e7a50,0 10px 24px rgba(0,0,0,0.4);display:flex;flex-direction:column;gap:14px;color:#2b1d10">
+              <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span>
+              <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#8a5a12;padding:0 4px">PLAY ALONG</div>
+              <div style="display:flex;align-items:center;justify-content:space-around;padding:0 4px">
+                <dc-import name="Fl Knob" label="Tempo · 72" value="36" size="78" cap="cream" color="#d9902a" label-color="#6b5636" hint-size="100px,110px"></dc-import>
+                <dc-import name="Fl Knob" label="Click · 60%" value="60" size="78" cap="cream" color="#1f8c7c" label-color="#6b5636" hint-size="100px,110px"></dc-import>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><span style="width:38px;height:20px;border-radius:3px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8),0 1px 0 rgba(255,255,255,0.6)"><span style="position:absolute;top:3px;left:20px;width:15px;height:14px;border-radius:2px;background:#e9a23b;box-shadow:0 0 8px rgba(233,162,59,0.6)"></span></span><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.14em;color:#6b5636">COUNT-IN</span></div>
+              </div>
+              <div style="display:flex;gap:10px">
+                <button style="flex:1;height:50px;border:none;border-radius:6px;background:linear-gradient(180deg,#e2563d,#b8321c);color:#fff3ee;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,255,255,0.3),inset 0 -2px 0 rgba(0,0,0,0.3),0 3px 0 #5a1509;display:flex;align-items:center;justify-content:center;gap:10px"><span style="width:10px;height:10px;border-radius:50%;background:#fff3ee;box-shadow:0 0 8px #fff3ee;animation:lamp 1s ease-in-out infinite"></span>STOP · 0:42</button>
+                <button style="height:50px;padding:0 18px;border-radius:6px;border:none;background:linear-gradient(180deg,#3a302a,#1c1612);color:#efe4c8;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,235,210,0.15),0 3px 0 #0b0908">SLOWER</button>
+              </div>
+              <div style="flex:1;min-height:0;border-radius:6px;background:rgba(90,60,20,0.1);box-shadow:inset 0 2px 4px rgba(90,60,20,0.25),0 1px 0 rgba(255,255,255,0.6);padding:12px 14px;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+                <div style="font-size:10px;letter-spacing:0.18em;color:#8a7a5a;font-weight:700">UP NEXT</div>
+                <sc-for list="{{ next }}" as="x" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500"><span style="width:7px;height:7px;border-radius:50%;background:{{ x.dot }};flex:none"></span><span style="color:{{ x.color }}">{{ x.title }}</span><span style="margin-left:auto;font-size:11px;color:#8a7a5a;white-space:nowrap">{{ x.meta }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </main>
+        <footer style="position:absolute;bottom:0;left:0;right:0;height:46px;display:flex;align-items:center;gap:14px;padding:0 22px;background:#0f0c0b;box-shadow:inset 0 1px 0 rgba(255,235,210,0.06)">
+          <span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 8px #4db6a4"></span>
+          <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.18em;color:#4db6a4">TUTOR</span>
+          <span style="font-size:14px;color:#efe4c8">Your G → C change lands a half beat late. Keep finger 3 on the high e as a pivot and move the other two.</span>
+          <button style="margin-left:auto;height:28px;padding:0 12px;border:none;border-radius:4px;background:rgba(77,182,164,0.12);color:#4db6a4;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.14em;box-shadow:inset 0 0 0 1px rgba(77,182,164,0.5)">SHOW ME</button>
+        </footer>
+      </div>
+    </div>
+  </div>
+</section>
+<section style="padding:40px;display:flex;flex-direction:column;gap:24px;border-bottom:1px solid #2c2521">
+  <div style="display:flex;align-items:baseline;gap:16px;color:#b8a994;font-size:13px;letter-spacing:0.14em;text-transform:uppercase;font-weight:600">
+    <span style="color:#efe4c8">Turn 2 · Blend</span><span>Screws, boxy switches and panels from <a href="#1a" style="color:#e9a23b;text-decoration:none">1a</a> · aluminum header and recessed readouts from <a href="#1b" style="color:#e9a23b;text-decoration:none">1b</a> · page selector and colored light from <a href="#1c" style="color:#e9a23b;text-decoration:none">1c</a></span>
+  </div>
+  <div style="display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start">
+
+    <!-- 2a Faceplate -->
+    <div id="2a" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px"><a href="#2a" style="display:inline-grid;place-items:center;height:24px;padding:0 10px;border-radius:4px;background:#e9a23b;color:#1c1612;font-weight:700;font-size:12px;letter-spacing:0.08em;text-decoration:none">2a</a><span style="font-weight:600;font-size:14px;color:#efe4c8">Faceplate</span><span style="font-size:13px;color:#b8a994">aluminum header, dark panels on a lit chassis, cream caps</span></div>
+      <div data-screen-label="2a Faceplate · Tuner" style="width:1024px;height:768px;position:relative;overflow:hidden;background:radial-gradient(900px 520px at 12% 0%,rgba(212,68,44,0.30),transparent 65%),radial-gradient(700px 520px at 100% 100%,rgba(77,182,164,0.14),transparent 65%),#221c19;color:#efe4c8;font-family:'Barlow',sans-serif;border-radius:6px;box-shadow:0 30px 80px rgba(0,0,0,0.6)">
+        <header style="position:absolute;top:0;left:0;right:0;height:76px;display:grid;grid-template-columns:170px minmax(0,1fr) auto;align-items:center;padding:0 18px;gap:14px;background-color:#c9c4ba;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,0.05) 0 1px,transparent 1px 2px),linear-gradient(180deg,#dcd8cf,#b8b3a9);box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 3px 0 #15110f">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(160deg,#d4442c 0%,#e9a23b 55%,#f0c46b 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),0 2px 3px rgba(0,0,0,0.45);display:grid;place-items:center"><div style="width:22px;height:22px;border-radius:4px;background:#efe4c8;background-image:repeating-linear-gradient(90deg,#1c1612 0 2px,transparent 2px 6px);background-size:18px 14px;background-position:center;background-repeat:no-repeat"></div></div>
+            <div style="font-family:'Yellowtail',cursive;font-size:30px;line-height:1;color:#2a2420;text-shadow:0 1px 0 rgba(255,255,255,0.6)">Fretline</div>
+          </div>
+          <nav style="display:flex;align-items:stretch;justify-content:center;gap:6px;height:76px">
+            <sc-for list="{{ navAlu }}" as="n" hint-placeholder-count="5">
+              <button style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:0 14px;border:none;background:transparent;color:{{ n.color }};font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.14em;text-transform:uppercase;text-shadow:0 1px 0 rgba(255,255,255,0.5)">
+                <span style="width:30px;height:4px;border-radius:2px;background:{{ n.lamp }};box-shadow:{{ n.lampGlow }}"></span>{{ n.label }}
+              </button>
+            </sc-for>
+          </nav>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:112px;display:flex;flex-direction:column;gap:5px;padding:5px 8px;border-radius:4px;background:#1a1512;box-shadow:inset 0 1px 3px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)">
+              <dc-import name="Fl Meter" label="In" value="{{ inDb }}" peak="-16" threshold="-48" height="7" hint-size="96px,28px"></dc-import>
+              <dc-import name="Fl Meter" label="Out" value="-120" live="{{ false }}" height="7" hint-size="96px,28px"></dc-import>
+            </div>
+            <div style="height:44px;padding:0 14px;display:flex;flex-direction:column;justify-content:center;border-radius:4px;background:#1a1512;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)">
+              <div style="font-size:10px;letter-spacing:0.18em;color:#8f8272;font-weight:600">TUNING</div>
+              <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.08em;color:#e9a23b;line-height:1.1;white-space:nowrap">STANDARD · 440</div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <button style="display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:transparent;padding:0;color:#2a2420">
+                <span style="width:46px;height:24px;border-radius:4px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><span style="position:absolute;top:3px;left:24px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#f3ead2,#d9c69a);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:9px;left:8px;width:7px;height:7px;border-radius:50%;background:#d4442c;box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span></span>
+                <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em;text-shadow:0 1px 0 rgba(255,255,255,0.5)">LISTEN</span>
+              </button>
+              <button style="display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:transparent;padding:0;color:#2a2420">
+                <span style="width:46px;height:24px;border-radius:4px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><span style="position:absolute;top:3px;left:3px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#f3ead2,#d9c69a);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:9px;right:8px;width:7px;height:7px;border-radius:50%;background:#3a302a"></span></span>
+                <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em;text-shadow:0 1px 0 rgba(255,255,255,0.5)">OUTPUT</span>
+              </button>
+            </div>
+          </div>
+        </header>
+        <div style="position:absolute;top:79px;left:0;right:0;height:3px;background:linear-gradient(90deg,#d4442c 0%,#e9a23b 45%,#f0c46b 70%,#4db6a4 100%)"></div>
+        <main style="position:absolute;top:82px;bottom:46px;left:0;right:0;padding:22px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:22px">
+          <div style="position:relative;border-radius:8px;background:#2d2622;padding:16px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.09),0 2px 0 #0f0c0b,0 10px 24px rgba(0,0,0,0.35);display:flex;flex-direction:column;gap:12px">
+            <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 8px">
+              <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#e9a23b"><span style="width:7px;height:7px;border-radius:50%;background:#d4442c;box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span>LISTENING · MIC</div>
+              <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.16em;color:#b8a994">AUTO<span style="width:38px;height:20px;border-radius:3px;background:#0d0b0a;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8)"><span style="position:absolute;top:3px;left:20px;width:15px;height:14px;border-radius:2px;background:#e9a23b;box-shadow:0 0 8px rgba(233,162,59,0.6)"></span></span></div>
+            </div>
+            <div style="position:relative;flex:1;border-radius:6px;background:radial-gradient(120% 80% at 50% 100%,#15110f,#070605 80%);box-shadow:inset 0 3px 10px rgba(0,0,0,0.95),inset 0 0 0 1px rgba(0,0,0,0.8),0 1px 0 rgba(255,235,210,0.06);overflow:hidden">
+              <div style="position:absolute;left:40px;right:40px;top:34px;height:46px;background-image:linear-gradient(90deg,rgba(239,228,200,0.55) 0 1px,transparent 1px),linear-gradient(90deg,rgba(239,228,200,0.25) 0 1px,transparent 1px);background-size:calc(100% / 4) 100%,calc(100% / 20) 55%;background-repeat:repeat-x;background-position:0 0,0 100%;box-shadow:inset -1px 0 0 rgba(239,228,200,0.55)"></div>
+              <div style="position:absolute;left:40px;right:40px;top:12px;display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:#8f8272;font-variant-numeric:tabular-nums"><span>−50</span><span>−25</span><span style="color:#efe4c8">0</span><span>+25</span><span>+50</span></div>
+              <div style="position:absolute;top:30px;height:60px;width:2px;left:50%;margin-left:-1px;background:#efe4c8;opacity:0.4"></div>
+              <div style="position:absolute;top:26px;height:70px;width:3px;left:{{ needleLeft }}%;margin-left:-1.5px;background:#e9a23b;box-shadow:0 0 10px #e9a23b,0 0 24px rgba(233,162,59,0.6);border-radius:2px"></div>
+              <div style="position:absolute;left:0;right:0;top:120px;display:flex;flex-direction:column;align-items:center;gap:4px">
+                <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:220px;line-height:0.85;color:#e9a23b;text-shadow:0 0 30px rgba(233,162,59,0.45)">E</div>
+                <div style="font-size:16px;color:#b8a994;font-variant-numeric:tabular-nums;letter-spacing:0.04em">82.4 Hz · <span style="color:#efe4c8">{{ centsText }}</span></div>
+              </div>
+              <div style="position:absolute;left:0;right:0;bottom:22px;display:flex;justify-content:center"><div style="display:flex;align-items:center;gap:10px;padding:8px 18px;border-radius:4px;background:rgba(77,182,164,0.12);box-shadow:inset 0 0 0 1px rgba(77,182,164,0.5);font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:18px;letter-spacing:0.16em;color:#4db6a4;text-shadow:0 0 12px rgba(77,182,164,0.6)"><span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 10px #4db6a4"></span>IN TUNE</div></div>
+            </div>
+          </div>
+          <div style="position:relative;border-radius:8px;background:#2d2622;padding:18px 20px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.09),0 2px 0 #0f0c0b,0 10px 24px rgba(0,0,0,0.35);display:flex;flex-direction:column;gap:16px">
+            <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px"><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#e9a23b">STRINGS</div><div style="font-size:12px;color:#b8a994">2 of 6 in tune</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;padding:0 4px">
+              <sc-for list="{{ strings }}" as="s" hint-placeholder-count="6">
+                <button style="display:flex;align-items:center;gap:14px;height:64px;padding:0 14px;border:none;border-radius:6px;background:#1a1512;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8),inset 0 0 0 1px {{ s.edge }},0 1px 0 rgba(255,235,210,0.07);color:{{ s.color }}">
+                  <span style="width:14px;height:14px;border-radius:50%;background:{{ s.lamp }};box-shadow:{{ s.glow }};flex:none"></span>
+                  <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:30px;line-height:1">{{ s.label }}</span>
+                  <span style="margin-left:auto;font-size:12px;letter-spacing:0.12em;font-weight:600;color:{{ s.subColor }}">{{ s.sub }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-around;padding:6px 4px 0;border-top:1px solid rgba(0,0,0,0.5);box-shadow:0 -1px 0 rgba(255,235,210,0.06)">
+              <dc-import name="Fl Knob" label="A4 · 440" value="50" size="78" cap="cream" color="#e9a23b" hint-size="100px,110px"></dc-import>
+              <dc-import name="Fl Knob" label="Capo · 0" value="0" size="78" cap="cream" color="#4db6a4" on="{{ false }}" hint-size="100px,110px"></dc-import>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:auto">
+              <button style="flex:1;height:50px;border:none;border-radius:6px;background:linear-gradient(180deg,#f0b650,#d9902a);color:#1c1612;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),inset 0 -2px 0 rgba(0,0,0,0.25),0 3px 0 #7a4e12">PLAY REFERENCE</button>
+              <button style="flex:1;height:50px;border-radius:6px;border:none;background:linear-gradient(180deg,#f3ead2,#d9c69a);color:#2a2420;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 3px 0 #8e7a50">START OVER</button>
+            </div>
+          </div>
+        </main>
+        <footer style="position:absolute;bottom:0;left:0;right:0;height:46px;display:flex;align-items:center;gap:14px;padding:0 22px;background:#0f0c0b;box-shadow:inset 0 1px 0 rgba(255,235,210,0.06)">
+          <span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 8px #4db6a4"></span>
+          <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.18em;color:#4db6a4">TUTOR</span>
+          <span style="font-size:14px;color:#efe4c8">Low E is holding. Mute it and pluck A, your 5th string.</span>
+          <span style="margin-left:auto;font-size:12px;color:#8f8272;letter-spacing:0.06em">Today · Open chords <span style="color:#e9a23b;font-weight:700">72</span> · 2 strings left in this tune-up</span>
+        </footer>
+      </div>
+    </div>
+
+    <!-- 2b Blonde -->
+    <div id="2b" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px"><a href="#2b" style="display:inline-grid;place-items:center;height:24px;padding:0 10px;border-radius:4px;background:#e9a23b;color:#1c1612;font-weight:700;font-size:12px;letter-spacing:0.08em;text-decoration:none">2b</a><span style="font-weight:600;font-size:14px;color:#efe4c8">Blonde</span><span style="font-size:13px;color:#b8a994">same shell, but the panels are the pickguard: ivory faces with dark glass windows</span></div>
+      <div data-screen-label="2b Blonde · Tuner" style="width:1024px;height:768px;position:relative;overflow:hidden;background:radial-gradient(900px 520px at 12% 0%,rgba(212,68,44,0.30),transparent 65%),radial-gradient(700px 520px at 100% 100%,rgba(77,182,164,0.14),transparent 65%),#221c19;color:#efe4c8;font-family:'Barlow',sans-serif;border-radius:6px;box-shadow:0 30px 80px rgba(0,0,0,0.6)">
+        <header style="position:absolute;top:0;left:0;right:0;height:76px;display:grid;grid-template-columns:170px minmax(0,1fr) auto;align-items:center;padding:0 18px;gap:14px;background-color:#c9c4ba;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,0.05) 0 1px,transparent 1px 2px),linear-gradient(180deg,#dcd8cf,#b8b3a9);box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 3px 0 #15110f">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(160deg,#d4442c 0%,#e9a23b 55%,#f0c46b 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),0 2px 3px rgba(0,0,0,0.45);display:grid;place-items:center"><div style="width:22px;height:22px;border-radius:4px;background:#efe4c8;background-image:repeating-linear-gradient(90deg,#1c1612 0 2px,transparent 2px 6px);background-size:18px 14px;background-position:center;background-repeat:no-repeat"></div></div>
+            <div style="font-family:'Yellowtail',cursive;font-size:30px;line-height:1;color:#2a2420;text-shadow:0 1px 0 rgba(255,255,255,0.6)">Fretline</div>
+          </div>
+          <nav style="display:flex;align-items:stretch;justify-content:center;gap:6px;height:76px">
+            <sc-for list="{{ navAlu }}" as="n" hint-placeholder-count="5">
+              <button style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:0 14px;border:none;background:transparent;color:{{ n.color }};font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.14em;text-transform:uppercase;text-shadow:0 1px 0 rgba(255,255,255,0.5)">
+                <span style="width:30px;height:4px;border-radius:2px;background:{{ n.lamp }};box-shadow:{{ n.lampGlow }}"></span>{{ n.label }}
+              </button>
+            </sc-for>
+          </nav>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:112px;display:flex;flex-direction:column;gap:5px;padding:5px 8px;border-radius:4px;background:#1a1512;box-shadow:inset 0 1px 3px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)">
+              <dc-import name="Fl Meter" label="In" value="{{ inDb }}" peak="-16" threshold="-48" height="7" hint-size="96px,28px"></dc-import>
+              <dc-import name="Fl Meter" label="Out" value="-120" live="{{ false }}" height="7" hint-size="96px,28px"></dc-import>
+            </div>
+            <div style="height:44px;padding:0 14px;display:flex;flex-direction:column;justify-content:center;border-radius:4px;background:#1a1512;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)">
+              <div style="font-size:10px;letter-spacing:0.18em;color:#8f8272;font-weight:600">TUNING</div>
+              <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.08em;color:#e9a23b;line-height:1.1;white-space:nowrap">STANDARD · 440</div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <button style="display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:transparent;padding:0;color:#2a2420">
+                <span style="width:46px;height:24px;border-radius:4px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><span style="position:absolute;top:3px;left:24px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#f3ead2,#d9c69a);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:9px;left:8px;width:7px;height:7px;border-radius:50%;background:#d4442c;box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span></span>
+                <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em;text-shadow:0 1px 0 rgba(255,255,255,0.5)">LISTEN</span>
+              </button>
+              <button style="display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:transparent;padding:0;color:#2a2420">
+                <span style="width:46px;height:24px;border-radius:4px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><span style="position:absolute;top:3px;left:3px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#f3ead2,#d9c69a);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:9px;right:8px;width:7px;height:7px;border-radius:50%;background:#3a302a"></span></span>
+                <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em;text-shadow:0 1px 0 rgba(255,255,255,0.5)">OUTPUT</span>
+              </button>
+            </div>
+          </div>
+        </header>
+        <div style="position:absolute;top:79px;left:0;right:0;height:3px;background:linear-gradient(90deg,#d4442c 0%,#e9a23b 45%,#f0c46b 70%,#4db6a4 100%)"></div>
+        <main style="position:absolute;top:82px;bottom:46px;left:0;right:0;padding:22px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:22px">
+          <div style="position:relative;border-radius:8px;background:linear-gradient(180deg,#ebe0c6,#dccfae);padding:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),inset 0 -1px 0 rgba(90,60,20,0.25),0 2px 0 #8e7a50,0 10px 24px rgba(0,0,0,0.4);display:flex;flex-direction:column;gap:12px;color:#2b1d10">
+            <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 8px">
+              <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#8a5a12"><span style="width:7px;height:7px;border-radius:50%;background:#d4442c;box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span>LISTENING · MIC</div>
+              <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.16em;color:#6b5636">AUTO<span style="width:38px;height:20px;border-radius:3px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8),0 1px 0 rgba(255,255,255,0.6)"><span style="position:absolute;top:3px;left:20px;width:15px;height:14px;border-radius:2px;background:#e9a23b;box-shadow:0 0 8px rgba(233,162,59,0.6)"></span></span></div>
+            </div>
+            <div style="position:relative;flex:1;border-radius:6px;background:radial-gradient(120% 80% at 50% 100%,#15110f,#070605 80%);box-shadow:inset 0 3px 10px rgba(0,0,0,0.95),inset 0 0 0 1px rgba(0,0,0,0.8),0 1px 0 rgba(255,255,255,0.6);overflow:hidden;color:#efe4c8">
+              <div style="position:absolute;left:40px;right:40px;top:34px;height:46px;background-image:linear-gradient(90deg,rgba(239,228,200,0.55) 0 1px,transparent 1px),linear-gradient(90deg,rgba(239,228,200,0.25) 0 1px,transparent 1px);background-size:calc(100% / 4) 100%,calc(100% / 20) 55%;background-repeat:repeat-x;background-position:0 0,0 100%;box-shadow:inset -1px 0 0 rgba(239,228,200,0.55)"></div>
+              <div style="position:absolute;left:40px;right:40px;top:12px;display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:#8f8272;font-variant-numeric:tabular-nums"><span>−50</span><span>−25</span><span style="color:#efe4c8">0</span><span>+25</span><span>+50</span></div>
+              <div style="position:absolute;top:30px;height:60px;width:2px;left:50%;margin-left:-1px;background:#efe4c8;opacity:0.4"></div>
+              <div style="position:absolute;top:26px;height:70px;width:3px;left:{{ needleLeft }}%;margin-left:-1.5px;background:#e9a23b;box-shadow:0 0 10px #e9a23b,0 0 24px rgba(233,162,59,0.6);border-radius:2px"></div>
+              <div style="position:absolute;left:0;right:0;top:120px;display:flex;flex-direction:column;align-items:center;gap:4px">
+                <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:220px;line-height:0.85;color:#e9a23b;text-shadow:0 0 30px rgba(233,162,59,0.45)">E</div>
+                <div style="font-size:16px;color:#b8a994;font-variant-numeric:tabular-nums;letter-spacing:0.04em">82.4 Hz · <span style="color:#efe4c8">{{ centsText }}</span></div>
+              </div>
+              <div style="position:absolute;left:0;right:0;bottom:22px;display:flex;justify-content:center"><div style="display:flex;align-items:center;gap:10px;padding:8px 18px;border-radius:4px;background:rgba(77,182,164,0.12);box-shadow:inset 0 0 0 1px rgba(77,182,164,0.5);font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:18px;letter-spacing:0.16em;color:#4db6a4;text-shadow:0 0 12px rgba(77,182,164,0.6)"><span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 10px #4db6a4"></span>IN TUNE</div></div>
+            </div>
+          </div>
+          <div style="position:relative;border-radius:8px;background:linear-gradient(180deg,#ebe0c6,#dccfae);padding:18px 20px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),inset 0 -1px 0 rgba(90,60,20,0.25),0 2px 0 #8e7a50,0 10px 24px rgba(0,0,0,0.4);display:flex;flex-direction:column;gap:16px;color:#2b1d10">
+            <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px"><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#8a5a12">STRINGS</div><div style="font-size:12px;color:#6b5636">2 of 6 in tune</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;padding:0 4px">
+              <sc-for list="{{ stringsBlonde }}" as="s" hint-placeholder-count="6">
+                <button style="display:flex;align-items:center;gap:14px;height:64px;padding:0 14px;border:none;border-radius:6px;background:#2d2622;box-shadow:inset 0 2px 4px rgba(0,0,0,0.5),inset 0 0 0 1px {{ s.edgeDark }},0 1px 0 rgba(255,255,255,0.6);color:{{ s.colorDark }}">
+                  <span style="width:14px;height:14px;border-radius:50%;background:{{ s.lamp }};box-shadow:{{ s.glow }};flex:none"></span>
+                  <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:30px;line-height:1">{{ s.label }}</span>
+                  <span style="margin-left:auto;font-size:12px;letter-spacing:0.12em;font-weight:700;color:{{ s.subDark2 }}">{{ s.sub }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-around;padding:6px 4px 0;border-top:1px solid rgba(90,60,20,0.25);box-shadow:0 -1px 0 rgba(255,255,255,0.6)">
+              <dc-import name="Fl Knob" label="A4 · 440" value="50" size="78" cap="cream" color="#d9902a" label-color="#6b5636" hint-size="100px,110px"></dc-import>
+              <dc-import name="Fl Knob" label="Capo · 0" value="0" size="78" cap="cream" color="#1f8c7c" on="{{ false }}" label-color="#6b5636" hint-size="100px,110px"></dc-import>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:auto">
+              <button style="flex:1;height:50px;border:none;border-radius:6px;background:linear-gradient(180deg,#f0b650,#d9902a);color:#1c1612;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),inset 0 -2px 0 rgba(0,0,0,0.25),0 3px 0 #7a4e12">PLAY REFERENCE</button>
+              <button style="flex:1;height:50px;border-radius:6px;border:none;background:linear-gradient(180deg,#3a302a,#1c1612);color:#efe4c8;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,235,210,0.15),0 3px 0 #0b0908">START OVER</button>
+            </div>
+          </div>
+        </main>
+        <footer style="position:absolute;bottom:0;left:0;right:0;height:46px;display:flex;align-items:center;gap:14px;padding:0 22px;background:#0f0c0b;box-shadow:inset 0 1px 0 rgba(255,235,210,0.06)">
+          <span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 8px #4db6a4"></span>
+          <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.18em;color:#4db6a4">TUTOR</span>
+          <span style="font-size:14px;color:#efe4c8">Low E is holding. Mute it and pluck A, your 5th string.</span>
+          <span style="margin-left:auto;font-size:12px;color:#8f8272;letter-spacing:0.06em">Today · Open chords <span style="color:#e9a23b;font-weight:700">72</span> · 2 strings left in this tune-up</span>
+        </footer>
+      </div>
+    </div>
+  </div>
+</section>
+<section style="padding:40px;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;align-items:baseline;gap:16px;color:#b8a994;font-size:13px;letter-spacing:0.14em;text-transform:uppercase;font-weight:600">
+    <span style="color:#efe4c8">Turn 1 · Shell directions</span><span>Tablet 1024×768 · Tuner view · shared accents: cherry, amber, teal</span>
+  </div>
+  <div style="display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start">
+
+    <!-- 1a Illustrated -->
+    <div id="1a" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px"><a href="#1a" style="display:inline-grid;place-items:center;height:24px;padding:0 10px;border-radius:4px;background:#e9a23b;color:#1c1612;font-weight:700;font-size:12px;letter-spacing:0.08em;text-decoration:none">1a</a><span style="font-weight:600;font-size:14px;color:#efe4c8">Illustrated gear</span><span style="font-size:13px;color:#b8a994">flat panels, screws, lamps, crisp bevels</span></div>
+      <div data-screen-label="1a Illustrated · Tuner" style="width:1024px;height:768px;position:relative;overflow:hidden;background:#1c1816;color:#efe4c8;font-family:'Barlow',sans-serif;border-radius:6px;box-shadow:0 30px 80px rgba(0,0,0,0.6)">
+        <header style="position:absolute;top:0;left:0;right:0;height:76px;display:grid;grid-template-columns:170px minmax(0,1fr) auto;align-items:center;padding:0 18px;gap:14px;background:#27211d;border-bottom:1px solid #0b0908;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 1px 0 rgba(255,235,210,0.04)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(160deg,#d4442c 0%,#e9a23b 55%,#f0c46b 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 2px 4px rgba(0,0,0,0.5);display:grid;place-items:center"><div style="width:22px;height:22px;border-radius:4px;background:#efe4c8;background-image:repeating-linear-gradient(90deg,#1c1612 0 2px,transparent 2px 6px);background-size:18px 14px;background-position:center;background-repeat:no-repeat"></div></div>
+            <div style="font-family:'Yellowtail',cursive;font-size:30px;line-height:1;color:#efe4c8;text-shadow:0 2px 0 rgba(0,0,0,0.5)">Fretline</div>
+          </div>
+          <nav style="display:flex;align-items:stretch;justify-content:center;gap:4px;height:76px">
+            <sc-for list="{{ nav }}" as="n" hint-placeholder-count="5">
+              <button style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:0 12px;border:none;background:transparent;color:{{ n.color }};font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.14em;text-transform:uppercase;border-bottom:3px solid {{ n.underline }}">
+                <span style="width:8px;height:8px;border-radius:50%;background:{{ n.lamp }};box-shadow:{{ n.lampGlow }}"></span>{{ n.label }}
+              </button>
+            </sc-for>
+          </nav>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:112px;display:flex;flex-direction:column;gap:5px">
+              <dc-import name="Fl Meter" label="In" value="{{ inDb }}" peak="-16" threshold="-48" height="8" hint-size="112px,30px"></dc-import>
+              <dc-import name="Fl Meter" label="Out" value="-120" live="{{ false }}" height="8" hint-size="112px,30px"></dc-import>
+            </div>
+            <div style="height:44px;padding:0 14px;display:flex;flex-direction:column;justify-content:center;border-radius:4px;background:#0d0b0a;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8),0 1px 0 rgba(255,235,210,0.06)">
+              <div style="font-size:10px;letter-spacing:0.18em;color:#8f8272;font-weight:600">TUNING</div>
+              <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.08em;color:#e9a23b;line-height:1.1;white-space:nowrap">STANDARD · 440</div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <button style="display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:transparent;padding:0;color:#b8a994">
+                <span style="width:46px;height:24px;border-radius:4px;background:#0d0b0a;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8)"><span style="position:absolute;top:3px;left:24px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#5a4e46,#2e2622);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.15)"></span><span style="position:absolute;top:9px;left:8px;width:7px;height:7px;border-radius:50%;background:#d4442c;box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span></span>
+                <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em">LISTEN</span>
+              </button>
+              <button style="display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:transparent;padding:0;color:#b8a994">
+                <span style="width:46px;height:24px;border-radius:4px;background:#0d0b0a;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8)"><span style="position:absolute;top:3px;left:3px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#5a4e46,#2e2622);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.15)"></span><span style="position:absolute;top:9px;right:8px;width:7px;height:7px;border-radius:50%;background:#3a302a"></span></span>
+                <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em">OUTPUT</span>
+              </button>
+            </div>
+          </div>
+        </header>
+        <main style="position:absolute;top:76px;bottom:46px;left:0;right:0;padding:22px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:22px">
+          <div style="position:relative;border-radius:8px;background:#27211d;padding:16px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:12px">
+            <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 8px">
+              <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994"><span style="width:7px;height:7px;border-radius:50%;background:#d4442c;box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span>LISTENING · MIC</div>
+              <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.16em;color:#b8a994">AUTO<span style="width:38px;height:20px;border-radius:3px;background:#0d0b0a;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8)"><span style="position:absolute;top:3px;left:20px;width:15px;height:14px;border-radius:2px;background:#e9a23b;box-shadow:0 0 8px rgba(233,162,59,0.6)"></span></span></div>
+            </div>
+            <div style="position:relative;flex:1;border-radius:6px;background:radial-gradient(120% 80% at 50% 100%,#15110f,#070605 80%);box-shadow:inset 0 3px 10px rgba(0,0,0,0.95),inset 0 0 0 1px rgba(0,0,0,0.8),0 1px 0 rgba(255,235,210,0.06);overflow:hidden">
+              <div style="position:absolute;left:40px;right:40px;top:34px;height:46px;background-image:linear-gradient(90deg,rgba(239,228,200,0.55) 0 1px,transparent 1px),linear-gradient(90deg,rgba(239,228,200,0.25) 0 1px,transparent 1px);background-size:calc(100% / 4) 100%,calc(100% / 20) 55%;background-repeat:repeat-x;background-position:0 0,0 100%;box-shadow:inset -1px 0 0 rgba(239,228,200,0.55)"></div>
+              <div style="position:absolute;left:40px;right:40px;top:12px;display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:#8f8272;font-variant-numeric:tabular-nums"><span>−50</span><span>−25</span><span style="color:#efe4c8">0</span><span>+25</span><span>+50</span></div>
+              <div style="position:absolute;top:30px;height:60px;width:2px;left:50%;margin-left:-1px;background:#efe4c8;opacity:0.4"></div>
+              <div style="position:absolute;top:26px;height:70px;width:3px;left:{{ needleLeft }}%;margin-left:-1.5px;background:#e9a23b;box-shadow:0 0 10px #e9a23b,0 0 24px rgba(233,162,59,0.6);border-radius:2px"></div>
+              <div style="position:absolute;left:0;right:0;top:120px;display:flex;flex-direction:column;align-items:center;gap:4px">
+                <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:220px;line-height:0.85;color:#e9a23b;text-shadow:0 0 30px rgba(233,162,59,0.45)">E</div>
+                <div style="font-size:16px;color:#b8a994;font-variant-numeric:tabular-nums;letter-spacing:0.04em">82.4 Hz · <span style="color:#efe4c8">{{ centsText }}</span></div>
+              </div>
+              <div style="position:absolute;left:0;right:0;bottom:22px;display:flex;justify-content:center"><div style="display:flex;align-items:center;gap:10px;padding:8px 18px;border-radius:4px;background:rgba(77,182,164,0.12);box-shadow:inset 0 0 0 1px rgba(77,182,164,0.5);font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:18px;letter-spacing:0.16em;color:#4db6a4;text-shadow:0 0 12px rgba(77,182,164,0.6)"><span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 10px #4db6a4"></span>IN TUNE</div></div>
+            </div>
+          </div>
+          <div style="position:relative;border-radius:8px;background:#27211d;padding:18px 20px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:16px">
+            <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px"><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">STRINGS</div><div style="font-size:12px;color:#8f8272">2 of 6 in tune</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;padding:0 4px">
+              <sc-for list="{{ strings }}" as="s" hint-placeholder-count="6">
+                <button style="display:flex;align-items:center;gap:14px;height:64px;padding:0 14px;border:none;border-radius:6px;background:#1c1816;box-shadow:inset 0 2px 4px rgba(0,0,0,0.7),inset 0 0 0 1px {{ s.edge }},0 1px 0 rgba(255,235,210,0.05);color:{{ s.color }}">
+                  <span style="width:14px;height:14px;border-radius:50%;background:{{ s.lamp }};box-shadow:{{ s.glow }};flex:none"></span>
+                  <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:30px;line-height:1">{{ s.label }}</span>
+                  <span style="margin-left:auto;font-size:12px;letter-spacing:0.12em;font-weight:600;color:{{ s.subColor }}">{{ s.sub }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-around;padding:6px 4px 0;border-top:1px solid rgba(0,0,0,0.5);box-shadow:0 -1px 0 rgba(255,235,210,0.05)">
+              <dc-import name="Fl Knob" label="A4 · 440" value="50" size="78" cap="black" color="#e9a23b" hint-size="100px,110px"></dc-import>
+              <dc-import name="Fl Knob" label="Capo · 0" value="0" size="78" cap="black" color="#4db6a4" on="{{ false }}" hint-size="100px,110px"></dc-import>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:auto">
+              <button style="flex:1;height:50px;border:none;border-radius:6px;background:linear-gradient(180deg,#f0b650,#d9902a);color:#1c1612;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),inset 0 -2px 0 rgba(0,0,0,0.25),0 2px 0 #7a4e12">PLAY REFERENCE</button>
+              <button style="flex:1;height:50px;border-radius:6px;border:none;background:#1c1816;color:#b8a994;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 0 0 1px #3b322c,inset 0 1px 0 rgba(255,235,210,0.05)">START OVER</button>
+            </div>
+          </div>
+        </main>
+        <footer style="position:absolute;bottom:0;left:0;right:0;height:46px;display:flex;align-items:center;gap:14px;padding:0 22px;background:#0d0b0a;border-top:1px solid #0b0908;box-shadow:inset 0 1px 0 rgba(255,235,210,0.05)">
+          <span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 8px #4db6a4"></span>
+          <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.18em;color:#4db6a4">TUTOR</span>
+          <span style="font-size:14px;color:#efe4c8">Low E is holding. Mute it and pluck A, your 5th string.</span>
+          <span style="margin-left:auto;font-size:12px;color:#8f8272;letter-spacing:0.06em">Today · Open chords <span style="color:#e9a23b;font-weight:700">72</span> · 2 strings left in this tune-up</span>
+        </footer>
+      </div>
+    </div>
+
+    <!-- 1b Material -->
+    <div id="1b" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px"><a href="#1b" style="display:inline-grid;place-items:center;height:24px;padding:0 10px;border-radius:4px;background:#e9a23b;color:#1c1612;font-weight:700;font-size:12px;letter-spacing:0.08em;text-decoration:none">1b</a><span style="font-weight:600;font-size:14px;color:#efe4c8">Material</span><span style="font-size:13px;color:#b8a994">tolex chassis, brushed faceplate, cream knobs, piping</span></div>
+      <div data-screen-label="1b Material · Tuner" style="width:1024px;height:768px;position:relative;overflow:hidden;background-color:#1f1a17;background-image:repeating-radial-gradient(circle at 0 0,rgba(255,240,220,0.035) 0 1px,transparent 1px 3px),repeating-radial-gradient(circle at 2px 2px,rgba(0,0,0,0.35) 0 1px,transparent 1px 3px);color:#efe4c8;font-family:'Barlow',sans-serif;border-radius:6px;box-shadow:0 30px 80px rgba(0,0,0,0.6)">
+        <header style="position:absolute;top:0;left:0;right:0;height:76px;display:grid;grid-template-columns:170px minmax(0,1fr) auto;align-items:center;padding:0 18px;gap:14px;background-color:#c9c4ba;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,0.05) 0 1px,transparent 1px 2px),linear-gradient(180deg,#dcd8cf,#b8b3a9);border-bottom:2px solid #6e665c;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 3px 0 #15110f">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#f0c46b,#e9a23b 40%,#b73a24 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.5),inset 0 -2px 2px rgba(0,0,0,0.35),0 1px 2px rgba(0,0,0,0.5)"></div>
+            <div style="font-family:'Yellowtail',cursive;font-size:30px;line-height:1;color:#2a2420;text-shadow:0 1px 0 rgba(255,255,255,0.6)">Fretline</div>
+          </div>
+          <nav style="display:flex;align-items:stretch;justify-content:center;gap:4px;height:76px">
+            <sc-for list="{{ navLight }}" as="n" hint-placeholder-count="5">
+              <button style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:0 12px;border:none;background:transparent;color:{{ n.color }};font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.14em;text-transform:uppercase;text-shadow:0 1px 0 rgba(255,255,255,0.5)">
+                <span style="width:10px;height:10px;border-radius:50%;background:{{ n.lamp }};box-shadow:{{ n.lampGlow }}"></span>{{ n.label }}
+              </button>
+            </sc-for>
+          </nav>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:112px;display:flex;flex-direction:column;gap:5px;padding:5px 8px;border-radius:4px;background:#1a1512;box-shadow:inset 0 1px 3px rgba(0,0,0,0.9)">
+              <dc-import name="Fl Meter" label="In" value="{{ inDb }}" peak="-16" threshold="-48" height="7" hint-size="96px,28px"></dc-import>
+              <dc-import name="Fl Meter" label="Out" value="-120" live="{{ false }}" height="7" hint-size="96px,28px"></dc-import>
+            </div>
+            <div style="height:44px;padding:0 14px;display:flex;flex-direction:column;justify-content:center;border-radius:4px;background:#1a1512;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)">
+              <div style="font-size:10px;letter-spacing:0.18em;color:#8f8272;font-weight:600">TUNING</div>
+              <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.08em;color:#e9a23b;line-height:1.1;white-space:nowrap">STANDARD · 440</div>
+            </div>
+            <div style="display:flex;gap:14px">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#2a2420">
+                <span style="width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#ff8f7a,#d4442c 45%,#6e1b10);box-shadow:0 0 12px rgba(212,68,44,0.8),inset 0 1px 1px rgba(255,255,255,0.6);animation:lamp 1.6s ease-in-out infinite"></span>
+                <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em">LISTEN</span>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#2a2420">
+                <span style="width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#6a5a3a,#3a3020 45%,#1a140c);box-shadow:inset 0 1px 1px rgba(255,255,255,0.3),0 1px 1px rgba(0,0,0,0.4)"></span>
+                <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em">OUTPUT</span>
+              </div>
+            </div>
+          </div>
+        </header>
+        <main style="position:absolute;top:76px;bottom:46px;left:0;right:0;padding:22px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:22px">
+          <div style="position:relative;border-radius:10px;background:#2a2320;background-image:repeating-radial-gradient(circle at 0 0,rgba(255,240,220,0.03) 0 1px,transparent 1px 3px);padding:16px;box-shadow:inset 0 0 0 2px #e4d4ad,inset 0 0 0 4px #2a2320,0 6px 18px rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px 0">
+              <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#e4d4ad"><span style="width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#ff8f7a,#d4442c 50%,#6e1b10);box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span>LISTENING · MIC</div>
+              <div style="display:flex;align-items:center;gap:10px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.16em;color:#e4d4ad">AUTO<span style="width:30px;height:16px;border-radius:999px;background:#e9a23b;position:relative;box-shadow:inset 0 1px 2px rgba(0,0,0,0.4)"><span style="position:absolute;top:1px;left:15px;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff7e6,#d9c69a)"></span></span></div>
+            </div>
+            <div style="position:relative;flex:1;border-radius:8px;background:radial-gradient(120% 80% at 50% 100%,#1a1410,#080604 80%);box-shadow:inset 0 0 0 3px #b9b3a6,inset 0 0 0 5px #15110f,inset 0 8px 20px rgba(0,0,0,0.9);overflow:hidden">
+              <div style="position:absolute;left:44px;right:44px;top:38px;height:46px;background-image:linear-gradient(90deg,rgba(239,228,200,0.55) 0 1px,transparent 1px),linear-gradient(90deg,rgba(239,228,200,0.25) 0 1px,transparent 1px);background-size:calc(100% / 4) 100%,calc(100% / 20) 55%;background-repeat:repeat-x;background-position:0 0,0 100%;box-shadow:inset -1px 0 0 rgba(239,228,200,0.55)"></div>
+              <div style="position:absolute;left:44px;right:44px;top:16px;display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:#8f8272;font-variant-numeric:tabular-nums"><span>−50</span><span>−25</span><span style="color:#efe4c8">0</span><span>+25</span><span>+50</span></div>
+              <div style="position:absolute;top:34px;height:60px;width:2px;left:50%;margin-left:-1px;background:#efe4c8;opacity:0.4"></div>
+              <div style="position:absolute;top:30px;height:70px;width:3px;left:{{ needleLeft }}%;margin-left:-1.5px;background:#e9a23b;box-shadow:0 0 10px #e9a23b,0 0 24px rgba(233,162,59,0.6);border-radius:2px"></div>
+              <div style="position:absolute;left:0;right:0;top:124px;display:flex;flex-direction:column;align-items:center;gap:4px">
+                <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:220px;line-height:0.85;color:#e9a23b;text-shadow:0 0 30px rgba(233,162,59,0.45)">E</div>
+                <div style="font-size:16px;color:#b8a994;font-variant-numeric:tabular-nums;letter-spacing:0.04em">82.4 Hz · <span style="color:#efe4c8">{{ centsText }}</span></div>
+              </div>
+              <div style="position:absolute;left:0;right:0;bottom:24px;display:flex;justify-content:center"><div style="display:flex;align-items:center;gap:10px;padding:8px 18px;border-radius:999px;background:rgba(77,182,164,0.12);box-shadow:inset 0 0 0 1px rgba(77,182,164,0.5);font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:18px;letter-spacing:0.16em;color:#4db6a4;text-shadow:0 0 12px rgba(77,182,164,0.6)"><span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 10px #4db6a4"></span>IN TUNE</div></div>
+            </div>
+          </div>
+          <div style="position:relative;border-radius:10px;background:#2a2320;background-image:repeating-radial-gradient(circle at 0 0,rgba(255,240,220,0.03) 0 1px,transparent 1px 3px);padding:20px 22px;box-shadow:inset 0 0 0 2px #e4d4ad,inset 0 0 0 4px #2a2320,0 6px 18px rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;padding:4px 4px 0"><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#e4d4ad">STRINGS</div><div style="font-size:12px;color:#8f8272">2 of 6 in tune</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;padding:0 4px">
+              <sc-for list="{{ strings }}" as="s" hint-placeholder-count="6">
+                <button style="display:flex;align-items:center;gap:14px;height:64px;padding:0 14px;border:none;border-radius:8px;background:linear-gradient(180deg,#c9c4ba,#a8a299);box-shadow:inset 0 1px 0 rgba(255,255,255,0.6),inset 0 0 0 1px rgba(0,0,0,0.3),0 2px 0 #15110f;color:#2a2420">
+                  <span style="width:16px;height:16px;border-radius:50%;background:{{ s.jewel }};box-shadow:{{ s.glow }},inset 0 1px 1px rgba(255,255,255,0.6);flex:none"></span>
+                  <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:30px;line-height:1;text-shadow:0 1px 0 rgba(255,255,255,0.5)">{{ s.label }}</span>
+                  <span style="margin-left:auto;font-size:12px;letter-spacing:0.12em;font-weight:700;color:{{ s.subDark }}">{{ s.sub }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-around;padding:8px 4px 0;border-top:1px solid rgba(228,212,173,0.25)">
+              <dc-import name="Fl Knob" label="A4 · 440" value="50" size="78" cap="cream" color="#e9a23b" label-color="#e4d4ad" hint-size="100px,110px"></dc-import>
+              <dc-import name="Fl Knob" label="Capo · 0" value="0" size="78" cap="cream" color="#4db6a4" on="{{ false }}" label-color="#e4d4ad" hint-size="100px,110px"></dc-import>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:auto">
+              <button style="flex:1;height:50px;border:none;border-radius:8px;background:linear-gradient(180deg,#f0b650,#d9902a);color:#1c1612;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,255,255,0.5),inset 0 -2px 0 rgba(0,0,0,0.25),0 3px 0 #7a4e12">PLAY REFERENCE</button>
+              <button style="flex:1;height:50px;border-radius:8px;border:none;background:linear-gradient(180deg,#f3ead2,#d9c69a);color:#2a2420;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 3px 0 #8e7a50">START OVER</button>
+            </div>
+          </div>
+        </main>
+        <footer style="position:absolute;bottom:0;left:0;right:0;height:46px;display:flex;align-items:center;gap:14px;padding:0 22px;background:#15110f;border-top:2px solid #e4d4ad">
+          <span style="width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#b9f1e6,#4db6a4 50%,#1f6d61);box-shadow:0 0 8px #4db6a4"></span>
+          <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.18em;color:#4db6a4">TUTOR</span>
+          <span style="font-size:14px;color:#efe4c8">Low E is holding. Mute it and pluck A, your 5th string.</span>
+          <span style="margin-left:auto;font-size:12px;color:#8f8272;letter-spacing:0.06em">Today · Open chords <span style="color:#e9a23b;font-weight:700">72</span> · 2 strings left in this tune-up</span>
+        </footer>
+      </div>
+    </div>
+
+    <!-- 1c Stage-lit -->
+    <div id="1c" style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px"><a href="#1c" style="display:inline-grid;place-items:center;height:24px;padding:0 10px;border-radius:4px;background:#e9a23b;color:#1c1612;font-weight:700;font-size:12px;letter-spacing:0.08em;text-decoration:none">1c</a><span style="font-weight:600;font-size:14px;color:#efe4c8">Stage-lit</span><span style="font-size:13px;color:#b8a994">matte black, colored light pools, rim glow</span></div>
+      <div data-screen-label="1c Stage-lit · Tuner" style="width:1024px;height:768px;position:relative;overflow:hidden;background:radial-gradient(700px 420px at 8% -5%,rgba(212,68,44,0.42),transparent 70%),radial-gradient(640px 460px at 100% 105%,rgba(77,182,164,0.3),transparent 70%),radial-gradient(500px 300px at 50% 40%,rgba(233,162,59,0.08),transparent 70%),#0b0a0a;color:#efe4c8;font-family:'Barlow',sans-serif;border-radius:6px;box-shadow:0 30px 80px rgba(0,0,0,0.6)">
+        <header style="position:absolute;top:0;left:0;right:0;height:76px;display:grid;grid-template-columns:170px minmax(0,1fr) auto;align-items:center;padding:0 18px;gap:14px;background:rgba(255,255,255,0.025);border-bottom:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(2px)">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:50%;background:#0b0a0a;box-shadow:0 0 0 2px #e9a23b,0 0 18px rgba(233,162,59,0.7),inset 0 0 10px rgba(233,162,59,0.5)"></div>
+            <div style="font-family:'Yellowtail',cursive;font-size:30px;line-height:1;color:#efe4c8;text-shadow:0 0 14px rgba(239,228,200,0.5)">Fretline</div>
+          </div>
+          <nav style="display:flex;align-items:stretch;justify-content:center;gap:4px;height:76px">
+            <sc-for list="{{ navLit }}" as="n" hint-placeholder-count="5">
+              <button style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:0 12px;border:none;background:transparent;color:{{ n.color }};font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.14em;text-transform:uppercase;text-shadow:{{ n.textGlow }}">
+                <span style="width:28px;height:3px;border-radius:2px;background:{{ n.lamp }};box-shadow:{{ n.lampGlow }}"></span>{{ n.label }}
+              </button>
+            </sc-for>
+          </nav>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:112px;display:flex;flex-direction:column;gap:5px">
+              <dc-import name="Fl Meter" label="In" value="{{ inDb }}" peak="-16" threshold="-48" height="8" hint-size="112px,30px"></dc-import>
+              <dc-import name="Fl Meter" label="Out" value="-120" live="{{ false }}" height="8" hint-size="112px,30px"></dc-import>
+            </div>
+            <div style="height:44px;padding:0 14px;display:flex;flex-direction:column;justify-content:center;border-radius:6px;background:rgba(0,0,0,0.5);box-shadow:inset 0 0 0 1px rgba(233,162,59,0.35),0 0 14px rgba(233,162,59,0.15)">
+              <div style="font-size:10px;letter-spacing:0.18em;color:#8f8272;font-weight:600">TUNING</div>
+              <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.08em;color:#e9a23b;line-height:1.1;white-space:nowrap;text-shadow:0 0 10px rgba(233,162,59,0.6)">STANDARD · 440</div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <button style="height:44px;padding:0 16px;border-radius:6px;border:none;background:rgba(212,68,44,0.14);box-shadow:inset 0 0 0 1px rgba(212,68,44,0.7),0 0 16px rgba(212,68,44,0.35);color:#ffb3a3;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.16em;display:flex;align-items:center;gap:8px;text-shadow:0 0 8px rgba(212,68,44,0.8)"><span style="width:8px;height:8px;border-radius:50%;background:#d4442c;box-shadow:0 0 10px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span>LISTEN</button>
+              <button style="height:44px;padding:0 16px;border-radius:6px;border:none;background:rgba(0,0,0,0.4);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12);color:#8f8272;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.16em;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#2a2320"></span>OUTPUT</button>
+            </div>
+          </div>
+        </header>
+        <main style="position:absolute;top:76px;bottom:46px;left:0;right:0;padding:22px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:22px">
+          <div style="position:relative;border-radius:10px;background:rgba(0,0,0,0.45);padding:16px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08),0 0 40px rgba(212,68,44,0.08);display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0 8px">
+              <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994"><span style="width:7px;height:7px;border-radius:50%;background:#d4442c;box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span>LISTENING · MIC</div>
+              <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.16em;color:#b8a994">AUTO<span style="width:38px;height:20px;border-radius:999px;background:rgba(233,162,59,0.2);position:relative;box-shadow:inset 0 0 0 1px rgba(233,162,59,0.7),0 0 10px rgba(233,162,59,0.4)"><span style="position:absolute;top:3px;left:21px;width:14px;height:14px;border-radius:50%;background:#e9a23b;box-shadow:0 0 8px #e9a23b"></span></span></div>
+            </div>
+            <div style="position:relative;flex:1;border-radius:8px;background:#060505;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.06),inset 0 0 60px rgba(0,0,0,1);overflow:hidden">
+              <div style="position:absolute;left:40px;right:40px;top:34px;height:46px;background-image:linear-gradient(90deg,rgba(239,228,200,0.55) 0 1px,transparent 1px),linear-gradient(90deg,rgba(239,228,200,0.25) 0 1px,transparent 1px);background-size:calc(100% / 4) 100%,calc(100% / 20) 55%;background-repeat:repeat-x;background-position:0 0,0 100%;box-shadow:inset -1px 0 0 rgba(239,228,200,0.55)"></div>
+              <div style="position:absolute;left:40px;right:40px;top:12px;display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:#8f8272;font-variant-numeric:tabular-nums"><span>−50</span><span>−25</span><span style="color:#efe4c8">0</span><span>+25</span><span>+50</span></div>
+              <div style="position:absolute;top:30px;height:60px;width:2px;left:50%;margin-left:-1px;background:#efe4c8;opacity:0.4"></div>
+              <div style="position:absolute;top:26px;height:70px;width:3px;left:{{ needleLeft }}%;margin-left:-1.5px;background:#e9a23b;box-shadow:0 0 10px #e9a23b,0 0 30px rgba(233,162,59,0.8);border-radius:2px"></div>
+              <div style="position:absolute;left:0;right:0;top:120px;display:flex;flex-direction:column;align-items:center;gap:4px">
+                <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:220px;line-height:0.85;color:#e9a23b;text-shadow:0 0 40px rgba(233,162,59,0.8),0 0 90px rgba(233,162,59,0.4)">E</div>
+                <div style="font-size:16px;color:#b8a994;font-variant-numeric:tabular-nums;letter-spacing:0.04em">82.4 Hz · <span style="color:#efe4c8">{{ centsText }}</span></div>
+              </div>
+              <div style="position:absolute;left:0;right:0;bottom:22px;display:flex;justify-content:center"><div style="display:flex;align-items:center;gap:10px;padding:8px 18px;border-radius:999px;background:rgba(77,182,164,0.12);box-shadow:inset 0 0 0 1px rgba(77,182,164,0.6),0 0 20px rgba(77,182,164,0.4);font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:18px;letter-spacing:0.16em;color:#4db6a4;text-shadow:0 0 12px rgba(77,182,164,0.8)"><span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 10px #4db6a4"></span>IN TUNE</div></div>
+            </div>
+          </div>
+          <div style="position:relative;border-radius:10px;background:rgba(0,0,0,0.45);padding:18px 20px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.08),0 0 40px rgba(77,182,164,0.08);display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px"><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">STRINGS</div><div style="font-size:12px;color:#8f8272">2 of 6 in tune</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;padding:0 4px">
+              <sc-for list="{{ strings }}" as="s" hint-placeholder-count="6">
+                <button style="display:flex;align-items:center;gap:14px;height:64px;padding:0 14px;border:none;border-radius:8px;background:rgba(0,0,0,0.5);box-shadow:inset 0 0 0 1px {{ s.edgeLit }},{{ s.rim }};color:{{ s.color }};text-shadow:{{ s.textGlow }}">
+                  <span style="width:14px;height:14px;border-radius:50%;background:{{ s.lamp }};box-shadow:{{ s.glow }};flex:none"></span>
+                  <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:30px;line-height:1">{{ s.label }}</span>
+                  <span style="margin-left:auto;font-size:12px;letter-spacing:0.12em;font-weight:600;color:{{ s.subColor }}">{{ s.sub }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-around;padding:6px 4px 0;border-top:1px solid rgba(255,255,255,0.08)">
+              <dc-import name="Fl Knob" label="A4 · 440" value="50" size="78" cap="black" color="#e9a23b" hint-size="100px,110px"></dc-import>
+              <dc-import name="Fl Knob" label="Capo · 0" value="0" size="78" cap="black" color="#4db6a4" on="{{ false }}" hint-size="100px,110px"></dc-import>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:auto">
+              <button style="flex:1;height:50px;border:none;border-radius:8px;background:#e9a23b;color:#1c1612;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:17px;letter-spacing:0.14em;box-shadow:0 0 24px rgba(233,162,59,0.55),inset 0 1px 0 rgba(255,255,255,0.4)">PLAY REFERENCE</button>
+              <button style="flex:1;height:50px;border-radius:8px;border:none;background:rgba(0,0,0,0.4);color:#b8a994;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.14)">START OVER</button>
+            </div>
+          </div>
+        </main>
+        <footer style="position:absolute;bottom:0;left:0;right:0;height:46px;display:flex;align-items:center;gap:14px;padding:0 22px;background:rgba(0,0,0,0.5);border-top:1px solid rgba(77,182,164,0.3);box-shadow:0 -1px 20px rgba(77,182,164,0.12)">
+          <span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 10px #4db6a4"></span>
+          <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.18em;color:#4db6a4;text-shadow:0 0 10px rgba(77,182,164,0.7)">TUTOR</span>
+          <span style="font-size:14px;color:#efe4c8">Low E is holding. Mute it and pluck A, your 5th string.</span>
+          <span style="margin-left:auto;font-size:12px;color:#8f8272;letter-spacing:0.06em">Today · Open chords <span style="color:#e9a23b;font-weight:700;text-shadow:0 0 8px rgba(233,162,59,0.7)">72</span> · 2 strings left in this tune-up</span>
+        </footer>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;cents&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:2,&quot;min&quot;:-50,&quot;max&quot;:50,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;},&quot;activeNav&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;Tuner&quot;,&quot;options&quot;:[&quot;Tuner&quot;,&quot;Chords&quot;,&quot;Tabs&quot;,&quot;Pedals&quot;,&quot;Learn&quot;],&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const cents = this.props.cents ?? 2;
+    const amber = '#e9a23b', cherry = '#d4442c', teal = '#4db6a4', muted = '#8f8272', ink = '#efe4c8';
+    const labels = ['Tuner', 'Chords', 'Tabs', 'Pedals', 'Learn'];
+    const activeNav = this.props.activeNav ?? 'Tuner';
+    const navAluColor = (a) => a ? '#1c1612' : '#6a6157';
+    const nav = labels.map((label) => { const a = label === activeNav; return { label, color: a ? ink : '#9a8d7c', lamp: a ? amber : '#120f0d', lampGlow: a ? `0 0 10px ${amber}` : 'inset 0 1px 2px rgba(0,0,0,0.9)', underline: a ? amber : 'transparent' }; });
+    const navLight = labels.map((label) => { const a = label === activeNav; return { label, color: a ? '#1c1612' : '#5e564d', lamp: a ? `radial-gradient(circle at 40% 35%, #ffd98a, ${amber} 45%, #8a5a12)` : 'radial-gradient(circle at 40% 35%, #8a8178, #3d3733)', lampGlow: a ? `0 0 12px ${amber}, inset 0 1px 1px rgba(255,255,255,0.6)` : 'inset 0 1px 1px rgba(255,255,255,0.4)' }; });
+    const navLit = labels.map((label) => { const a = label === activeNav; return { label, color: a ? ink : '#7d7265', lamp: a ? amber : 'rgba(255,255,255,0.08)', lampGlow: a ? `0 0 14px ${amber}, 0 0 30px rgba(233,162,59,0.5)` : 'none', textGlow: a ? '0 0 12px rgba(239,228,200,0.5)' : 'none' }; });
+    // strings: 0 = active (low E), 1,2 tuned, rest waiting
+    const S = [['E', 'active'], ['A', 'next'], ['D', 'wait'], ['G', 'wait'], ['B', 'tuned'], ['e', 'tuned']];
+    const strings = S.map(([label, st]) => {
+      const c = st === 'active' ? amber : st === 'tuned' ? teal : st === 'next' ? ink : '#3a302a';
+      const lit = st === 'active' || st === 'tuned';
+      return {
+        label, sub: st === 'active' ? 'LISTENING' : st === 'tuned' ? 'IN TUNE' : st === 'next' ? 'NEXT' : '',
+        color: st === 'wait' ? '#7d7265' : ink, subColor: st === 'active' ? amber : st === 'tuned' ? teal : muted, subDark: st === 'active' ? '#8a5a12' : st === 'tuned' ? '#1f6d61' : '#5e564d',
+        lamp: lit ? c : '#15110f', glow: lit ? `0 0 10px ${c}` : 'inset 0 1px 2px rgba(0,0,0,0.9)',
+        edge: st === 'active' ? amber : st === 'tuned' ? 'rgba(77,182,164,0.5)' : '#3b322c',
+        jewel: lit ? `radial-gradient(circle at 40% 35%, #fff, ${c} 45%, #000)` : 'radial-gradient(circle at 40% 35%, #6a5a3a, #1a140c)',
+        edgeLit: st === 'active' ? amber : st === 'tuned' ? 'rgba(77,182,164,0.6)' : 'rgba(255,255,255,0.08)',
+        rim: st === 'active' ? `0 0 20px rgba(233,162,59,0.35)` : st === 'tuned' ? '0 0 14px rgba(77,182,164,0.25)' : 'none',
+        textGlow: st === 'active' ? '0 0 12px rgba(233,162,59,0.6)' : 'none',
+      };
+    });
+    const navAlu = labels.map((label) => { const a = label === activeNav; return { label, color: a ? '#1c1612' : '#6a6157', lamp: a ? amber : '#8f8679', lampGlow: a ? `0 0 12px ${amber}, 0 0 2px ${amber}` : 'inset 0 1px 1px rgba(0,0,0,0.35)' }; });
+    const stringsBlonde = strings.map((s, i) => { const st = S[i][1]; return { ...s, colorDark: st === 'wait' ? '#7d7265' : ink, subDark2: st === 'active' ? amber : st === 'tuned' ? teal : muted, edgeDark: st === 'active' ? amber : st === 'tuned' ? 'rgba(77,182,164,0.6)' : '#4a3f38', color: st === 'wait' ? '#7a6a55' : '#2b1d10', subColor: st === 'active' ? '#8a5a12' : st === 'tuned' ? '#1f6d61' : '#7a6a55', edge: st === 'active' ? amber : st === 'tuned' ? 'rgba(31,109,97,0.6)' : 'rgba(43,29,16,0.18)', face: st === 'active' ? 'rgba(233,162,59,0.14)' : st === 'tuned' ? 'rgba(77,182,164,0.12)' : 'rgba(43,29,16,0.06)' }; });
+    const lessonNav = labels.map((label) => { const a = label === 'Learn'; return { label, color: a ? '#1c1612' : '#6a6157', lamp: a ? amber : '#8f8679', lampGlow: a ? `0 0 12px ${amber}, 0 0 2px ${amber}` : 'inset 0 1px 1px rgba(0,0,0,0.35)' }; });
+    const defs = [
+      { name: 'G', sub: 'major', frets: [3, 2, 0, 0, 0, 3], fingers: [2, 1, 0, 0, 0, 3] },
+      { name: 'Em', sub: 'minor', frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0] },
+      { name: 'C', sub: 'major', frets: [-1, 3, 2, 0, 1, 0], fingers: ['', 3, 2, 0, 1, 0] },
+      { name: 'D', sub: 'major', frets: [-1, -1, 0, 2, 3, 2], fingers: ['', '', 0, 1, 3, 2] },
+    ];
+    const current = 1, beat = 2;
+    const charts = defs.map((d, i) => { const now = i === current, next = i === (current + 1) % 4; return { ...d, ring: now ? '0 0 0 3px #c8431f, 0 0 18px rgba(200,67,31,0.45)' : next ? '0 0 0 2px rgba(31,140,124,0.6)' : 'none', tag: now ? 'NOW' : next ? 'NEXT' : '', tagOpacity: now || next ? 1 : 0, tagBg: now ? '#c8431f' : '#1f8c7c' }; });
+    const bars = defs.map((d, i) => { const now = i === current; return { name: d.name, color: now ? '#c8431f' : i < current ? '#6b5636' : '#2b1d10', bg: now ? 'rgba(200,67,31,0.12)' : 'transparent', beats: [0, 1, 2, 3].map((b) => (i < current || (now && b < beat)) ? (i === 2 && b === 0 ? '#c8431f' : '#1f8c7c') : now && b === beat ? '#c8431f' : 'rgba(58,42,26,0.25)') }; });
+    const playLeft = ((current + beat / 4) / 4) * 100;
+    const next = [
+      { title: 'Part 3 · Faster changes, 84 BPM', meta: '6 min', dot: amber, color: '#2b1d10' },
+      { title: 'Strumming · down-down-up-up-down-up', meta: '8 min', dot: '#b9a98a', color: '#6b5636' },
+      { title: 'Lesson 5 · Your first barre: F', meta: 'Locked at 80', dot: '#b9a98a', color: '#8a7a5a' },
+    ];
+    return { nav, navLight, navLit, navAlu, lessonNav, charts, bars, playLeft, next, strings, stringsBlonde, inDb: -22, needleLeft: 50 + Math.max(-50, Math.min(50, cents)) * 0.8, centsText: (cents > 0 ? '+' : '') + cents + ' ¢' };
+  }
+}
+</script>
+</body>
+</html>

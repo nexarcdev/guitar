@@ -21,6 +21,36 @@ Pushing to `main` deploys to GitHub Pages through `.github/workflows/pages.yml` 
 The microphone needs a secure context: `https://` or `localhost`. Use headphones when Output is on,
 otherwise the speakers feed back into the mic.
 
+## URLs
+
+Every view has a real path under the base, driven by the History API (no `#` or `?` routing):
+`/tuner`, `/chords`, `/tabs`, `/pedals`, `/learn/<module>` and `/studio/<tab>` (`guitar`,
+`input`, `sound`, `engine`, `diagnostics`). `/` opens the tuner, `/learn` the lesson and `/studio`
+the input tab; anything else shows a not-found view. Closing the Studio steps back to where you
+opened it from, or, arriving on a Studio link, replaces it with the page underneath.
+
+The route table is data in [`src/state/routes.ts`](src/state/routes.ts); the router
+([`src/state/router.ts`](src/state/router.ts)) writes the store from the URL and follows Back and
+Forward. GitHub Pages has no rewrites, so the build writes a copy of the app's page for every
+route (`dist/learn/lesson.html` answers `/learn/lesson` with a 200 and no trailing-slash
+redirect) and a `404.html` that boots the app for anything else. Offline, the service worker
+answers every navigation with the app shell.
+
+Learn modules other than the lesson are built only when `VITE_LEARN_MODULES` names them (`all`, or
+a list such as `today,rhythm`); hidden ones aren't routed, linked or shipped. `/design`, the
+component reference sheet, exists only under `npm run dev`.
+
+## Design system
+
+Ivory where you touch, dark glass where you read, paper where you learn: controls sit on ivory
+panels, anything that changes sits on glass, a dark well or paper, and paper is always framed by a
+dark panel. Cherry means live or recording, amber selected or on, teal confirmed or in tune.
+Tokens are in [`src/styles/tokens.css`](src/styles/tokens.css) and the bases in
+[`src/ui`](src/ui) (Panel, Window, Well, Switch, Segment, Lamp, Chip, Readout, Knob, Meter,
+Button, ChordChart, SkillRing, Fretboard, BeatStrip). Every one of them is on the reference sheet
+at `/design` in development. Fonts (Big Shoulders Display, Barlow, Yellowtail) are self-hosted so
+the app looks the same offline.
+
 ## How it works
 
 Everything that hears or makes sound is one Rust core, [`engine/core`](engine/core), that runs in
@@ -71,9 +101,10 @@ never needs to know which channel it is talking to.
   threshold (following the noise, the threshold keeps its distance above the floor). A guided
   calibration measures 3 s of muted strings and then one played note, and puts the threshold
   between them. Settings are remembered per input device.
-- **Gauges.** Input and output levels are drawn every animation frame from the analysis stream
-  and meters (no React state per frame): a compact pair in the header, amp-style VU gauges on the
-  Pedals page, full-size bars in the Studio.
+- **Meters.** Input and output levels are drawn every animation frame from the analysis stream
+  and meters (no React state per frame) into the one `Meter` base through an imperative handle
+  (`src/features/gauges/Gauges.tsx`): a compact pair in the header, two bars on the Pedals page,
+  full-size bars with a scale and a draggable threshold in the Studio.
 - **Tuner.** YIN through an FFT difference function (`engine/core/src/yin.rs`).
 - **Chords.** Two spectral bands (`engine/core/src/chroma.rs`): a 171 ms frame from 70 Hz up
   and a 683 ms frame for B0 to B2, so drop C and bass registers resolve to the semitone. Every
@@ -166,7 +197,7 @@ CI keeps the site and the engine independent:
 - The looper records and plays real audio. A ■ button stops or plays a slot, and the header shows the
   loop length.
 - The prototype's design-time props now live in the app. Time signature and rest threshold are in the
-  ⚙ popover on the tab stream. The app reopens on the last tab you used.
+  ⚙ popover on the tab stream. Each view has its own URL, so a link or a bookmark reopens it.
 - The "Your guitar" sheet adds input device selection with a level meter, and a headstock style
   (3 + 3 or 6 in line), which the tuner chat asked for but the final design file only drew one way.
 - The pedals are keyboard accessible: arrow keys turn knobs, and the grip reorders.

@@ -12,6 +12,27 @@ the traps that have bitten before.
 - Controls never move because text changed. Status goes in a fixed one-line chip (`Section` in
   `src/features/studio/Section.tsx`); descriptions stay static. `tests/e2e/studio.mjs` checks this.
 
+## Design system
+
+- Build views from the bases in `src/ui` and the tokens in `src/styles/tokens.css`. Never restyle a
+  switch, lamp, picker, readout, knob, meter or frame by hand: if a base can't do something, give
+  it an optional prop, and show the new state on the `/design` reference sheet
+  (`src/features/design`), which must list every base.
+- Ivory where you touch, dark glass where you read, paper where you learn. Changing information
+  never sits directly on an ivory face: put it in a `Well`, a glass `Window` or paper. The only
+  accent on paper is the playhead colour.
+- Live levels go through `LevelMeter` (refs and the `Meter` handle), never React state.
+
+## URLs
+
+- All navigation goes through `src/state/router.ts`: `linkProps(route)` for anything clickable
+  (it renders a real `href`, so middle-click and copy link work), `go.*` or `navigate()` from
+  code. No `#` or `?` routes, and never set `tab`, `setupOpen` or `studioTab` in the store
+  directly: the router writes them from the URL.
+- A new view, tab or Learn module is a new entry in `src/state/routes.ts`; `staticPaths` must list
+  it so the build writes its page (GitHub Pages has no rewrites). `tests/routes.test.ts` covers the
+  table.
+
 ## Finishing work
 
 - Work is finished when it is on `main`. Once the checks pass on the branch, merge it into

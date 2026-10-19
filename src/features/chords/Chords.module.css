@@ -1,263 +1,228 @@
 .grid {
   display: grid;
-  gap: clamp(16px, 3vw, 40px);
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-  align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+  gap: var(--gap);
+  flex: 1;
 }
-
-@media (max-width: 699px) {
-  .grid {
-    grid-template-columns: 1fr;
+.reading {
+  min-height: 560px;
+}
+/* Side by side, the reading panel keeps its own height and stays in view while the shape lists
+   scroll past it. */
+@media (min-width: 904px) {
+  .reading {
+    align-self: start;
+    position: sticky;
+    top: 0;
+    max-height: calc(100dvh - 210px);
   }
 }
 
-.col {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
+/* ---------------------------------------------------------------- glass: what is heard */
+.glass {
+  min-height: 420px;
 }
-
-.hearKicker {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  padding: 0 4px;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
-}
-
-.dot[data-live='true'] {
-  background: var(--red);
-  animation: recPulse 1.4s ease-in-out infinite;
-}
-
-.panel {
-  position: relative;
-  min-height: 260px;
-  border-radius: 20px;
-  background: var(--well);
-  border: 1px solid transparent;
+.hearing {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 14px;
   padding: 28px 20px;
   text-align: center;
-  transition: all 0.3s;
+  transition: opacity 0.3s;
 }
-
-.panel[data-dim='true'] {
-  opacity: 0.5;
+.hearing[data-dim='true'] {
+  opacity: 0.55;
 }
-
-.panel[data-bad='true'] {
-  background: rgba(224, 64, 64, 0.12);
-  border-color: rgba(224, 64, 64, 0.55);
-}
-
-.panel[data-ok='true'] {
-  background: rgba(74, 222, 128, 0.12);
-  border-color: rgba(74, 222, 128, 0.5);
-}
-
 .big {
-  font-size: clamp(56px, 9vw, 88px);
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 0.85;
+  white-space: nowrap;
+  color: var(--amber);
+  text-shadow: 0 0 30px rgba(233, 162, 59, 0.45);
+  transition: color 0.3s, text-shadow 0.3s;
+  min-height: 0.85em;
 }
-
-.gradient {
-  background: linear-gradient(135deg, var(--gold-hi), var(--gold) 50%, var(--red));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+.big[data-tone='target'] {
+  color: var(--ink);
+  text-shadow: 0 0 30px rgba(239, 228, 200, 0.25);
 }
-
+.big[data-tone='ok'] {
+  color: var(--teal);
+  text-shadow: 0 0 30px rgba(77, 182, 164, 0.45);
+}
+.big[data-tone='bad'] {
+  color: var(--cherry);
+  text-shadow: 0 0 30px rgba(212, 68, 44, 0.45);
+}
 .sub {
-  color: var(--muted);
-  font-size: 15px;
-  min-height: 22px;
-  text-wrap: pretty;
-  transition: color 0.3s;
+  min-height: 1.4em;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--ink-2);
+  letter-spacing: 0.04em;
 }
-
-.subBad {
-  color: var(--red-ink);
-  font-weight: 600;
+.sub[data-tone='ok'] {
+  color: var(--teal);
 }
-
-.subOk {
-  color: var(--green);
-  font-weight: 600;
+.sub[data-tone='bad'] {
+  color: #f08a73;
 }
-
 .pills {
   display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-
-.pill {
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--ink);
-  border: 1px solid transparent;
-  transition: all 0.2s;
-}
-
-.pillRoot {
-  background: rgba(233, 185, 73, 0.25);
-  color: var(--gold-hi);
-}
-
-.pillWait {
-  background: var(--fill);
-  color: var(--muted);
-  border-color: var(--fill-2);
-}
-
-.pillWrong {
-  background: rgba(224, 64, 64, 0.2);
-  color: var(--red-ink);
-  border-color: rgba(224, 64, 64, 0.6);
-}
-
-.pillHeard {
-  background: rgba(74, 222, 128, 0.18);
-  color: var(--green);
-  border-color: rgba(74, 222, 128, 0.5);
-}
-
-.section {
-  margin-top: 14px;
-  padding: 0 4px;
-}
-
-.sectionKicker {
-  margin-bottom: 10px;
-}
-
-.wrap {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.fretNote {
-  margin-top: 10px;
-  padding: 0 4px;
-  color: var(--muted);
-  font-size: 13px;
-  text-wrap: pretty;
-}
-
-.btns {
-  display: flex;
   gap: 10px;
-  margin-top: 16px;
   flex-wrap: wrap;
-  padding: 0 4px;
+  justify-content: center;
+  min-height: 34px;
+}
+/* Note names keep their case: Bb is not BB. */
+.pills > span {
+  text-transform: none;
+  letter-spacing: 0.08em;
+  font-weight: 800;
 }
 
-/* Board header: CHORD kicker, name, padlock */
-.head {
+.prog {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 6px;
-  padding: 0 4px;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 235, 210, 0.08);
+  background: rgba(0, 0, 0, 0.35);
 }
-.headName {
-  min-width: 0;
+.progLabel {
+  flex: none;
+  margin-right: 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.progRow {
   flex: 1;
-  text-align: right;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.progEmpty {
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.progChord {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(255, 235, 210, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 235, 210, 0.12);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 32px;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+.progChord:hover {
+  background: rgba(255, 235, 210, 0.08);
+}
+.progChord[data-on='true'] {
+  background: rgba(233, 162, 59, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(233, 162, 59, 0.7);
+  color: var(--amber);
+}
+.progCount {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+/* ---------------------------------------------------------------- ivory: the shape */
+.shapeMeta {
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ivory-ink-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.lock {
-  flex: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  border: 1px solid var(--line-2);
-  background: transparent;
-  color: var(--muted);
+.shapeName {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--ivory-ink);
+}
+.fretRow {
   display: grid;
-  place-items: center;
-  padding: 0;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.lock:hover {
-  border-color: var(--line-3);
-  color: var(--ink);
-}
-.lock[aria-pressed='true'] {
-  background: var(--gold-fill);
-  border-color: var(--gold-edge);
-  color: var(--gold-hi);
-}
-.heardLine {
-  background: none;
-  border: 0;
-  padding: 0;
-  color: var(--gold-hi);
-  font: inherit;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
-}
-.sectionHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-.textBtn {
-  background: none;
-  border: 0;
-  padding: 0;
-  color: var(--muted);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-.textBtn:hover {
-  color: var(--gold-hi);
-}
-.cards {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.empty {
-  color: var(--muted-2);
-  font-size: 13px;
+  grid-template-columns: 44px repeat(5, minmax(0, 1fr)) 44px;
+  align-items: center;
+  gap: 0 2px;
   padding: 0 4px;
 }
+.fretNum {
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  color: var(--ivory-ink-2);
+}
+.up {
+  justify-self: end;
+}
+.board {
+  margin: 0 4px;
+  overflow: hidden;
+}
+.btns {
+  display: flex;
+  gap: 10px;
+  padding: 0 4px;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 4px;
+}
+.sectionTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ivory-title);
+}
 .altGroup {
-  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .altLabel {
   font-size: 12px;
   font-weight: 600;
-  color: var(--muted);
-  margin-bottom: 8px;
+  color: var(--ivory-ink-2);
+}
+
+@media (max-width: 560px) {
+  .reading {
+    min-height: 0;
+  }
+  .glass {
+    min-height: 340px;
+  }
 }

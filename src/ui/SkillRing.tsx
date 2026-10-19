@@ -34,7 +34,7 @@ export function SkillRing({ score, label, grade, size = 96, color = '#4db6a4', l
           <div className={s.num} style={{ fontSize: Math.round(size / 3) }}>
             {v}
           </div>
-          <div className={s.grade} style={{ color }}>
+          <div className={s.grade} style={{ color, fontSize: g.length > 8 && size <= 96 ? 8 : undefined, letterSpacing: g.length > 8 && size <= 96 ? '0.1em' : undefined }}>
             {g}
           </div>
         </div>

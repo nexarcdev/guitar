@@ -111,7 +111,7 @@
 }
 .muted {
   color: var(--cherry);
-  font-size: calc(var(--fs-sm) * 1.4);
+  font-size: calc(var(--fs-sm) * 1.8);
 }
 .paper .muted {
   color: var(--playhead);

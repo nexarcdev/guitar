@@ -30,6 +30,7 @@
 }
 .grade {
   margin-top: 3px;
+  white-space: nowrap;
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;

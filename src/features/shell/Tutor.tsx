@@ -49,7 +49,9 @@ function usePedalsTutor(): TutorLine {
 
 const lost = (): TutorLine => ({ line: 'Nothing lives at that address. The tuner is a good place to start.', action: { label: 'Open tuner', route: { kind: 'page', page: 'tuner' } } });
 
-const HOOKS = { tuner: useTunerTutor, chords: useChordsTutor, tabs: useTabsTutor, pedals: usePedalsTutor, learn: useLessonTutor, notfound: lost, design: lost } as const;
+const sheet = (): TutorLine => ({ line: 'The component reference: every base in src/ui, in every state.' });
+
+const HOOKS = { tuner: useTunerTutor, chords: useChordsTutor, tabs: useTabsTutor, pedals: usePedalsTutor, learn: useLessonTutor, notfound: lost, design: sheet } as const;
 
 /** Key this on the view so each view's hook mounts fresh. */
 export function Tutor() {

@@ -31,12 +31,14 @@ export function ChordChart({ chord, sub, frets, fingers = [], baseFret = 1, barr
   const gridH = Math.round((width - 28 - PAD * 2) * 1.15);
   const dot = Math.round(width / 8);
   const rel = (f: number) => f - baseFret + 1;
+  // Fret numbers beside the grid need room on the left.
+  const padL = baseFret > 1 ? PAD + 8 : PAD;
   const pressed = frets.map((f, i) => ({ f, i })).filter((x) => x.f > 0 && rel(x.f) >= 1 && rel(x.f) <= ROWS);
-  let bar: { l: number; r: number; top: number } | null = null;
+  let bar: { l: number; r: number; top: number; fret: number; last: number } | null = null;
   if (barre && pressed.length) {
     const low = Math.min(...pressed.map((x) => x.f));
     const on = pressed.filter((x) => x.f === low).map((x) => x.i);
-    if (on.length >= 3) bar = { l: (on[0] / 5) * 100, r: 100 - (on[on.length - 1] / 5) * 100, top: ((rel(low) - 0.5) / ROWS) * 100 };
+    if (on.length >= 3) bar = { l: (on[0] / 5) * 100, r: 100 - (on[on.length - 1] / 5) * 100, top: ((rel(low) - 0.5) / ROWS) * 100, fret: low, last: on[on.length - 1] };
   }
   const label = `${chord}${sub ? ' ' + sub : ''}: ${frets.map((f) => (f < 0 ? 'x' : f)).join(' ')}`;
   return (
@@ -48,14 +50,14 @@ export function ChordChart({ chord, sub, frets, fingers = [], baseFret = 1, barr
         </div>
         {sub && <div className={s.sub}>{sub}</div>}
       </div>
-      <div className={s.marks} style={{ margin: `0 ${PAD}px 2px` }}>
+      <div className={s.marks} style={{ margin: `0 ${PAD}px 2px ${padL}px` }}>
         {frets.map((f, i) => (
           <div key={i} style={{ color: f < 0 ? accent : undefined }}>
             {f < 0 ? '×' : f === 0 ? 'o' : ''}
           </div>
         ))}
       </div>
-      <div className={s.grid} style={{ height: gridH, margin: `0 ${PAD}px` }}>
+      <div className={s.grid} style={{ height: gridH, margin: `0 ${PAD}px 0 ${padL}px` }}>
         <div className={s.nut} style={{ height: baseFret === 1 ? 5 : 1.5 }} />
         <div className={s.lines} />
         {baseFret > 1 && (
@@ -65,12 +67,13 @@ export function ChordChart({ chord, sub, frets, fingers = [], baseFret = 1, barr
             ))}
           </div>
         )}
-        {pressed.map(({ f, i }) => (
+        {/* The bar under the dots: the finger number on its last string stays readable. */}
+        {bar && <div className={s.barre} style={{ left: `${bar.l}%`, right: `${bar.r}%`, top: `${bar.top}%` }} />}
+        {pressed.filter(({ f, i }) => !bar || f !== bar.fret || i === bar.last).map(({ f, i }) => (
           <div key={i} className={s.dot} style={{ left: `${(i / 5) * 100}%`, top: `${((rel(f) - 0.5) / ROWS) * 100}%` }}>
             {fingers[i] || ''}
           </div>
         ))}
-        {bar && <div className={s.barre} style={{ left: `${bar.l}%`, right: `${bar.r}%`, top: `${bar.top}%` }} />}
       </div>
     </div>
   );

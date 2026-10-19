@@ -1,0 +1,194 @@
+/* Shared layout for the Learn previews. Surfaces come from the ui bases; this is only arrangement. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+  gap: var(--gap);
+  flex: 1;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  flex: 1;
+}
+.readouts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 8px;
+  padding: 0 4px;
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 0 4px;
+}
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 4px;
+}
+.buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.bottom {
+  margin-top: auto;
+}
+.heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: var(--ivory-title);
+}
+.copy {
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.caps {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.big {
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 0.9;
+}
+.center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+.lamps {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+.small {
+  font-size: 11px;
+  color: var(--ink-3);
+  letter-spacing: 0.08em;
+  margin-left: 6px;
+}
+
+/* A selectable well in a list (pairs, patterns, takes). */
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 6px 12px;
+}
+.pick[aria-pressed='true'] {
+  color: var(--amber);
+}
+.pickName {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pickSub {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--ink-2);
+}
+.pickMeta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.roots {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+.root {
+  height: 42px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 17px;
+  text-align: center;
+}
+.root[aria-pressed='true'] {
+  color: var(--amber);
+}
+
+/* Paper content. */
+.paperRow {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(58, 42, 26, 0.25);
+}
+.paperNote {
+  position: relative;
+  padding: 12px 14px;
+  border-left: 3px solid var(--paper-ink);
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--paper-ink);
+}
+.paperCaps {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: var(--paper-ink-3);
+}
+.paperBar {
+  position: relative;
+  height: 8px;
+  border: 1.5px solid var(--paper-ink);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.paperFill {
+  height: 100%;
+  background: var(--paper-ink);
+}
+.paperHead {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--playhead);
+  box-shadow: 0 0 6px rgba(200, 67, 31, 0.6);
+}

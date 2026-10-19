@@ -4,7 +4,9 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { learnEnabled, staticPaths } from './src/state/routes.ts';
+import { learnEnabled, staticPaths, LEARN_MODULES } from './src/state/routes.ts';
+
+const LEARN = learnEnabled(process.env.VITE_LEARN_MODULES);
 
 /**
  * Real URLs on GitHub Pages, which has no rewrites: every route gets its own copy of the app's
@@ -21,7 +23,7 @@ function routePages(): Plugin {
     },
     closeBundle() {
       const html = readFileSync(join(outDir, 'index.html'), 'utf8');
-      for (const p of [...staticPaths(learnEnabled(process.env.VITE_LEARN_MODULES)), '404']) {
+      for (const p of [...staticPaths(LEARN), '404']) {
         const file = join(outDir, `${p}.html`);
         mkdirSync(dirname(file), { recursive: true });
         writeFileSync(file, html);
@@ -35,6 +37,8 @@ export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
   // Shown in the app (Your guitar → About) so you can tell which build you're running.
   define: {
+    // One constant per Learn module, so a hidden module's code is dropped from the build entirely.
+    ...Object.fromEntries(LEARN_MODULES.map((m) => [`__LEARN_${m.toUpperCase()}__`, JSON.stringify(LEARN.includes(m))])),
     __APP_VERSION__: JSON.stringify((process.env.GITHUB_SHA ?? 'dev').slice(0, 7)),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },

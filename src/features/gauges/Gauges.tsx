@@ -1,19 +1,16 @@
-// Live amp-style gauges for the guitar input and the speaker output. They redraw every animation
-// frame straight from engine.levels (no React state per frame), with meter ballistics: instant
-// attack, smooth release and a peak hold. The input gauge marks the measured noise floor and the
-// threshold above which sound counts as playing; on the large gauge that threshold is draggable.
+// Live level meters for the guitar input and the speaker output. They redraw every animation
+// frame straight from engine.levels (no React state per frame) into the one Meter base, with
+// meter ballistics: instant attack, smooth release and a peak hold. The input meter marks the
+// threshold above which sound counts as playing; on an editable meter that threshold drags.
 
 import { useEffect, useRef, useState } from 'react';
 import { engine, type LiveLevels } from '../../audio/engine';
 import { actions } from '../../state/store';
-import { go } from '../../state/router';
+import { Meter, METER_MIN_DB, type MeterHandle } from '../../ui';
 import s from './Gauges.module.css';
 
-export const MIN_DB = -96;
-const pos = (db: number) => Math.max(0, Math.min(1, (db - MIN_DB) / -MIN_DB));
+export const MIN_DB = METER_MIN_DB;
 const dbAt = (p: number) => MIN_DB + p * -MIN_DB;
-/** Hot zone: the top 6 dB. */
-const HOT_DB = -6;
 const STALE_MS = 500;
 
 /** Calls `draw` every animation frame with the latest levels and the frame time. */
@@ -49,31 +46,24 @@ class Ballistics {
 
 const threshold = (L: LiveLevels) => L.floorDb + L.openDb;
 
-/** The colour bands depend on the threshold: quiet below it, gold above, red at the top. */
-function bands(th: number | null) {
-  const t = th == null ? 0 : pos(th) * 100;
-  const h = pos(HOT_DB) * 100;
-  return `linear-gradient(to right, rgba(247,239,232,0.22) 0%, rgba(247,239,232,0.22) ${t}%, var(--gold-lo) ${t}%, var(--gold-hi) ${h}%, var(--red) ${h}%, var(--red) 100%)`;
-}
-
-interface BarProps {
+interface LevelMeterProps {
   kind: 'in' | 'out';
-  size: 'mini' | 'large';
-  /** Large input gauge: drag (or arrow keys) to move the threshold. */
+  label?: string;
+  height?: number;
+  /** Input only: drag (or arrow keys) to move the threshold. */
   editable?: boolean;
+  /** Input only: mark the measured noise floor. */
+  showFloor?: boolean;
+  /** A dB scale under the bar. */
+  scale?: number[];
 }
 
-export function LevelBar({ kind, size, editable }: BarProps) {
-  const fill = useRef<HTMLDivElement>(null);
-  const peak = useRef<HTMLDivElement>(null);
-  const floor = useRef<HTMLDivElement>(null);
-  const thr = useRef<HTMLDivElement>(null);
-  const led = useRef<HTMLSpanElement>(null);
-  const readout = useRef<HTMLSpanElement>(null);
-  const track = useRef<HTMLDivElement>(null);
+export function LevelMeter({ kind, label, height = 18, editable, showFloor, scale }: LevelMeterProps) {
+  const meter = useRef<MeterHandle>(null);
   const b = useRef(new Ballistics());
+  const handle = useRef<HTMLDivElement>(null);
+  const track = useRef<HTMLDivElement | null>(null);
   const drag = useRef<{ db: number; until: number } | null>(null);
-  const lastBands = useRef('');
   const [thView, setThView] = useState(-60);
   const lastTh = useRef(-1e9);
   /** The threshold as last drawn (keyboard steps start here, not from a stale render). */
@@ -81,43 +71,25 @@ export function LevelBar({ kind, size, editable }: BarProps) {
   const isIn = kind === 'in';
 
   useLevelLoop((L, now, dt) => {
-    const at = isIn ? L.inAt : L.outAt;
-    const live = now - at < STALE_MS;
+    const live = now - (isIn ? L.inAt : L.outAt) < STALE_MS;
     const level = live ? (isIn ? L.inDb : L.outDb) : -120;
     const pk = live ? (isIn ? L.inPeakDb : L.outDb) : -120;
     b.current.step(level, pk, now, dt);
     const d = drag.current && now < drag.current.until ? drag.current : null;
     const th = isIn ? (d ? d.db : threshold(L)) : null;
-    if (fill.current) fill.current.style.clipPath = `inset(0 ${(1 - pos(b.current.shown)) * 100}% 0 0)`;
-    if (peak.current) {
-      peak.current.style.left = pos(b.current.peak) * 100 + '%';
-      peak.current.style.opacity = b.current.peak > MIN_DB ? '1' : '0';
-    }
-    const bg = bands(th);
-    if (bg !== lastBands.current && fill.current) {
-      lastBands.current = bg;
-      fill.current.style.background = bg;
-    }
-    if (isIn) {
-      if (floor.current) floor.current.style.left = pos(L.floorDb) * 100 + '%';
-      if (thr.current) thr.current.style.left = pos(th!) * 100 + '%';
-      thNow.current = th!;
-      if (led.current) led.current.dataset.on = String(live && L.gate);
-      if (editable && Math.abs(th! - lastTh.current) >= 0.5) {
-        lastTh.current = th!;
-        setThView(Math.round(th!));
+    meter.current?.draw({ value: b.current.shown, peak: b.current.peak, threshold: th, floor: isIn ? L.floorDb : null, live, open: isIn ? live && L.gate : live && b.current.shown > -60 });
+    if (isIn && th != null) {
+      thNow.current = th;
+      if (handle.current) handle.current.style.left = ((th - MIN_DB) / -MIN_DB) * 100 + '%';
+      if (editable && Math.abs(th - lastTh.current) >= 0.5) {
+        lastTh.current = th;
+        setThView(Math.round(th));
       }
     }
-    if (readout.current) readout.current.textContent = live ? (b.current.shown < -90 ? '−∞' : Math.round(b.current.shown) + ' dB') : 'off';
   });
 
-  // Dragging the threshold: the gauge shows the dragged value at once and for a moment after,
+  // Dragging the threshold: the meter shows the dragged value at once and for a moment after,
   // until the channel's own state has caught up.
-  const setFrom = (clientX: number) => {
-    const r = track.current!.getBoundingClientRect();
-    const db = Math.round(dbAt((clientX - r.left) / r.width));
-    move(db);
-  };
   const sent = useRef(0);
   const move = (db: number) => {
     db = Math.max(MIN_DB + 6, Math.min(-6, db));
@@ -134,157 +106,60 @@ export function LevelBar({ kind, size, editable }: BarProps) {
       drag.current.until = performance.now() + 800;
     }
   };
+  const setFrom = (el: HTMLElement, clientX: number) => {
+    const r = el.getBoundingClientRect();
+    move(Math.round(dbAt((clientX - r.left) / r.width)));
+  };
 
+  const name = label ?? (isIn ? 'Guitar in' : 'Speakers out');
   return (
-    <div className={`${s.bar} ${size === 'large' ? s.large : s.mini}`}>
-      {size === 'large' && (
-        <div className={s.barHead}>
-          {isIn && <span ref={led} className={s.led} data-on="false" title="Playing (gate open)" />}
-          <span className={s.barLabel}>{isIn ? 'Guitar in' : 'Speakers out'}</span>
-          <span ref={readout} className={s.readout}>off</span>
-        </div>
+    <Meter
+      label={name}
+      height={height}
+      handle={meter}
+      showFloor={showFloor}
+      scale={scale}
+      trackProps={
+        editable && isIn
+          ? {
+              className: s.editable,
+              ref: (el: HTMLDivElement | null) => {
+                track.current = el;
+              },
+              onPointerDown: (e) => {
+                e.currentTarget.setPointerCapture(e.pointerId);
+                setFrom(e.currentTarget, e.clientX);
+              },
+              onPointerMove: (e) => {
+                if (e.buttons) setFrom(e.currentTarget, e.clientX);
+              },
+              onPointerUp: end,
+            } as React.HTMLAttributes<HTMLDivElement>
+          : undefined
+      }
+    >
+      {editable && isIn && (
+        <div
+          ref={handle}
+          className={s.handle}
+          role="slider"
+          tabIndex={0}
+          aria-label="Playing threshold"
+          aria-valuemin={MIN_DB + 6}
+          aria-valuemax={-6}
+          aria-valuenow={thView}
+          aria-valuetext={thView + ' dB'}
+          onKeyDown={(e) => {
+            const step = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : e.key === 'PageUp' ? 6 : e.key === 'PageDown' ? -6 : 0;
+            if (!step) return;
+            e.preventDefault();
+            const d = drag.current && performance.now() < drag.current.until ? drag.current.db : thNow.current;
+            sent.current = 0;
+            move(Math.round(d) + step);
+            end();
+          }}
+        />
       )}
-      <div
-        ref={track}
-        className={s.track}
-        onPointerDown={
-          editable
-            ? (e) => {
-                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-                setFrom(e.clientX);
-              }
-            : undefined
-        }
-        onPointerMove={editable ? (e) => e.buttons && setFrom(e.clientX) : undefined}
-        onPointerUp={editable ? end : undefined}
-        style={editable ? { cursor: 'ew-resize', touchAction: 'none' } : undefined}
-      >
-        <div ref={fill} className={s.fill} />
-        <div ref={peak} className={s.peak} />
-        {isIn && <div ref={floor} className={s.floor} title="Noise floor" />}
-        {isIn && (
-          <div
-            ref={thr}
-            className={editable ? s.handle : s.thr}
-            {...(editable
-              ? {
-                  role: 'slider',
-                  tabIndex: 0,
-                  'aria-label': 'Playing threshold',
-                  'aria-valuemin': MIN_DB + 6,
-                  'aria-valuemax': -6,
-                  'aria-valuenow': thView,
-                  'aria-valuetext': thView + ' dB',
-                  onKeyDown: (e: React.KeyboardEvent) => {
-                    const step = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : e.key === 'PageUp' ? 6 : e.key === 'PageDown' ? -6 : 0;
-                    if (!step) return;
-                    e.preventDefault();
-                    const d = drag.current && performance.now() < drag.current.until ? drag.current.db : thNow.current;
-                    sent.current = 0;
-                    move(Math.round(d) + step);
-                    end();
-                  },
-                }
-              : {})}
-          />
-        )}
-      </div>
-      {size === 'large' && (
-        <div className={s.scale} aria-hidden>
-          {[-96, -72, -48, -24, -12, 0].map((d) => (
-            <span key={d} style={{ left: pos(d) * 100 + '%' }}>
-              {d}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Compact IN/OUT pair for the header; opens the Studio's Input tab. */
-export function MiniGauges() {
-  return (
-    <button className={s.minis} aria-label="Levels: open Studio input" title="Guitar in and speakers out" onClick={() => go.studio('input')}>
-      <span className={s.miniRow}>
-        <span className={s.miniLabel}>IN</span>
-        <LevelBar kind="in" size="mini" />
-      </span>
-      <span className={s.miniRow}>
-        <span className={s.miniLabel}>OUT</span>
-        <LevelBar kind="out" size="mini" />
-      </span>
-    </button>
-  );
-}
-
-// ---- VU gauge (Pedals page)
-
-const VU_MIN = -60;
-const SWEEP = 50; // degrees either side of centre
-const ang = (db: number) => (Math.max(0, Math.min(1, (db - VU_MIN) / -VU_MIN)) * 2 - 1) * SWEEP;
-const CX = 100;
-const CY = 108;
-const R = 82;
-function arc(a0: number, a1: number, r = R) {
-  const p = (a: number) => [CX + r * Math.sin((a * Math.PI) / 180), CY - r * Math.cos((a * Math.PI) / 180)];
-  const [x0, y0] = p(a0);
-  const [x1, y1] = p(a1);
-  return `M ${x0} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y1}`;
-}
-function tick(db: number, r0: number, r1: number) {
-  const a = (ang(db) * Math.PI) / 180;
-  return { x1: CX + r0 * Math.sin(a), y1: CY - r0 * Math.cos(a), x2: CX + r1 * Math.sin(a), y2: CY - r1 * Math.cos(a) };
-}
-
-/** An amp-style needle gauge: dim below the threshold, gold above, red at the top. */
-export function VuGauge({ kind }: { kind: 'in' | 'out' }) {
-  const needle = useRef<SVGGElement>(null);
-  const readout = useRef<SVGTextElement>(null);
-  const [th, setTh] = useState<number | null>(kind === 'in' ? -60 : null);
-  const [fl, setFl] = useState(-80);
-  const shown = useRef(-120);
-  const isIn = kind === 'in';
-
-  useLevelLoop((L, now, dt) => {
-    const live = now - (isIn ? L.inAt : L.outAt) < STALE_MS;
-    const target = live ? (isIn ? L.inDb : L.outDb) : -120;
-    // Needle with a little mass: about 60 ms to settle.
-    shown.current += (Math.max(target, VU_MIN - 4) - shown.current) * Math.min(1, dt / 0.06);
-    if (needle.current) needle.current.style.transform = `rotate(${ang(shown.current)}deg)`;
-    if (readout.current) readout.current.textContent = live ? (shown.current < VU_MIN ? '−∞' : Math.round(shown.current) + ' dB') : 'off';
-    if (isIn) {
-      const t = Math.round(threshold(L));
-      if (t !== th) setTh(t);
-      const f = Math.round(L.floorDb);
-      if (f !== fl) setFl(f);
-    }
-  });
-
-  const tq = th ?? VU_MIN;
-  return (
-    <figure className={s.vu} aria-label={isIn ? 'Guitar input level' : 'Speaker output level'}>
-      <svg viewBox="0 0 200 124" role="img">
-        <path d={arc(-SWEEP, ang(Math.max(VU_MIN, tq)))} className={s.vuDim} />
-        <path d={arc(ang(Math.max(VU_MIN, tq)), ang(HOT_DB))} className={s.vuGold} />
-        <path d={arc(ang(HOT_DB), SWEEP)} className={s.vuRed} />
-        {[-60, -48, -36, -24, -12, -6, 0].map((d) => (
-          <g key={d}>
-            <line {...tick(d, R - 12, R - 4)} className={s.vuTick} />
-            <text x={tick(d, R - 22, 0).x1} y={tick(d, R - 22, 0).y1 + 3} className={s.vuNum}>
-              {d}
-            </text>
-          </g>
-        ))}
-        {isIn && fl > VU_MIN && <line {...tick(fl, R - 4, R + 8)} className={s.vuFloor} />}
-        {isIn && th != null && th > VU_MIN && <line {...tick(th, R - 6, R + 10)} className={s.vuThr} />}
-        <g ref={needle} style={{ transformOrigin: `${CX}px ${CY}px`, transform: `rotate(${-SWEEP}deg)` }}>
-          <line x1={CX} y1={CY} x2={CX} y2={CY - R - 4} className={s.vuNeedle} />
-        </g>
-        <circle cx={CX} cy={CY} r={5} className={s.vuPivot} />
-        <text x={14} y={120} className={s.vuName}>{isIn ? 'IN' : 'OUT'}</text>
-        <text ref={readout} x={186} y={120} className={s.vuRead}>off</text>
-      </svg>
-    </figure>
+    </Meter>
   );
 }

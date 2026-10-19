@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useStore, actions } from '../../state/store';
 import { engine } from '../../audio/engine';
-import { VuGauge } from '../gauges/Gauges';
+import { LevelMeter } from '../gauges/Gauges';
 import type { SlotView } from '../../core/protocol';
 import s from './Pedals.module.css';
 
@@ -31,8 +31,8 @@ export function Pedals() {
         <div className={s.hint}>Drag the grip to reorder · drag a knob to adjust · tap the footswitch</div>
       </div>
       <div className={s.vus}>
-        <VuGauge kind="in" />
-        <VuGauge kind="out" />
+        <LevelMeter kind="in" />
+        <LevelMeter kind="out" />
       </div>
       {!output && (
         <div className="notice">

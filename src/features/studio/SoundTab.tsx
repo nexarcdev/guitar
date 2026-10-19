@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { engine } from '../../audio/engine';
 import type { DeviceInfo } from '../../core/protocol';
 import { actions, useStore } from '../../state/store';
-import { LevelBar } from '../gauges/Gauges';
+import { LevelMeter } from '../gauges/Gauges';
 import { Options, Section } from './Section';
 import s from './Studio.module.css';
 
@@ -49,7 +49,7 @@ export function SoundTab() {
             [false, 'Off', 'Listen only'],
           ]}
         />
-        <LevelBar kind="out" size="large" />
+        <LevelMeter kind="out" scale={[-96, -72, -48, -24, -12, 0]} />
         <div className={s.row}>
           <button className={s.testBtn} onClick={() => { engine.resume(); engine.reference(440); }}>
             Play a test tone

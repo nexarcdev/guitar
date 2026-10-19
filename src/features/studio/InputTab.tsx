@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { engine } from '../../audio/engine';
 import type { Analysis, DeviceInfo } from '../../core/protocol';
 import { actions, useStore } from '../../state/store';
-import { LevelBar } from '../gauges/Gauges';
+import { LevelMeter } from '../gauges/Gauges';
 import { Options, Section } from './Section';
 import s from './Studio.module.css';
 
@@ -51,7 +51,7 @@ function LevelSection() {
       status={follow ? 'Following noise' : 'Fixed'}
       desc="Drag the gold marker: anything louder counts as playing, anything quieter is treated as noise. The grey marker is the measured noise floor; the green light shows when you're playing."
     >
-      <LevelBar kind="in" size="large" editable />
+      <LevelMeter kind="in" editable showFloor scale={[-96, -72, -48, -24, -12, 0]} />
       <div className={s.stats}>
         <div className={s.stat}>
           <div className={s.statLabel}>Noise floor</div>

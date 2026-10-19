@@ -1,119 +1,133 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useStore, actions, type TabId } from '../../state/store';
-import { go } from '../../state/router';
+import { linkProps, DEV } from '../../state/router';
+import type { Route } from '../../state/routes';
 import { engine } from '../../audio/engine';
-import { setupStr } from '../../theory/music';
+import { tuningName } from '../../theory/music';
 import { Tuner } from '../tuner/Tuner';
 import { Studio } from '../studio/Studio';
+import { LevelMeter } from '../gauges/Gauges';
+import { Lamp, Switch, cx } from '../../ui';
 import { Contained } from './Contained';
-import { MiniGauges } from '../gauges/Gauges';
+import { NotFound } from './NotFound';
+import { Tutor } from './Tutor';
 import s from './Shell.module.css';
 
 const Chords = lazy(() => import('../chords/Chords').then((m) => ({ default: m.Chords })));
 const Tabs = lazy(() => import('../tabs/Tabs').then((m) => ({ default: m.Tabs })));
 const Pedals = lazy(() => import('../pedals/Pedals').then((m) => ({ default: m.Pedals })));
+const Learn = lazy(() => import('../learn/Learn').then((m) => ({ default: m.Learn })));
+// The component reference sheet is a development tool: production builds leave it out entirely.
+const Design = DEV ? lazy(() => import('../design/Design').then((m) => ({ default: m.Design }))) : null;
 
-const NAV: Array<[Exclude<TabId, 'learn'>, string, string]> = [
-  ['tuner', 'Tuner', '◎'],
-  ['chords', 'Chords', '⌗'],
-  ['tabs', 'Tabs', '≣'],
-  ['pedals', 'Pedals', '▣'],
+const NAV: Array<[TabId, string]> = [
+  ['tuner', 'Tuner'],
+  ['chords', 'Chords'],
+  ['tabs', 'Tabs'],
+  ['pedals', 'Pedals'],
+  ['learn', 'Learn'],
 ];
-const TITLES: Record<TabId, string> = { tuner: 'Tuner', chords: 'Chords', tabs: 'Tab stream', pedals: 'Pedalboard', learn: 'Learn' };
+const VIEW_NAMES: Record<TabId, string> = { tuner: 'Tuner', chords: 'Chords', tabs: 'Tab stream', pedals: 'Pedalboard', learn: 'Learn' };
 
 export function Shell() {
-  const tab = useStore((x) => x.tab);
-  const setup = useStore((x) => x.setup);
-  const listening = useStore((x) => x.listening);
-  const output = useStore((x) => x.output);
-  const mic = useStore((x) => x.engine.mic);
-  const running = useStore((x) => x.engine.running);
-  const live = mic === 'live' && running;
+  const { route, tab, learnModule } = useStore(useShallow((x) => ({ route: x.route, tab: x.tab, learnModule: x.learnModule })));
+  const main = useRef<HTMLElement>(null);
 
-  const listenText = !listening ? 'Paused' : live ? 'Listening' : mic === 'live' ? 'Tap to start' : mic === 'starting' ? 'Starting' : 'No input';
+  // A new view starts at the top. (Block body: scrollTo returns a Promise in current Chrome.)
+  useEffect(() => {
+    main.current?.scrollTo({ top: 0 });
+  }, [tab, learnModule]);
 
   return (
     <div className={s.app}>
-      <nav className={s.rail} aria-label="Sections">
-        <div className={s.brand}>
-          <div className={s.logo} />
-          <div className={s.wordmark}>FRETLINE</div>
-        </div>
-        {NAV.map(([id, label, icon]) => (
-          <button key={id} className={s.navBtn} aria-label={label} aria-current={tab === id ? 'page' : undefined} onClick={() => go.page(id)}>
-            <span className={s.navIcon} aria-hidden>{icon}</span>
-            <span className={s.navLabel}>{label}</span>
-          </button>
-        ))}
-        <button className={`${s.navBtn} ${s.settingsBtn}`} aria-label="Studio" onClick={() => go.studio('input')}>
-          <span className={s.navIcon} aria-hidden>⚙</span>
-          <span className={s.navLabel}>Studio</span>
-        </button>
-      </nav>
-      <main className={s.main}>
-        <header className={s.header}>
-          <div className={s.titleWrap}>
-            <div className={s.mobileLogo} />
-            <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-              <div className="kicker">FRETLINE</div>
-              <h1 className={s.title}>{TITLES[tab]}</h1>
-            </div>
-          </div>
-          <div className={s.chips}>
-            <span className={s.cGauge}>
-              <MiniGauges />
-            </span>
-            <button className={`${s.gearChip} ${s.cGear}`} aria-label="Studio" title="Studio" onClick={() => go.studio('input')}>
-              ⚙
-            </button>
-            <button className={`${s.setupChip} ${s.cSetup}`} title="Tuning and capo" onClick={() => go.studio('guitar')}>
-              <span style={{ fontSize: 15, lineHeight: 1 }} aria-hidden>♩</span>
-              {setupStr(setup)}
-            </button>
-            <button
-              className={`${s.chip} ${s.cListen} ${listening && live ? s.chipLive : ''}`}
-              aria-label={listening ? 'Pause listening' : 'Resume listening'}
-              aria-pressed={listening}
-              onClick={() => actions.setListening(!listening)}
-            >
-              <span className={`${s.dot} ${listening && live ? s.dotLive : ''}`} />
-              {listenText}
-            </button>
-            <button
-              className={`${s.chip} ${s.cOutput} ${output ? s.chipOn : ''}`}
-              aria-label={output ? 'Turn output off' : 'Turn output on'}
-              aria-pressed={output}
-              onClick={() => actions.setOutput(!output)}
-            >
-              <span className={`${s.square} ${output ? s.squareOn : ''}`} />
-              {output ? 'Output on' : 'Output off'}
-            </button>
-          </div>
-        </header>
+      <Header />
+      <div className={s.stripe} aria-hidden>
+        <div className={s.sheen} />
+      </div>
+      <main ref={main} className={s.main} id="main">
         <MicBanner />
-        <Contained key={tab} what={'The ' + TITLES[tab] + ' view'}>
+        {route.kind === 'design' && Design ? (
           <Suspense fallback={null}>
-            {tab === 'tuner' && <Tuner />}
-            {tab === 'chords' && <Chords />}
-            {tab === 'tabs' && <Tabs />}
-            {tab === 'pedals' && <Pedals />}
+            <Design />
           </Suspense>
-        </Contained>
+        ) : route.kind === 'notfound' ? (
+          <NotFound path={route.path} />
+        ) : (
+          <Contained key={tab} what={'The ' + VIEW_NAMES[tab] + ' view'}>
+            <Suspense fallback={null}>
+              {tab === 'tuner' && <Tuner />}
+              {tab === 'chords' && <Chords />}
+              {tab === 'tabs' && <Tabs />}
+              {tab === 'pedals' && <Pedals />}
+              {tab === 'learn' && <Learn />}
+            </Suspense>
+          </Contained>
+        )}
       </main>
+      <Tutor key={route.kind === 'notfound' || route.kind === 'design' ? route.kind : tab} />
       <Studio />
-      <nav className={s.bottomNav} aria-label="Sections">
-        {NAV.map(([id, label, icon]) => (
-          <button key={id} className={s.bottomBtn} aria-current={tab === id ? 'page' : undefined} onClick={() => go.page(id)}>
-            <span className={s.navIcon} aria-hidden>{icon}</span>
-            {label}
-          </button>
-        ))}
-      </nav>
     </div>
   );
 }
 
-/** Real input states replace the old demo guitar: tell the player exactly what's missing. */
+function Header() {
+  const { tab, learnModule, setup, listening, output, live, studio, lost } = useStore(
+    useShallow((x) => ({
+      lost: x.route.kind === 'notfound' || x.route.kind === 'design',
+      tab: x.tab,
+      learnModule: x.learnModule,
+      setup: x.setup,
+      listening: x.listening,
+      output: x.output,
+      live: x.engine.mic === 'live' && x.engine.running,
+      studio: x.setupOpen,
+    })),
+  );
+  const routeOf = (id: TabId): Route => (id === 'learn' ? { kind: 'learn', module: learnModule } : { kind: 'page', page: id });
+
+  return (
+    <header className={s.header}>
+      <div className={s.brand}>Fretline</div>
+      <nav className={s.nav} aria-label="Pages">
+        {NAV.map(([id, label]) => {
+          const on = !lost && tab === id;
+          return (
+            <a key={id} className={s.navLink} aria-current={on ? 'page' : undefined} {...linkProps(routeOf(id))}>
+              <Lamp shape="bar" tone={on ? 'on' : 'off'} surface="alu" />
+              {label}
+            </a>
+          );
+        })}
+      </nav>
+      <div className={s.cluster}>
+        <a className={cx(s.readout, s.levels)} aria-label="Levels: open Studio input" title="Guitar in and speakers out" {...linkProps({ kind: 'studio', tab: 'input' })}>
+          <LevelMeter kind="in" label="In" height={6} />
+          <LevelMeter kind="out" label="Out" height={6} />
+        </a>
+        <a className={cx(s.readout, s.tuning)} title="Tuning and capo" aria-label={`Tuning: ${tuningName(setup.offsets)}${setup.capo ? ', capo ' + setup.capo : ''}. Open Studio guitar`} {...linkProps({ kind: 'studio', tab: 'guitar' })}>
+          <span className={s.tLabel}>Tuning</span>
+          <span className={s.tValue}>{tuningName(setup.offsets)}</span>
+          <span className={s.tSub}>{setup.capo ? `Capo ${setup.capo}` : 'A 440 Hz'}</span>
+        </a>
+        <div className={s.switches}>
+          <Switch vertical surface="alu" tone="live" on={listening} pulse={listening && live} label="Listen" ariaLabel={listening ? 'Pause listening' : 'Resume listening'} onToggle={(v) => actions.setListening(v)} />
+          <Switch vertical surface="alu" tone="on" on={output} label="Output" ariaLabel={output ? 'Turn output off' : 'Turn output on'} onToggle={(v) => actions.setOutput(v)} />
+          <a className={s.studioBtn} aria-label="Studio" title="Studio: guitar, input, sound, engine" aria-current={studio ? 'page' : undefined} {...linkProps({ kind: 'studio', tab: 'guitar' })}>
+            <span className={s.studioWell} data-on={studio}>
+              <span />
+              <span />
+              <span />
+            </span>
+            Studio
+          </a>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/** Real input states: tell the player exactly what's missing. */
 function MicBanner() {
   const listening = useStore((x) => x.listening);
   const output = useStore((x) => x.output);
@@ -147,7 +161,7 @@ function MicBanner() {
       action = mic === 'starting' ? null : ['Allow microphone', retry];
   }
   return (
-    <div className={`notice ${s.banner}`} role="status">
+    <div className="notice" role="status">
       <span>{text}</span>
       {action && (
         <button className="notice-btn" onClick={action[1]}>

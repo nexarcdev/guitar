@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;flex-direction:column;gap:6px;min-width:0;width:100%">
+  <div style="border-radius:4px;overflow:hidden;background:{{ boardBg }};box-shadow:{{ boardShadow }}">
+    <sc-for list="{{ rows }}" as="row" hint-placeholder-count="6">
+      <div style="display:grid;grid-template-columns:{{ cols }};height:{{ rowH }}px">
+        <button onClick="{{ row.nut.go }}" aria-label="{{ row.nut.aria }}" aria-pressed="{{ row.nut.on }}" style="border:none;border-right:4px solid {{ nutColor }};background:{{ nutBg }};display:grid;grid-template-columns:14px 1fr;align-items:center;padding:0 0 0 6px;cursor:{{ cursor }};min-width:0"><span style="font-family:'Big Shoulders Display','Barlow',sans-serif;font-weight:700;font-size:13px;color:{{ labelColor }};text-align:center">{{ row.label }}</span><span style="justify-self:center;width:{{ dotSm }}px;height:{{ dotSm }}px;border-radius:50%;background:{{ row.nut.bg }};box-shadow:{{ row.nut.glow }};color:{{ row.nut.fg }};display:grid;place-items:center;font-family:'Big Shoulders Display','Barlow',sans-serif;font-weight:800;font-size:{{ fsSm }}px;line-height:1;opacity:{{ row.nut.op }};transform:{{ row.nut.scale }};transition:transform .15s,opacity .15s">{{ row.nut.text }}</span></button>
+        <sc-for list="{{ row.cells }}" as="c" hint-placeholder-count="12">
+          <button onClick="{{ c.go }}" aria-label="{{ c.aria }}" aria-pressed="{{ c.on }}" style="border:none;border-right:{{ wire }};background:{{ row.line }};display:grid;place-items:center;padding:0;cursor:{{ cursor }};min-width:0" style-hover="background-color:{{ hoverBg }}">
+            <span style="width:{{ dot }}px;height:{{ dot }}px;border-radius:50%;background:{{ c.bg }};box-shadow:{{ c.glow }};color:{{ c.fg }};display:grid;place-items:center;font-family:'Big Shoulders Display','Barlow',sans-serif;font-weight:800;font-size:{{ fs }}px;line-height:1;transform:{{ c.scale }};opacity:{{ c.op }};transition:transform .15s,opacity .15s;animation:{{ c.anim }}">{{ c.text }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </sc-for>
+  </div>
+  <div style="display:grid;grid-template-columns:{{ cols }};font-family:'Big Shoulders Display','Barlow',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.08em;color:{{ numColor }}">
+    <span></span>
+    <sc-for list="{{ nums }}" as="n" hint-placeholder-count="12"><span style="text-align:center;color:{{ n.color }}">{{ n.label }}</span></sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:640,&quot;height&quot;:240},&quot;frets&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:12,&quot;min&quot;:3,&quot;max&quot;:24,&quot;tsType&quot;:&quot;number&quot;},&quot;from&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1,&quot;min&quot;:1,&quot;max&quot;:20,&quot;tsType&quot;:&quot;number&quot;},&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;notes&quot;,&quot;options&quot;:[&quot;notes&quot;,&quot;intervals&quot;,&quot;dots&quot;],&quot;tsType&quot;:&quot;'notes'|'intervals'|'dots'&quot;},&quot;surface&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;glass&quot;,&quot;options&quot;:[&quot;glass&quot;,&quot;paper&quot;],&quot;tsType&quot;:&quot;'glass'|'paper'&quot;},&quot;rowH&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:32,&quot;min&quot;:22,&quot;max&quot;:48,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;marks&quot;:{&quot;editor&quot;:null,&quot;default&quot;:[{&quot;s&quot;:0,&quot;f&quot;:5,&quot;tone&quot;:&quot;root&quot;,&quot;note&quot;:&quot;A&quot;,&quot;iv&quot;:&quot;1&quot;},{&quot;s&quot;:1,&quot;f&quot;:3,&quot;tone&quot;:&quot;scale&quot;,&quot;note&quot;:&quot;C&quot;,&quot;iv&quot;:&quot;♭3&quot;},{&quot;s&quot;:1,&quot;f&quot;:5,&quot;tone&quot;:&quot;chord&quot;,&quot;note&quot;:&quot;D&quot;,&quot;iv&quot;:&quot;4&quot;},{&quot;s&quot;:2,&quot;f&quot;:5,&quot;tone&quot;:&quot;scale&quot;,&quot;note&quot;:&quot;G&quot;,&quot;iv&quot;:&quot;♭7&quot;},{&quot;s&quot;:2,&quot;f&quot;:7,&quot;tone&quot;:&quot;root&quot;,&quot;note&quot;:&quot;A&quot;,&quot;iv&quot;:&quot;1&quot;}],&quot;tsType&quot;:&quot;Array&lt;{s: number, f: number, tone: 'root'|'chord'|'scale'|'target'|'heard'|'dim', note?: string, iv?: string}&gt;&quot;},&quot;tuning&quot;:{&quot;editor&quot;:null,&quot;default&quot;:[&quot;E&quot;,&quot;A&quot;,&quot;D&quot;,&quot;G&quot;,&quot;B&quot;,&quot;e&quot;],&quot;tsType&quot;:&quot;string[]&quot;},&quot;onTap&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;(string: number, fret: number) =&gt; void&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const n = Number(p.frets ?? 12), from = Number(p.from ?? 1), marks = p.marks ?? [], mode = p.mode ?? 'notes', paper = (p.surface ?? 'glass') === 'paper';
+    const tuning = p.tuning ?? ['E', 'A', 'D', 'G', 'B', 'e'];
+    const rowH = Number(p.rowH ?? 32), dot = Math.round(rowH * 0.72), fs = Math.round(dot * 0.5);
+    const amber = '#e9a23b', teal = '#4db6a4', cherry = '#d4442c', ink = '#efe4c8';
+    const TONE = paper ? {
+      root: { bg: '#2b1d10', fg: '#e8d6ad', glow: 'none' }, chord: { bg: '#6b5636', fg: '#f3e6c4', glow: 'none' }, scale: { bg: 'transparent', fg: '#2b1d10', glow: 'inset 0 0 0 1.5px #3a2a1a' }, target: { bg: '#c8431f', fg: '#fff3ee', glow: '0 0 6px rgba(200,67,31,0.5)' }, heard: { bg: '#2b1d10', fg: '#e8d6ad', glow: 'none' }, dim: { bg: 'transparent', fg: '#8a7a5a', glow: 'inset 0 0 0 1px rgba(58,42,26,0.4)' },
+    } : {
+      root: { bg: 'radial-gradient(circle at 35% 30%,#f6d98a,#e9a23b 50%,#a86e14)', fg: '#1c1612', glow: `0 0 12px ${amber}99` }, chord: { bg: 'radial-gradient(circle at 35% 30%,#a7f3c4,#4db6a4 50%,#1f6d61)', fg: '#0e1a18', glow: `0 0 12px ${teal}80` }, scale: { bg: 'rgba(239,228,200,0.16)', fg: ink, glow: 'inset 0 0 0 1px rgba(239,228,200,0.45)' }, target: { bg: `${cherry}33`, fg: cherry, glow: `inset 0 0 0 2px ${cherry}, 0 0 12px ${cherry}80` }, heard: { bg: 'radial-gradient(circle at 35% 30%,#a7f3c4,#4db6a4 50%,#1f6d61)', fg: '#0e1a18', glow: `0 0 18px ${teal}` }, dim: { bg: 'rgba(239,228,200,0.06)', fg: '#8f8272', glow: 'none' },
+    };
+    const thick = [3, 2.6, 2.2, 1.8, 1.4, 1.1];
+    const lineC = paper ? '#3a2a1a' : 'rgba(239,228,200,0.35)';
+    const tap = typeof p.onTap === 'function' ? p.onTap : null;
+    const cell = (s, f) => {
+      const m = marks.find((x) => x.s === s && x.f === f);
+      const tone = m ? TONE[m.tone] ?? TONE.scale : null;
+      const text = !m || mode === 'dots' ? '' : mode === 'intervals' ? (m.iv ?? '') : (m.note ?? '');
+      return { on: !!m, aria: `${tuning[s]} string, ${f === 0 ? 'open' : 'fret ' + f}`, go: () => { if (tap) tap(s, f); }, bg: tone ? tone.bg : 'transparent', fg: tone ? tone.fg : ink, glow: tone ? tone.glow : 'none', scale: m ? 'scale(1)' : 'scale(0.4)', op: m ? 1 : 0, text, anim: m && m.tone === 'target' ? 'lamp 1.2s ease-in-out infinite' : 'none' };
+    };
+    const rows = [5, 4, 3, 2, 1, 0].map((s) => {
+      const t = thick[s];
+      return {
+        label: tuning[s], nut: cell(s, 0),
+        line: `linear-gradient(transparent calc(50% - ${t / 2}px), ${lineC} calc(50% - ${t / 2}px), ${lineC} calc(50% + ${t / 2}px), transparent calc(50% + ${t / 2}px))`,
+        cells: Array.from({ length: n }, (_, k) => cell(s, from + k)),
+      };
+    });
+    const INLAY = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
+    const nums = Array.from({ length: n }, (_, k) => { const f = from + k; return { label: String(f), color: INLAY.includes(f) ? (paper ? '#2b1d10' : amber) : (paper ? '#8a7a5a' : '#8f8272') }; });
+    return {
+      rows, nums, rowH, dot, fs, dotSm: Math.round(dot * 0.8), fsSm: Math.round(fs * 0.85), cols: `44px repeat(${n}, minmax(0,1fr))`,
+      boardBg: paper ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.3)', boardShadow: paper ? 'inset 0 0 0 1.5px #3a2a1a' : 'inset 0 0 0 1px rgba(255,235,210,0.08)',
+      nutColor: paper ? '#2b1d10' : amber, nutBg: paper ? 'rgba(43,29,16,0.08)' : 'rgba(0,0,0,0.3)', labelColor: paper ? '#6b5636' : '#b8a994',
+      wire: paper ? '1px solid #3a2a1a' : '2px solid rgba(239,228,200,0.18)', numColor: paper ? '#6b5636' : '#8f8272',
+      cursor: tap ? 'pointer' : 'default', hoverBg: tap ? (paper ? 'rgba(43,29,16,0.08)' : 'rgba(255,235,210,0.06)') : 'transparent',
+    };
+  }
+}
+</script>
+</body>
+</html>

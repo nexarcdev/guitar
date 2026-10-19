@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;flex-direction:column;justify-content:center;gap:4px;min-width:0;padding:{{ pad }};border-radius:4px;background:#1a1512;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8),0 1px 0 {{ rim }};text-align:{{ align }}">
+  <span style="font-size:10px;letter-spacing:0.18em;color:#8f8272;font-weight:600;line-height:1;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ label }}</span>
+  <span style="font-family:'Big Shoulders Display','Barlow',sans-serif;font-weight:800;font-size:{{ valSize }}px;line-height:1;color:{{ color }};font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:0.02em">{{ value }}<span style="font-size:{{ unitSize }}px;font-weight:700;color:#b8a994;margin-left:5px;letter-spacing:0.08em">{{ unit }}</span></span>
+  <sc-if value="{{ hasSub }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;letter-spacing:0.08em;color:#b8a994;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ sub }}</span></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:180,&quot;height&quot;:80},&quot;label&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;TEMPO&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;value&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;72&quot;,&quot;tsType&quot;:&quot;string | number&quot;},&quot;unit&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;BPM&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;sub&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;tone&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;ink&quot;,&quot;options&quot;:[&quot;ink&quot;,&quot;on&quot;,&quot;ok&quot;,&quot;live&quot;,&quot;muted&quot;],&quot;tsType&quot;:&quot;'ink'|'on'|'ok'|'live'|'muted'&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;md&quot;,&quot;options&quot;:[&quot;sm&quot;,&quot;md&quot;,&quot;lg&quot;],&quot;tsType&quot;:&quot;'sm'|'md'|'lg'&quot;},&quot;surface&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;dark&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;ivory&quot;,&quot;alu&quot;],&quot;tsType&quot;:&quot;'dark'|'ivory'|'alu'&quot;},&quot;align&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;left&quot;,&quot;options&quot;:[&quot;left&quot;,&quot;center&quot;],&quot;tsType&quot;:&quot;'left'|'center'&quot;},&quot;color&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const size = p.size ?? 'md', surface = p.surface ?? 'dark';
+    const TONE = { ink: '#efe4c8', on: '#e9a23b', ok: '#4db6a4', live: '#d4442c', muted: '#b8a994' };
+    const S = { sm: [18, 10, '8px 10px'], md: [26, 12, '10px 12px'], lg: [40, 14, '12px 14px'] }[size] ?? [26, 12, '10px 12px'];
+    return {
+      label: p.label ?? '', value: p.value ?? '', unit: p.unit ?? '', sub: p.sub ?? '', hasSub: !!p.sub,
+      valSize: S[0], unitSize: S[1], pad: S[2], align: p.align ?? 'left',
+      color: p.color || TONE[p.tone ?? 'ink'] || TONE.ink,
+      rim: surface === 'dark' ? 'rgba(255,235,210,0.06)' : surface === 'alu' ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.6)',
+    };
+  }
+}
+</script>
+</body>
+</html>

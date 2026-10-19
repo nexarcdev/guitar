@@ -1,0 +1,87 @@
+.panel {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+}
+.dark {
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
+  padding: 16px;
+  gap: 12px;
+  color: var(--ink);
+}
+.ivory {
+  background: var(--ivory);
+  box-shadow: var(--ivory-shadow);
+  padding: 18px 20px;
+  gap: 14px;
+  color: var(--ivory-ink);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-height: 24px;
+}
+.dark .head {
+  padding: 0 8px;
+}
+.ivory .head {
+  padding: 0 4px;
+}
+.title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.dark .title {
+  color: var(--amber);
+}
+.ivory .title {
+  color: var(--ivory-title);
+}
+.meta {
+  min-width: 0;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dark .meta {
+  color: var(--ink-2);
+}
+.ivory .meta {
+  color: var(--ivory-ink-2);
+}
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.screw {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.steel {
+  background: var(--screw-steel);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+.bone {
+  background: var(--screw-bone);
+  box-shadow: inset 0 0 0 1px rgba(90, 60, 20, 0.45), 0 1px 0 rgba(255, 255, 255, 0.6);
+}

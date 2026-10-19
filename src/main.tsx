@@ -4,10 +4,12 @@ import { registerSW } from 'virtual:pwa-register';
 import { Shell } from './features/shell/Shell';
 import { actions, attachEngine, hydrate, startAudio, useStore } from './state/store';
 import { engine } from './audio/engine';
+import { initRouter } from './state/router';
 import './styles/global.css';
 
 async function boot() {
   await hydrate();
+  initRouter();
   attachEngine();
   // End-to-end tests drive and inspect the app through this (only with ?debug in the URL).
   if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __fretline: { useStore, engine, actions } });

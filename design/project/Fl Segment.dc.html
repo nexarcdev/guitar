@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div role="group" aria-label="{{ aria }}" style="display:inline-flex;gap:2px;padding:3px;border-radius:5px;background:{{ track }};box-shadow:{{ trackShadow }};max-width:100%;overflow-x:auto;scrollbar-width:none">
+  <sc-for list="{{ items }}" as="o" hint-placeholder-count="3">
+    <button onClick="{{ o.go }}" aria-pressed="{{ o.on }}" style="height:{{ h }}px;padding:0 {{ padX }}px;border:none;border-radius:3px;background:{{ o.bg }};color:{{ o.color }};font-family:'Big Shoulders Display','Barlow',sans-serif;font-weight:800;font-size:{{ fs }}px;letter-spacing:0.14em;text-transform:uppercase;white-space:nowrap;box-shadow:{{ o.glow }};display:flex;align-items:center;gap:8px;cursor:pointer;transition:background .12s">{{ o.label }}<sc-if value="{{ o.hasN }}" hint-placeholder-val="{{ false }}"><span style="font-family:'Barlow',sans-serif;font-size:11px;font-weight:700;opacity:0.7">{{ o.n }}</span></sc-if></button>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:260,&quot;height&quot;:60},&quot;options&quot;:{&quot;editor&quot;:null,&quot;default&quot;:[&quot;IDENTIFY&quot;,&quot;CONFIRM&quot;],&quot;tsType&quot;:&quot;Array&lt;string | {id: string, label: string, n?: number}&gt;&quot;},&quot;value&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;IDENTIFY&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;surface&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;dark&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;ivory&quot;],&quot;tsType&quot;:&quot;'dark'|'ivory'&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;sm&quot;,&quot;options&quot;:[&quot;sm&quot;,&quot;md&quot;,&quot;lg&quot;],&quot;tsType&quot;:&quot;'sm'|'md'|'lg'&quot;},&quot;onChange&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;(id: string) =&gt; void&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const surface = p.surface ?? 'dark', size = p.size ?? 'sm';
+    const amber = '#e9a23b';
+    const opts = (p.options ?? []).map((o) => typeof o === 'string' ? { id: o, label: o } : o);
+    const value = p.value ?? (opts[0] && opts[0].id);
+    const S = { sm: [28, 12, 12], md: [32, 14, 13], lg: [40, 18, 15] }[size] ?? [28, 12, 12];
+    const items = opts.map((o) => { const on = o.id === value; return { label: o.label, n: o.n, hasN: o.n != null, on, go: () => { if (typeof p.onChange === 'function') p.onChange(o.id); }, bg: on ? amber : 'transparent', color: on ? '#1c1612' : '#b8a994', glow: on ? '0 0 10px rgba(233,162,59,0.5)' : 'none' }; });
+    return {
+      items, h: S[0], padX: S[1], fs: S[2], aria: p.label ?? 'Options',
+      track: surface === 'ivory' ? '#2d2622' : '#0d0b0a',
+      trackShadow: surface === 'ivory' ? 'inset 0 2px 4px rgba(0,0,0,0.5),0 1px 0 rgba(255,255,255,0.6)' : 'inset 0 2px 4px rgba(0,0,0,0.8)',
+    };
+  }
+}
+</script>
+</body>
+</html>

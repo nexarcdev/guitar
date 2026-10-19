@@ -1,0 +1,91 @@
+/* Fretline design system (Claude Design handoff, design/project/CLAUDE.md).
+   Rule: ivory where you touch, dark glass where you read, paper where you learn. Changing
+   information always sits on glass, a dark well or paper; never directly on an ivory face.
+   Three accents carry meaning: cherry = live/record/danger, amber = selected/on/primary,
+   teal = confirmed/tutor/in tune. */
+:root {
+  /* accents */
+  --cherry: #d4442c;
+  --amber: #e9a23b;
+  --amber-hi: #f0b650;
+  --teal: #4db6a4;
+  /* accents as they print on ivory */
+  --amber-ivory: #d9902a;
+  --teal-ivory: #1f8c7c;
+  /* the one accent allowed on paper */
+  --playhead: #c8431f;
+
+  /* chassis */
+  --chassis: #221c19;
+  --chassis-light: radial-gradient(900px 520px at 12% 0%, rgba(212, 68, 44, 0.3), transparent 65%),
+    radial-gradient(700px 520px at 100% 100%, rgba(77, 182, 164, 0.14), transparent 65%), #221c19;
+  --strip: #0f0c0b;
+
+  /* ink on dark */
+  --ink: #efe4c8;
+  --ink-2: #b8a994;
+  --ink-3: #8f8272;
+  --ink-4: #5e564d;
+
+  /* dark panel (reading) */
+  --panel: #2d2622;
+  --panel-shadow: inset 0 1px 0 rgba(255, 235, 210, 0.09), 0 2px 0 #0f0c0b, 0 10px 24px rgba(0, 0, 0, 0.35);
+  --screw-steel: radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%,
+    linear-gradient(45deg, transparent 45%, #2a2522 45% 55%, transparent 55%), linear-gradient(135deg, #8a8178, #3d3733);
+
+  /* glass window */
+  --glass: radial-gradient(120% 80% at 50% 100%, #15110f, #070605 80%);
+  --glass-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.95), inset 0 0 0 1px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 235, 210, 0.06);
+
+  /* ivory panel (controls) */
+  --ivory: linear-gradient(180deg, #ebe0c6, #dccfae);
+  --ivory-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 -1px 0 rgba(90, 60, 20, 0.25), 0 2px 0 #8e7a50,
+    0 10px 24px rgba(0, 0, 0, 0.4);
+  --ivory-title: #8a5a12;
+  --ivory-ink: #2b1d10;
+  --ivory-ink-2: #6b5636;
+  --ivory-ink-3: #8a7a5a;
+  --screw-bone: radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%,
+    linear-gradient(45deg, transparent 45%, #8e7a50 45% 55%, transparent 55%), linear-gradient(135deg, #fbf5e6, #b9a98a);
+  /* wells inside ivory */
+  --well-bg: #2d2622;
+  --well-grain: repeating-linear-gradient(0deg, rgba(255, 235, 210, 0.018) 0 1px, transparent 1px 2px);
+  --well-edge: #4a3f38;
+  --well-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5), inset 0 0 0 1px var(--well-edge), 0 1px 0 rgba(255, 255, 255, 0.6);
+  /* a soft inset note on ivory (static help text) */
+  --ivory-note: rgba(90, 60, 20, 0.1);
+  --ivory-note-shadow: inset 0 2px 4px rgba(90, 60, 20, 0.25), 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  /* recessed readout */
+  --readout: #1a1512;
+  --track: #0d0b0a;
+
+  /* paper */
+  --paper: radial-gradient(120% 90% at 50% 40%, #e8d6ad 0%, #dcc492 55%, #c9ad74 100%);
+  --paper-flat: #dcc492;
+  --paper-grain: repeating-linear-gradient(0deg, rgba(80, 50, 10, 0.05) 0 1px, transparent 1px 3px);
+  --paper-shadow: inset 0 0 0 1px rgba(90, 60, 20, 0.25), inset 0 0 60px rgba(90, 60, 20, 0.4), 0 2px 0 rgba(0, 0, 0, 0.35),
+    0 10px 24px rgba(0, 0, 0, 0.45);
+  --paper-ink: #2b1d10;
+  --paper-ink-2: #3a2a1a;
+  --paper-ink-3: #6b5636;
+
+  /* aluminum header */
+  --alu: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 2px), linear-gradient(180deg, #dcd8cf, #b8b3a9);
+  --alu-ink: #2a2420;
+  --alu-ink-2: #6a6157;
+  --alu-off: #8f8679;
+
+  /* cream caps (switches, ivory buttons, knobs on ivory) */
+  --cream: linear-gradient(180deg, #f3ead2, #d9c69a);
+
+  /* type */
+  --font-display: 'Big Shoulders Display', 'Barlow', sans-serif;
+  --font-body: 'Barlow', system-ui, sans-serif;
+  --font-script: 'Yellowtail', cursive;
+
+  /* layout */
+  --gap: 22px;
+  --header-h: 76px;
+  --tutor-h: 46px;
+}

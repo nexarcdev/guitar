@@ -16,10 +16,12 @@ import { judge, type Verdict } from '../theory/verdict';
 import { StrumTracker, type Decided } from './strum';
 import * as db from './db';
 import { trail } from './trail';
+import type { LearnModule, PageId, Route, StudioTab } from './routes';
 
-export type TabId = 'tuner' | 'chords' | 'tabs' | 'pedals';
+/** The main views: the four instruments plus Learn. */
+export type TabId = PageId | 'learn';
 export type GateLevel = 'low' | 'normal' | 'high';
-export type StudioTab = 'guitar' | 'input' | 'sound' | 'engine' | 'diagnostics';
+export type { StudioTab, LearnModule, Route } from './routes';
 /** dB above the noise floor at which each gate setting opens. */
 export const GATE_DB: Record<GateLevel, number> = { low: 8, normal: 12, high: 18 };
 export const BUF_SEC = 60;
@@ -53,8 +55,13 @@ interface PlayState {
 
 export interface State {
   hydrated: boolean;
+  /** Where the URL says we are (written by the router only). */
+  route: Route;
+  /** The view under the Studio: the last page or Learn module routed to. */
   tab: TabId;
+  learnModule: LearnModule;
   setup: Setup;
+  /** The Studio is open (its route is showing). */
   setupOpen: boolean;
   /** Which Studio tab is showing. */
   studioTab: StudioTab;
@@ -77,7 +84,6 @@ export interface State {
   freq: number;
   voiced: boolean;
   tuned: number[];
-  headstock: 'split' | 'inline';
   /** Browser audio buffer size: 'lowest', 'interactive' or 'playback'. Applies on reload. */
   latency: LatencyMode;
   /** Use the native engine when it's running (opt-in: probing localhost can prompt). */
@@ -114,7 +120,9 @@ export interface State {
 
 const initial: State = {
   hydrated: false,
+  route: { kind: 'page', page: 'tuner' },
   tab: 'tuner',
+  learnModule: 'lesson',
   setup: STD_SETUP,
   setupOpen: false,
   studioTab: 'input',
@@ -132,7 +140,6 @@ const initial: State = {
   freq: 0,
   voiced: false,
   tuned: [],
-  headstock: 'split',
   latency: 'lowest',
   engineOn: false,
   frets: [-1, 3, 2, 0, 1, 0],
@@ -165,7 +172,8 @@ const set = useStore.setState;
 
 // Client preferences live here. Shared settings belong to the audio channel's session: the web
 // channel saves its own (key 'webSession'), the engine keeps its own on disk.
-const PERSIST: Array<keyof State> = ['tab', 'setup', 'timeSig', 'gapBeats', 'progression', 'headstock', 'latency', 'engineOn'];
+// Where you are lives in the URL, not here.
+const PERSIST: Array<keyof State> = ['setup', 'timeSig', 'gapBeats', 'progression', 'latency', 'engineOn'];
 /** Keys from before the channel kept the session, read once to seed it. */
 const LEGACY = ['pedals', 'gateLevel', 'mlOn', 'deviceId', 'outputId', 'nativeOn'] as const;
 
@@ -489,11 +497,21 @@ function onNotes(m: Notes) {
 // ---------------------------------------------------------------- actions
 
 export const actions = {
-  selectTab(tab: TabId) {
+  /** Follows the URL (called by the router; navigate with `go` or `linkProps` instead). */
+  applyRoute(route: Route) {
     const s = get();
-    if (s.tab === tab) return;
-    actions.stopRiff();
-    set({ tab, drag: null, streamSettingsOpen: false });
+    const patch: Partial<State> = { route };
+    if (route.kind === 'studio') Object.assign(patch, { setupOpen: true, studioTab: route.tab });
+    else {
+      patch.setupOpen = false;
+      const tab: TabId | null = route.kind === 'page' ? route.page : route.kind === 'learn' ? 'learn' : null;
+      if (route.kind === 'learn') patch.learnModule = route.module;
+      if (tab && tab !== s.tab) {
+        actions.stopRiff();
+        Object.assign(patch, { tab, drag: null, streamSettingsOpen: false });
+      }
+    }
+    set(patch);
   },
   setListening(on: boolean) {
     engine.setListening(on);
@@ -535,9 +553,6 @@ export const actions = {
   },
   setTuning(offsets: Offsets) {
     actions.saveSetup({ offsets });
-  },
-  openStudio(tab?: StudioTab) {
-    set({ setupOpen: true, ...(tab ? { studioTab: tab } : {}) });
   },
   selectDevice(id: string) {
     engine.set({ inputId: id });

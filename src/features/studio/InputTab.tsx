@@ -3,7 +3,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { engine } from '../../audio/engine';
 import type { Analysis, DeviceInfo } from '../../core/protocol';
 import { actions, useStore } from '../../state/store';
-import { LevelBar } from '../gauges/Gauges';
+import { LevelMeter } from '../gauges/Gauges';
+import { Button, Readout, Window } from '../../ui';
 import { Options, Section } from './Section';
 import s from './Studio.module.css';
 
@@ -47,24 +48,18 @@ function LevelSection() {
   const threshold = levels.floorDb + st.gateDb;
   return (
     <Section
+      surface="dark"
       title="Level and noise"
       status={follow ? 'Following noise' : 'Fixed'}
-      desc="Drag the gold marker: anything louder counts as playing, anything quieter is treated as noise. The grey marker is the measured noise floor; the green light shows when you're playing."
+      desc="Drag the amber marker: anything louder counts as playing, anything quieter is treated as noise. The grey marker is the measured noise floor; the teal light shows when you're playing."
     >
-      <LevelBar kind="in" size="large" editable />
+      <Window surface="glass" pad="14px 16px" gap={10}>
+        <LevelMeter kind="in" height={22} editable showFloor scale={[-96, -72, -48, -24, -12, 0]} />
+      </Window>
       <div className={s.stats}>
-        <div className={s.stat}>
-          <div className={s.statLabel}>Noise floor</div>
-          <div className={s.statValue}>{fmt(levels.floorDb)}</div>
-        </div>
-        <div className={s.stat}>
-          <div className={s.statLabel}>Plays above</div>
-          <div className={s.statValue} style={{ color: 'var(--gold-hi)' }}>{fmt(threshold)}</div>
-        </div>
-        <div className={s.stat}>
-          <div className={s.statLabel}>Recent peak</div>
-          <div className={s.statValue}>{fmt(levels.peakDb)}</div>
-        </div>
+        <Readout label="Noise floor" value={fmt(levels.floorDb)} />
+        <Readout label="Plays above" value={fmt(threshold)} tone="on" />
+        <Readout label="Recent peak" value={fmt(levels.peakDb)} />
       </div>
       <Options
         label="Noise floor"
@@ -194,7 +189,7 @@ function CalibrateSection() {
   const ready = listening && mic === 'live';
   const head = result ? result.note - result.noise : 0;
   const steps = (
-    <div className={s.wizSteps} aria-hidden>
+    <div className={s.wizSteps}>
       <span data-state={step === 'mute' || step === 'measuring' || step === 'noisy' || step === 'loud' ? 'now' : step === 'idle' ? '' : 'done'}>1 Silence</span>
       <span>·</span>
       <span data-state={step === 'play' || step === 'listening' || step === 'nonote' ? 'now' : step === 'done' ? 'done' : ''}>2 A note</span>
@@ -228,34 +223,36 @@ function CalibrateSection() {
   const b = body[step];
   return (
     <Section
+      surface="dark"
       title="Calibrate"
       status={step === 'done' ? Math.round(head) + ' dB headroom' : step === 'idle' ? '' : 'In progress'}
       tone={step === 'done' ? (head >= 18 ? 'ok' : 'warn') : undefined}
       desc="Use it when you change guitar, cable or room, or if a string was ringing when Fretline started."
     >
-      <div className={s.wizard} aria-live="polite">
-        {steps}
-        <div className={s.wizTitle}>{b.title}</div>
-        <div className={s.wizText}>{b.text}</div>
-        {b.progress && (
-          <div className={s.progress} role="progressbar" aria-label={b.title} aria-valuenow={Math.round(progress * 100)}>
-            <div style={{ width: progress * 100 + '%' }} />
-          </div>
-        )}
+      <Window surface="glass" pad="14px 16px" gap={10} className={s.wizard}>
+        <div aria-live="polite" className={s.wizLive}>
+          {steps}
+          <div className={s.wizTitle}>{b.title}</div>
+          <div className={s.wizText}>{b.text}</div>
+        </div>
+        <div className={s.progress} role="progressbar" aria-label={b.title} aria-valuenow={Math.round(progress * 100)} aria-hidden={!b.progress} data-on={!!b.progress}>
+          <div style={{ width: (b.progress ? progress * 100 : 0) + '%' }} />
+        </div>
         <div className={s.row}>
           {b.action && (
-            <button className={s.testOk} disabled={!ready && step !== 'done'} onClick={b.action[1]}>
+            <Button variant="tutor" className={s.teal} disabled={!ready && step !== 'done'} onClick={b.action[1]}>
               {b.action[0]}
-            </button>
+            </Button>
           )}
           {step === 'done' && (
-            <button className={s.testBtn} onClick={() => setStep('mute')}>
+            <Button variant="dark" size="sm" className={s.mid} onClick={() => setStep('mute')}>
               Redo
-            </button>
+            </Button>
           )}
           {step !== 'idle' && step !== 'done' && (
             <button
-              className={s.testLink}
+              type="button"
+              className={s.link}
               onClick={() => {
                 stop();
                 setStep('idle');
@@ -264,9 +261,9 @@ function CalibrateSection() {
               Cancel
             </button>
           )}
-          {!ready && step !== 'done' && <span className={s.desc} style={{ margin: 0 }}>Needs the input live and listening.</span>}
+          {!ready && step !== 'done' && <span className={s.hint}>Needs the input live and listening.</span>}
         </div>
-      </div>
+      </Window>
     </Section>
   );
 }

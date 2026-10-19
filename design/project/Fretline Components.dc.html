@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yellowtail&family=Big+Shoulders+Display:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#221c19;color:#efe4c8;font-family:'Barlow',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#e9a23b}a:hover{color:#f3c36a}
+button{font-family:inherit;cursor:pointer}
+@keyframes lamp{0%,100%{opacity:1}50%{opacity:.55}}
+</style>
+</helmet>
+<div data-screen-label="Component reference" style="min-height:100vh;background:radial-gradient(900px 520px at 12% 0%,rgba(212,68,44,0.30),transparent 65%),radial-gradient(700px 520px at 100% 100%,rgba(77,182,164,0.14),transparent 65%),#221c19;color:#efe4c8;font-family:'Barlow',sans-serif;padding:0 0 80px">
+  <header style="position:sticky;top:0;z-index:5;height:64px;display:flex;align-items:center;gap:18px;padding:0 28px;background:#27211d;border-bottom:1px solid #0b0908;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.4)">
+    <div style="font-family:'Yellowtail',cursive;font-size:28px;line-height:1;text-shadow:0 2px 0 rgba(0,0,0,0.5)">Fretline</div>
+    <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.18em;color:#b8a994">COMPONENT REFERENCE · IVORY TO TOUCH, GLASS TO READ, PAPER TO LEARN</div>
+    <nav style="margin-left:auto;display:flex;gap:18px;font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase"><a href="#color" style="color:#b8a994;text-decoration:none">Color</a><a href="#type" style="color:#b8a994;text-decoration:none">Type</a><a href="#controls" style="color:#b8a994;text-decoration:none">Controls</a><a href="#base" style="color:#b8a994;text-decoration:none">Base</a><a href="#learn" style="color:#b8a994;text-decoration:none">Learn</a><a href="#panels" style="color:#b8a994;text-decoration:none">Panels</a><a href="#meters" style="color:#b8a994;text-decoration:none">Meters</a><a href="#paper" style="color:#b8a994;text-decoration:none">Paper</a><a href="#shell" style="color:#b8a994;text-decoration:none">Shell</a></nav>
+  </header>
+  <div style="max-width:1180px;margin:0 auto;padding:36px 28px;display:flex;flex-direction:column;gap:56px">
+
+    <section id="color" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px"><h2 style="margin:0;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:34px;letter-spacing:0.04em;text-transform:uppercase">Color</h2><span style="font-size:14px;color:#b8a994">Three accents share one job each. Never one accent alone on a screen.</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+        <sc-for list="{{ accents }}" as="c" hint-placeholder-count="3">
+          <div style="border-radius:8px;background:#2d2622;padding:10px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5)">
+            <div style="height:72px;border-radius:5px;background:{{ c.hex }};box-shadow:0 0 22px {{ c.hex }}66,inset 0 1px 0 rgba(255,255,255,0.3)"></div>
+            <div style="margin-top:10px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.12em;text-transform:uppercase">{{ c.name }}</div>
+            <div style="font-size:12px;color:#b8a994;margin-top:2px">{{ c.role }}</div>
+            <div style="font-size:11px;color:#8f8272;margin-top:4px;font-family:monospace">{{ c.hex }}</div>
+          </div>
+        </sc-for>
+        <div style="border-radius:8px;background:#2d2622;padding:10px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5)"><div style="height:72px;border-radius:5px;background:#efe4c8"></div><div style="margin-top:10px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.12em">IVORY</div><div style="font-size:12px;color:#b8a994;margin-top:2px">Ink on dark · the pickguard</div><div style="font-size:11px;color:#8f8272;margin-top:4px;font-family:monospace">#efe4c8</div></div>
+        <div style="border-radius:8px;background:#2d2622;padding:10px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5)"><div style="height:72px;border-radius:5px;background:radial-gradient(120% 90% at 50% 40%,#e8d6ad,#dcc492 55%,#c9ad74);box-shadow:inset 0 0 20px rgba(90,60,20,0.35)"></div><div style="margin-top:10px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.12em">MANILA</div><div style="font-size:12px;color:#b8a994;margin-top:2px">Paper for charts and tab</div><div style="font-size:11px;color:#8f8272;margin-top:4px;font-family:monospace">#dcc492</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+        <div style="height:64px;border-radius:6px;background:#1c1816;box-shadow:inset 0 0 0 1px #3b322c;display:flex;align-items:end;padding:8px 10px;font-size:12px;color:#b8a994">Chassis · #1c1816</div>
+        <div style="height:64px;border-radius:6px;background:#27211d;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;align-items:end;padding:8px 10px;font-size:12px;color:#b8a994">Face panel · #2d2622</div>
+        <div style="height:64px;border-radius:6px;background:#0d0b0a;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8),0 1px 0 rgba(255,235,210,0.06);display:flex;align-items:end;padding:8px 10px;font-size:12px;color:#b8a994">Inset well · #0d0b0a</div>
+        <div style="height:64px;border-radius:6px;background:radial-gradient(120% 80% at 50% 100%,#15110f,#070605 80%);box-shadow:inset 0 3px 10px rgba(0,0,0,0.95),inset 0 0 0 1px rgba(0,0,0,0.8);display:flex;align-items:end;padding:8px 10px;font-size:12px;color:#b8a994">Glass window</div>
+        <div style="height:64px;border-radius:6px;background:#1c1816;box-shadow:inset 0 0 0 1px #3b322c;display:flex;align-items:end;padding:8px 10px;font-size:12px;color:#8f8272">Muted · #b8a994 / #8f8272</div>
+      </div>
+    </section>
+
+    <section id="type" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px"><h2 style="margin:0;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:34px;letter-spacing:0.04em;text-transform:uppercase">Type</h2><span style="font-size:14px;color:#b8a994">Badge script for the name only. Engraved caps for labels. Barlow for anything you read.</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5)"><div style="font-family:'Yellowtail',cursive;font-size:64px;line-height:1;text-shadow:0 3px 0 rgba(0,0,0,0.5)">Fretline</div><div style="margin-top:12px;font-size:12px;color:#8f8272">Yellowtail · wordmark only</div></div>
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5)"><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:56px;line-height:0.9;letter-spacing:0.02em">CHORD<br>IDENTIFIER</div><div style="margin-top:10px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">PANEL LABEL · 14 / 0.18EM</div><div style="margin-top:12px;font-size:12px;color:#8f8272">Big Shoulders Display 700–800 · titles, labels, numbers</div></div>
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5)"><div style="font-size:18px;line-height:1.4;font-weight:500">Strum once and let it ring. Fretline names the chord and shows the shape you played.</div><div style="margin-top:8px;font-size:14px;line-height:1.5;color:#b8a994">Body 14–16 · Barlow 400/500. Readouts use tabular numerals: 82.41 Hz · −12 dB · 96 BPM.</div><div style="margin-top:12px;font-size:12px;color:#8f8272">Barlow · copy, hints, meta</div></div>
+      </div>
+    </section>
+
+    <section id="controls" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px"><h2 style="margin:0;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:34px;letter-spacing:0.04em;text-transform:uppercase">Controls</h2><span style="font-size:14px;color:#b8a994">Square corners, physical travel. Pressed states sink; lit states glow.</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">BUTTONS</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+            <button style="height:48px;padding:0 22px;border:none;border-radius:6px;background:linear-gradient(180deg,#f0b650,#d9902a);color:#1c1612;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:16px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),inset 0 -2px 0 rgba(0,0,0,0.25),0 2px 0 #7a4e12" style-active="transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),0 0 0 #7a4e12">PRIMARY</button>
+            <button style="height:48px;padding:0 22px;border:none;border-radius:6px;background:#1c1816;color:#efe4c8;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.14em;box-shadow:inset 0 0 0 1px #3b322c,inset 0 1px 0 rgba(255,235,210,0.05),0 2px 0 #0b0908" style-hover="background:#221d1a">SECONDARY</button>
+            <button style="height:48px;padding:0 22px;border:none;border-radius:6px;background:linear-gradient(180deg,#e2563d,#b8321c);color:#fff3ee;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:16px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,255,255,0.3),inset 0 -2px 0 rgba(0,0,0,0.3),0 2px 0 #5a1509">RECORD</button>
+            <button style="height:48px;padding:0 22px;border:none;border-radius:6px;background:rgba(77,182,164,0.12);color:#4db6a4;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.14em;box-shadow:inset 0 0 0 1px rgba(77,182,164,0.6)">CONFIRMED</button>
+            <button disabled style="height:48px;padding:0 22px;border:none;border-radius:6px;background:#1c1816;color:#5e564d;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.14em;box-shadow:inset 0 0 0 1px #2c2521;cursor:default">DISABLED</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+            <button style="height:36px;padding:0 14px;border:none;border-radius:4px;background:#1c1816;color:#b8a994;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.14em;box-shadow:inset 0 0 0 1px #3b322c">SMALL</button>
+            <button style="width:40px;height:40px;border:none;border-radius:50%;background:radial-gradient(circle at 40% 35%,#5a4e46,#2e2622);color:#efe4c8;font-size:16px;box-shadow:0 3px 6px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.2)">▶</button>
+            <button style="width:40px;height:40px;border:none;border-radius:50%;background:radial-gradient(circle at 40% 35%,#5a4e46,#2e2622);color:#efe4c8;font-size:14px;box-shadow:0 3px 6px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.2)">■</button>
+            <button style="width:40px;height:40px;border:none;border-radius:50%;background:#1c1816;color:#b8a994;font-size:14px;box-shadow:inset 0 0 0 1px #3b322c">✕</button>
+            <dc-import name="Fl Segment" options="{{ segOpts }}" value="{{ seg }}" on-change="{{ setSeg }}" hint-size="190px,34px"></dc-import>
+          </div>
+        </div>
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">SWITCHES · FL SWITCH</div>
+          <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-end">
+            <dc-import name="Fl Switch" on="{{ sw1 }}" label="AUTO" label-side="left" on-toggle="{{ setSw1 }}" hint-size="86px,20px"></dc-import>
+            <dc-import name="Fl Switch" on="{{ sw2 }}" label="COUNT-IN" on-toggle="{{ setSw2 }}" hint-size="70px,46px"></dc-import>
+            <dc-import name="Fl Switch" on="{{ false }}" label="OFF" hint-size="60px,46px"></dc-import>
+          </div>
+          <div style="border-radius:6px;padding:12px 16px;background-color:#c9c4ba;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,0.05) 0 1px,transparent 1px 2px),linear-gradient(180deg,#dcd8cf,#b8b3a9);box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 2px 0 #15110f;display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end">
+            <dc-import name="Fl Switch" vertical="{{ true }}" surface="alu" tone="live" on="{{ sw3 }}" pulse="{{ sw3 }}" label="LISTEN" on-toggle="{{ setSw3 }}" hint-size="46px,56px"></dc-import>
+            <dc-import name="Fl Switch" vertical="{{ true }}" surface="alu" tone="on" on="{{ false }}" label="OUTPUT" hint-size="46px,56px"></dc-import>
+            <span style="font-size:12px;color:#5e564d;flex:1;min-width:160px;line-height:1.45">Vertical rockers live on the aluminum faceplate. Same component, same cream cap, same lamp.</span>
+          </div>
+          <div style="position:relative;border-radius:6px;background:linear-gradient(180deg,#ebe0c6,#dccfae);padding:14px 16px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),inset 0 -1px 0 rgba(90,60,20,0.25),0 2px 0 #8e7a50;display:flex;flex-wrap:wrap;gap:18px;align-items:center">
+            <dc-import name="Fl Switch" surface="ivory" on="{{ true }}" label="CLICK" hint-size="60px,46px"></dc-import>
+            <dc-import name="Fl Switch" surface="ivory" on="{{ false }}" tone="live" label="QUIZ ME" label-side="left" hint-size="100px,20px"></dc-import>
+            <span style="font-size:12px;color:#6b5636;flex:1;min-width:160px;line-height:1.45">On ivory the track is the dark well. Tone picks the lamp: amber on, cherry live, teal ok.</span>
+          </div>
+          <div style="font-size:12px;color:#8f8272;line-height:1.45">Props: on, label, labelSide below / left / right / none, vertical, surface dark / ivory / alu, tone, pulse, onToggle(on). The only way to flip anything in Fretline.</div>
+        </div>
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">LAMPS &amp; CHIPS · FL LAMP, FL CHIP</div>
+          <div style="display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap">
+            <sc-for list="{{ lampTones }}" as="l" hint-placeholder-count="4"><div style="display:flex;flex-direction:column;align-items:center;gap:6px"><dc-import name="Fl Lamp" tone="{{ l.tone }}" size="14" hint-size="14px,14px"></dc-import><span style="font-size:10px;letter-spacing:0.12em;color:#8f8272;font-weight:600">{{ l.name }}</span></div></sc-for>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><dc-import name="Fl Lamp" tone="live" size="14" pulse="{{ true }}" hint-size="14px,14px"></dc-import><span style="font-size:10px;letter-spacing:0.12em;color:#8f8272;font-weight:600">PULSE</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><dc-import name="Fl Lamp" shape="bar" tone="on" hint-size="30px,4px"></dc-import><span style="font-size:10px;letter-spacing:0.12em;color:#8f8272;font-weight:600">PAGE BAR</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px"><dc-import name="Fl Lamp" shape="bar" tone="off" surface="alu" hint-size="30px,4px"></dc-import><span style="font-size:10px;letter-spacing:0.12em;color:#8f8272;font-weight:600">BAR · OFF · ALU</span></div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+            <dc-import name="Fl Chip" label="LIVE" tone="live" pulse="{{ true }}" hint-size="80px,30px"></dc-import>
+            <dc-import name="Fl Chip" label="IN TUNE" tone="ok" hint-size="100px,30px"></dc-import>
+            <dc-import name="Fl Chip" label="OUTPUT ON" tone="on" hint-size="110px,30px"></dc-import>
+            <dc-import name="Fl Chip" label="PAUSED" tone="muted" hint-size="90px,30px"></dc-import>
+            <dc-import name="Fl Chip" label="CONFIRMED" tone="ok" size="lg" hint-size="120px,34px"></dc-import>
+            <dc-import name="Fl Chip" label="LEVEL 3" tone="on" size="sm" hint-size="80px,26px"></dc-import>
+          </div>
+          <div style="font-size:12px;color:#8f8272;line-height:1.45">Fl Lamp: tone off / live / on / ok, dot or bar, size, pulse, surface for the unlit color. Fl Chip wraps a lamp with a label: tone, size sm / md / lg, pulse, color override for note roles.</div>
+        </div>
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">KNOBS · FL KNOB</div>
+          <div style="display:flex;flex-wrap:wrap;gap:22px;justify-content:space-around">
+            <dc-import name="Fl Knob" label="Drive" value="62" size="84" cap="black" color="{{ amber }}" hint-size="100px,110px"></dc-import>
+            <dc-import name="Fl Knob" label="Tone" value="40" size="84" cap="cream" color="{{ teal }}" hint-size="100px,110px"></dc-import>
+            <dc-import name="Fl Knob" label="Level" value="80" size="84" cap="chrome" color="{{ cherry }}" hint-size="100px,110px"></dc-import>
+            <dc-import name="Fl Knob" label="Bypassed" value="55" size="84" cap="black" on="{{ false }}" hint-size="100px,110px"></dc-import>
+            <dc-import name="Fl Knob" label="Mini" value="30" size="56" cap="black" color="{{ amber }}" hint-size="70px,80px"></dc-import>
+          </div>
+          <div style="font-size:12px;color:#8f8272">Props: value 0–100, label, size, cap black / cream / chrome, color, on. Drag vertically; arrow keys step.</div>
+        </div>
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">FOOTSWITCH &amp; PEDAL MODULE</div>
+          <div style="display:flex;gap:22px;align-items:stretch;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+              <button style="width:64px;height:64px;border-radius:50%;border:none;background:radial-gradient(circle at 40% 35%,#8a8178,#3d3733 70%,#1a1614);box-shadow:0 5px 0 #0b0908,0 8px 14px rgba(0,0,0,0.6),inset 0 2px 2px rgba(255,255,255,0.35)" style-active="transform:translateY(3px);box-shadow:0 2px 0 #0b0908,inset 0 2px 2px rgba(255,255,255,0.35)"></button>
+              <span style="font-size:11px;letter-spacing:0.12em;color:#8f8272;font-weight:600">FOOTSWITCH</span>
+            </div>
+            <div style="width:170px;position:relative;padding:14px 14px 18px;border-radius:8px;background:linear-gradient(180deg,#e9a23b,#c57f1e);box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),inset 0 -3px 0 rgba(0,0,0,0.25),0 4px 0 #5a3a08,0 10px 20px rgba(0,0,0,0.5);display:flex;flex-direction:column;align-items:center;gap:10px;color:#1c1612">
+              <span style="position:absolute;top:6px;left:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733)"></span><span style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733)"></span>
+              <div style="text-align:center"><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:22px;letter-spacing:0.06em;line-height:1">OVERDRIVE</div><div style="font-size:10px;letter-spacing:0.18em;font-weight:700;opacity:0.7">GAIN</div></div>
+              <dc-import name="Fl Knob" label="" value="62" size="70" cap="black" color="#1c1612" hint-size="80px,80px"></dc-import>
+              <span style="width:10px;height:10px;border-radius:50%;background:#d4442c;box-shadow:0 0 10px #d4442c"></span>
+              <button style="width:48px;height:48px;border-radius:50%;border:none;background:radial-gradient(circle at 40% 35%,#8a8178,#3d3733 70%,#1a1614);box-shadow:0 4px 0 #0b0908,0 6px 10px rgba(0,0,0,0.5),inset 0 2px 2px rgba(255,255,255,0.35)"></button>
+            </div>
+            <div style="width:170px;position:relative;padding:14px 14px 18px;border-radius:8px;background:linear-gradient(180deg,#5aa89a,#3c8578);box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),inset 0 -3px 0 rgba(0,0,0,0.25),0 4px 0 #173c35,0 10px 20px rgba(0,0,0,0.5);display:flex;flex-direction:column;align-items:center;gap:10px;color:#0e1a18;opacity:0.72">
+              <span style="position:absolute;top:6px;left:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733)"></span><span style="position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733)"></span>
+              <div style="text-align:center"><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:22px;letter-spacing:0.06em;line-height:1">CHORUS</div><div style="font-size:10px;letter-spacing:0.18em;font-weight:700;opacity:0.7">MOD · BYPASSED</div></div>
+              <dc-import name="Fl Knob" label="" value="40" size="70" cap="black" color="#0e1a18" on="{{ false }}" hint-size="80px,80px"></dc-import>
+              <span style="width:10px;height:10px;border-radius:50%;background:#1a2a27;box-shadow:inset 0 1px 2px rgba(0,0,0,0.8)"></span>
+              <button style="width:48px;height:48px;border-radius:50%;border:none;background:radial-gradient(circle at 40% 35%,#8a8178,#3d3733 70%,#1a1614);box-shadow:0 4px 0 #0b0908,0 6px 10px rgba(0,0,0,0.5),inset 0 2px 2px rgba(255,255,255,0.35)"></button>
+            </div>
+          </div>
+          <div style="font-size:12px;color:#8f8272">Enclosure color = pedal family: amber gain, cherry dynamics, teal modulation, ivory time/space. Bypassed dims the enclosure, never the labels.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="base" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><h2 style="margin:0;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:34px;letter-spacing:0.04em;text-transform:uppercase">Base</h2><span style="font-size:14px;color:#b8a994">One base per behavior. Segments pick, readouts report, panels and windows frame. Nothing is restyled by hand.</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">SEGMENTS · FL SEGMENT</div>
+          <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center">
+            <dc-import name="Fl Segment" options="{{ segOpts }}" value="{{ seg }}" on-change="{{ setSeg }}" hint-size="190px,34px"></dc-import>
+            <dc-import name="Fl Segment" options="{{ segOpts3 }}" value="1/8" size="md" hint-size="200px,38px"></dc-import>
+          </div>
+          <div style="position:relative;border-radius:6px;background:linear-gradient(180deg,#ebe0c6,#dccfae);padding:14px 16px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),inset 0 -1px 0 rgba(90,60,20,0.25),0 2px 0 #8e7a50;display:flex;flex-wrap:wrap;gap:18px;align-items:center">
+            <dc-import name="Fl Segment" surface="ivory" options="{{ segOptsN }}" value="saved" hint-size="190px,34px"></dc-import>
+            <dc-import name="Fl Segment" surface="ivory" options="{{ qualOpts }}" value="maj" hint-size="100%,34px"></dc-import>
+          </div>
+          <div style="font-size:12px;color:#8f8272;line-height:1.45">Props: options (strings or {id, label, n}), value, onChange(id), surface dark / ivory, size sm / md / lg. Selected is always amber; it scrolls instead of wrapping.</div>
+        </div>
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">READOUTS · FL READOUT</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px">
+            <dc-import name="Fl Readout" label="TEMPO" value="72" unit="BPM" tone="on" hint-size="100%,60px"></dc-import>
+            <dc-import name="Fl Readout" label="CLEAN" value="8" unit="/ 10" tone="ok" hint-size="100%,60px"></dc-import>
+            <dc-import name="Fl Readout" label="AVG CHANGE" value="620" unit="ms" hint-size="100%,60px"></dc-import>
+            <dc-import name="Fl Readout" label="TENDENCY" value="+12" unit="ms" sub="a touch late" hint-size="100%,60px"></dc-import>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <dc-import name="Fl Readout" label="NOTE" value="A" size="lg" tone="on" sub="110.0 Hz" hint-size="100%,80px"></dc-import>
+            <dc-import name="Fl Readout" label="NOISE FLOOR" value="−71" unit="dB" size="sm" hint-size="100%,50px"></dc-import>
+          </div>
+          <div style="position:relative;border-radius:6px;background:linear-gradient(180deg,#ebe0c6,#dccfae);padding:14px 16px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),inset 0 -1px 0 rgba(90,60,20,0.25),0 2px 0 #8e7a50;display:flex;flex-wrap:wrap;gap:18px;align-items:center"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%"><dc-import name="Fl Readout" label="STREAK" value="12" unit="days" tone="on" surface="ivory" hint-size="100%,60px"></dc-import><dc-import name="Fl Readout" label="THIS WEEK" value="2:10" unit="h" surface="ivory" hint-size="100%,60px"></dc-import><dc-import name="Fl Readout" label="WEAKEST" value="Fretboard" tone="live" surface="ivory" hint-size="100%,60px"></dc-import></div></div>
+          <div style="font-size:12px;color:#8f8272;line-height:1.45">Props: label, value, unit, sub, tone ink / on / ok / live / muted, size sm / md / lg, surface for the rim. Changing numbers never sit on bare ivory; this is the well they sit in.</div>
+        </div>
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:16px;grid-column:1 / -1">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">FRAMES · FL PANEL, FL WINDOW</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px">
+            <dc-import name="Fl Panel" surface="dark" title="DARK PANEL" lamp="live" pulse="{{ true }}" meta="title, lamp, meta" hint-size="100%,220px">
+              <dc-import name="Fl Window" surface="glass" min-height="120px" hint-size="100%,120px"><div style="margin:auto;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:56px;line-height:1;color:#e9a23b;text-shadow:0 0 24px rgba(233,162,59,0.5)">G</div></dc-import>
+            </dc-import>
+            <dc-import name="Fl Panel" surface="dark" title="DARK PANEL" meta="holding paper" hint-size="100%,220px">
+              <dc-import name="Fl Window" surface="paper" kicker="Paper window" title="Kicker, title, meta" meta="4/4 · 72 BPM" min-height="120px" hint-size="100%,120px"><div style="position:relative;font-size:13px;line-height:1.5">Children render inside. Grain and vignette come with the surface.</div></dc-import>
+            </dc-import>
+            <dc-import name="Fl Panel" surface="ivory" title="IVORY PANEL" meta="controls go here" hint-size="100%,220px">
+              <div style="display:flex;align-items:center;justify-content:space-around;flex-wrap:wrap;gap:12px"><dc-import name="Fl Knob" label="Tempo" value="40" size="64" cap="cream" color="#d9902a" label-color="#6b5636" hint-size="80px,90px"></dc-import><dc-import name="Fl Switch" surface="ivory" on="{{ true }}" label="CLICK" hint-size="60px,46px"></dc-import><dc-import name="Fl Readout" label="BAR" value="2" unit="/ 4" tone="on" surface="ivory" hint-size="90px,60px"></dc-import></div>
+            </dc-import>
+          </div>
+          <div style="font-size:12px;color:#8f8272;line-height:1.45">Fl Panel: surface dark / ivory, title, meta, lamp, pulse, minHeight, flex; screws and chrome included. Fl Window: surface glass / paper, kicker, title, meta, pad, gap, minHeight. A paper window always sits inside a dark panel.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="learn" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><h2 style="margin:0;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:34px;letter-spacing:0.04em;text-transform:uppercase">Learn</h2><span style="font-size:14px;color:#b8a994">Instruments the tutor reads from. Both live on glass by default and have a paper variant for worksheets.</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:14px">
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">FRETBOARD · FL FRETBOARD</div>
+          <div style="padding:16px;border-radius:6px;background:radial-gradient(120% 80% at 50% 100%,#15110f,#070605 80%);box-shadow:inset 0 3px 10px rgba(0,0,0,0.95),inset 0 0 0 1px rgba(0,0,0,0.8)"><dc-import name="Fl Fretboard" frets="12" marks="{{ pentMarks }}" mode="{{ fbMode }}" on-tap="{{ fbTap }}" hint-size="100%,230px"></dc-import></div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><dc-import name="Fl Segment" options="{{ showOpts }}" value="{{ fbMode }}" on-change="{{ setFbMode }}" hint-size="190px,34px"></dc-import><span style="font-size:12px;color:#8f8272;line-height:1.45">{{ fbTapText }}</span></div>
+          <div style="font-size:12px;color:#8f8272;line-height:1.45">Props: frets, from, marks [{s, f, tone root / chord / scale / target / heard / dim, note, iv}], mode notes / intervals / dots, surface glass / paper, rowH, onTap(string, fret). Amber root, teal chord tones, ivory scale, cherry target.</div>
+        </div>
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:16px">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">BEAT STRIP · FL BEAT STRIP</div>
+          <div style="padding:16px;border-radius:6px;background:radial-gradient(120% 80% at 50% 100%,#15110f,#070605 80%);box-shadow:inset 0 3px 10px rgba(0,0,0,0.95),inset 0 0 0 1px rgba(0,0,0,0.8)"><dc-import name="Fl Beat Strip" steps="{{ beatSteps }}" current="{{ beatCur }}" sub="4" hint-size="100%,100px"></dc-import></div>
+          <div style="font-size:12px;color:#8f8272;line-height:1.45">Props: steps [{stroke D / U / - / x, hit ms}], current, sub 1 / 2 / 3 / 4. Hit marks slide early or late from the centerline: teal within 20 ms, amber within 50, cherry beyond. Missed strokes fade cherry.</div>
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994;margin-top:6px">FRETBOARD ON PAPER</div>
+          <div style="position:relative;padding:14px 16px;border-radius:3px;background:radial-gradient(120% 90% at 50% 40%,#e8d6ad 0%,#dcc492 55%,#c9ad74 100%);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.25),inset 0 0 50px rgba(90,60,20,0.35)"><dc-import name="Fl Fretboard" frets="5" marks="{{ cMarks }}" mode="intervals" surface="paper" row-h="28" hint-size="100%,200px"></dc-import></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="panels" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap"><h2 style="margin:0;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:34px;letter-spacing:0.04em;text-transform:uppercase">Panels</h2><span style="font-size:14px;color:#b8a994">Panels, not cards. <strong style="color:#efe4c8">Ivory where you touch. Dark glass where you read. Paper where you learn.</strong> Changing information always sits on glass, a well or paper.</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+        <div style="position:relative;min-height:220px;border-radius:8px;background:linear-gradient(180deg,#ebe0c6,#dccfae);padding:22px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),inset 0 -1px 0 rgba(90,60,20,0.25),0 2px 0 #8e7a50,0 10px 24px rgba(0,0,0,0.4);color:#2b1d10;display:flex;flex-direction:column;gap:12px">
+          <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span>
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#8a5a12">IVORY PANEL · CONTROLS</div>
+          <p style="margin:0;font-size:14px;line-height:1.5">The pickguard. Holds knobs, switches, buttons, lists. Bone screws, amber title. Anything that changes sits in a well:</p>
+          <div style="display:flex;align-items:center;gap:14px;height:56px;padding:0 14px;border-radius:6px;background-color:#2d2622;background-image:repeating-linear-gradient(0deg,rgba(255,235,210,0.018) 0 1px,transparent 1px 2px);box-shadow:inset 0 2px 4px rgba(0,0,0,0.5),inset 0 0 0 1px #e9a23b,0 1px 0 rgba(255,255,255,0.6);color:#efe4c8"><span style="width:14px;height:14px;border-radius:50%;background:#e9a23b;box-shadow:0 0 10px #e9a23b"></span><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:26px">E</span><span style="margin-left:auto;font-size:12px;letter-spacing:0.12em;font-weight:700;color:#e9a23b">WELL · #2D2622 + SATIN</span></div>
+          <div style="display:flex;gap:10px;align-items:center"><dc-import name="Fl Knob" label="Cream" value="60" size="56" cap="cream" color="#d9902a" label-color="#6b5636" hint-size="70px,80px"></dc-import><span style="font-size:12px;color:#6b5636;line-height:1.45">Knobs on ivory take cream caps and the darker amber #d9902a / teal #1f8c7c arcs.</span></div>
+        </div>
+        <div style="position:relative;min-height:220px;border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.09),0 2px 0 #0f0c0b,0 10px 24px rgba(0,0,0,0.35);display:flex;flex-direction:column;gap:12px">
+          <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span>
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#e9a23b">DARK PANEL · READING</div>
+          <p style="margin:0;font-size:14px;line-height:1.5;color:#efe4c8">Powder-coated steel #2d2622, steel screws, amber title. Frames a glass window or a sheet of paper.</p>
+          <div style="flex:1;min-height:90px;border-radius:6px;background:radial-gradient(120% 80% at 50% 100%,#15110f,#070605 80%);box-shadow:inset 0 3px 10px rgba(0,0,0,0.95),inset 0 0 0 1px rgba(0,0,0,0.8),0 1px 0 rgba(255,235,210,0.06);display:flex;align-items:center;justify-content:center;gap:14px"><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:56px;line-height:1;color:#e9a23b;text-shadow:0 0 24px rgba(233,162,59,0.5)">G</span><span style="font-size:12px;color:#8f8272;letter-spacing:0.12em">GLASS WINDOW · EVERYTHING INSIDE GLOWS</span></div>
+        </div>
+        <div style="position:relative;min-height:220px;border-radius:8px;background:#2d2622;padding:16px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.09),0 2px 0 #0f0c0b,0 10px 24px rgba(0,0,0,0.35);display:flex;flex-direction:column">
+          <div style="position:relative;flex:1;padding:18px 20px;border-radius:3px;background:radial-gradient(120% 90% at 50% 40%,#e8d6ad 0%,#dcc492 55%,#c9ad74 100%);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.25),inset 0 0 50px rgba(90,60,20,0.4),0 2px 0 rgba(0,0,0,0.35),0 10px 24px rgba(0,0,0,0.45);color:#3a2a1a">
+            <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(80,50,10,0.05) 0 1px,transparent 1px 3px);pointer-events:none;mix-blend-mode:multiply"></div>
+            <div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#6b5636;font-weight:700">Paper · learning</div>
+            <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:30px;line-height:1;color:#2b1d10;margin-top:4px">Aged manila</div>
+            <p style="margin:10px 0 0;font-size:13px;line-height:1.5">Always framed by a dark panel so it reads as a sheet laid on the amp. Ink is brown-black; the playhead is the only accent allowed.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="meters" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px"><h2 style="margin:0;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:34px;letter-spacing:0.04em;text-transform:uppercase">Meters &amp; scores</h2><span style="font-size:14px;color:#b8a994">Teal below the playing threshold, amber above, cherry in the top 6 dB. Lit segments glow.</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:18px">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">FL METER</div>
+          <dc-import name="Fl Meter" label="Guitar in" value="-22" peak="-14" threshold="-48" height="18" color="{{ amber }}" hot="{{ cherry }}" quiet="{{ teal }}" hint-size="100%,42px"></dc-import>
+          <dc-import name="Fl Meter" label="Guitar in · hot" value="-3" peak="-1" threshold="-48" height="18" color="{{ amber }}" hot="{{ cherry }}" quiet="{{ teal }}" hint-size="100%,42px"></dc-import>
+          <dc-import name="Fl Meter" label="Speakers out" value="-30" peak="-26" height="18" color="{{ amber }}" hot="{{ cherry }}" quiet="{{ teal }}" hint-size="100%,42px"></dc-import>
+          <dc-import name="Fl Meter" label="Speakers out · off" value="-120" live="{{ false }}" height="18" hint-size="100%,42px"></dc-import>
+          <div style="display:flex;gap:16px"><div style="flex:1;display:flex;flex-direction:column;gap:5px"><dc-import name="Fl Meter" label="In" value="-22" peak="-16" threshold="-48" height="8" hint-size="100%,30px"></dc-import><dc-import name="Fl Meter" label="Out" value="-120" live="{{ false }}" height="8" hint-size="100%,30px"></dc-import></div><div style="flex:1;font-size:12px;color:#8f8272;line-height:1.45">Header pair at 8px. Same component, same bands, no header chrome beyond the label and readout.</div></div>
+        </div>
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:18px">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">FL SKILL RING</div>
+          <div style="display:flex;flex-wrap:wrap;gap:22px;justify-content:space-around">
+            <dc-import name="Fl Skill Ring" label="Open chords" score="72" color="{{ teal }}" hint-size="120px,130px"></dc-import>
+            <dc-import name="Fl Skill Ring" label="Chord changes" score="58" color="{{ amber }}" hint-size="120px,130px"></dc-import>
+            <dc-import name="Fl Skill Ring" label="Barre chords" score="21" color="{{ cherry }}" hint-size="120px,130px"></dc-import>
+            <dc-import name="Fl Skill Ring" label="Timing" score="81" size="64" color="{{ teal }}" hint-size="90px,100px"></dc-import>
+          </div>
+          <div style="font-size:12px;color:#8f8272">Score colour is the skill's state: teal steady, amber building, cherry new. Grade text is derived unless overridden.</div>
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994;margin-top:6px">CENTS SCALE</div>
+          <div style="position:relative;height:84px;border-radius:6px;background:radial-gradient(120% 80% at 50% 100%,#15110f,#070605 80%);box-shadow:inset 0 3px 10px rgba(0,0,0,0.95),inset 0 0 0 1px rgba(0,0,0,0.8)">
+            <div style="position:absolute;left:24px;right:24px;top:30px;height:40px;background-image:linear-gradient(90deg,rgba(239,228,200,0.55) 0 1px,transparent 1px),linear-gradient(90deg,rgba(239,228,200,0.25) 0 1px,transparent 1px);background-size:calc(100% / 4) 100%,calc(100% / 20) 55%;background-repeat:repeat-x;background-position:0 0,0 100%;box-shadow:inset -1px 0 0 rgba(239,228,200,0.55)"></div>
+            <div style="position:absolute;left:24px;right:24px;top:10px;display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:#8f8272"><span>−50</span><span>−25</span><span style="color:#efe4c8">0</span><span>+25</span><span>+50</span></div>
+            <div style="position:absolute;top:26px;height:52px;width:2px;left:50%;margin-left:-1px;background:#efe4c8;opacity:0.4"></div>
+            <div style="position:absolute;top:22px;height:60px;width:3px;left:{{ needleLeft }}%;margin-left:-1.5px;background:{{ amber }};box-shadow:0 0 10px {{ amber }},0 0 24px {{ amber }}99;border-radius:2px"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="paper" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px"><h2 style="margin:0;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:34px;letter-spacing:0.04em;text-transform:uppercase">Paper</h2><span style="font-size:14px;color:#b8a994">Chord charts and tab live on aged manila. Ink is brown-black. Edges darken. Never glows.</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:18px">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">FL CHORD CHART</div>
+          <div style="display:flex;flex-wrap:wrap;gap:16px">
+            <dc-import name="Fl Chord Chart" chord="G" sub="major" frets="{{ shapes.G }}" fingers="{{ fingersG }}" width="140" hint-size="140px,200px"></dc-import>
+            <dc-import name="Fl Chord Chart" chord="Em" sub="minor" frets="{{ shapes.Em }}" width="140" hint-size="140px,200px"></dc-import>
+            <dc-import name="Fl Chord Chart" chord="F" sub="barre · major" frets="{{ shapes.F }}" barre="{{ true }}" width="140" hint-size="140px,200px"></dc-import>
+            <dc-import name="Fl Chord Chart" chord="Bm" sub="7th fret shape" frets="{{ shapes.Bm7 }}" base-fret="7" barre="{{ true }}" width="140" hint-size="140px,200px"></dc-import>
+          </div>
+          <div style="font-size:12px;color:#8f8272">Props: name, sub, frets[6] (−1 mute, 0 open), fingers, baseFret, barre, width, accent (the × colour).</div>
+        </div>
+        <div style="border-radius:8px;background:#2d2622;padding:22px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.07),0 2px 0 rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:18px">
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994">TAB SHEET</div>
+          <div style="position:relative;padding:18px 20px 16px;border-radius:3px;background:radial-gradient(120% 90% at 50% 40%,#e8d6ad 0%,#dcc492 55%,#c9ad74 100%);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.25),inset 0 0 50px rgba(90,60,20,0.35),0 2px 0 rgba(0,0,0,0.35),0 10px 24px rgba(0,0,0,0.45);color:#3a2a1a">
+            <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(80,50,10,0.05) 0 1px,transparent 1px 3px);pointer-events:none;mix-blend-mode:multiply"></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:22px;color:#2b1d10;letter-spacing:0.02em">Blues turnaround</div><div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#6b5636;font-weight:600">A · 4/4 · 96 BPM</div></div>
+            <div style="position:relative;height:132px;background-image:repeating-linear-gradient(180deg,#3a2a1a 0 1px,transparent 1px 22px);background-size:100% 111px;background-repeat:no-repeat;background-position:0 10px">
+              <div style="position:absolute;left:0;top:10px;bottom:21px;width:2px;background:#2b1d10"></div>
+              <div style="position:absolute;left:33%;top:10px;bottom:21px;width:1px;background:#3a2a1a"></div>
+              <div style="position:absolute;left:66%;top:10px;bottom:21px;width:1px;background:#3a2a1a"></div>
+              <div style="position:absolute;right:0;top:10px;bottom:21px;width:3px;background:#2b1d10;box-shadow:-5px 0 0 #2b1d10,-4px 0 0 #dcc492"></div>
+              <sc-for list="{{ tabNotes }}" as="n" hint-placeholder-count="12">
+                <div style="position:absolute;left:{{ n.left }}%;top:{{ n.top }}px;transform:translate(-50%,-50%);min-width:18px;height:18px;line-height:18px;padding:0 3px;text-align:center;background:#dcc492;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:17px;color:{{ n.color }}">{{ n.f }}</div>
+              </sc-for>
+              <div style="position:absolute;left:-16px;top:10px;display:flex;flex-direction:column;gap:9px;font-size:10px;font-weight:700;color:#6b5636;line-height:13px"><span>e</span><span>B</span><span>G</span><span>D</span><span>A</span><span>E</span></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:#6b5636"><span>Bar 1–3 of 8</span><span style="color:#c8431f;font-weight:700">● playhead at 2.3</span></div>
+          </div>
+          <div style="font-size:12px;color:#8f8272">The live stream uses the same sheet: new notes land on the right, the playhead is the only accent colour allowed on paper.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="shell" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:14px"><h2 style="margin:0;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:34px;letter-spacing:0.04em;text-transform:uppercase">Shell</h2><span style="font-size:14px;color:#b8a994">Aluminum faceplate on top, sunburst stripe, dark panels on a lit chassis, tutor strip along the bottom.</span></div>
+      <div style="border-radius:8px;overflow:hidden;background:radial-gradient(900px 400px at 12% 0%,rgba(212,68,44,0.30),transparent 65%),radial-gradient(700px 400px at 100% 100%,rgba(77,182,164,0.14),transparent 65%),#221c19;box-shadow:inset 0 0 0 1px #3b322c">
+        <header style="height:76px;display:grid;grid-template-columns:170px minmax(0,1fr) auto;align-items:center;padding:0 18px;gap:14px;background-color:#c9c4ba;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,0.05) 0 1px,transparent 1px 2px),linear-gradient(180deg,#dcd8cf,#b8b3a9);box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 3px 0 #15110f">
+          <div style="display:flex;align-items:center;gap:12px"><div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(160deg,#d4442c 0%,#e9a23b 55%,#f0c46b 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),0 2px 3px rgba(0,0,0,0.45)"></div><div style="font-family:'Yellowtail',cursive;font-size:30px;line-height:1;color:#2a2420;text-shadow:0 1px 0 rgba(255,255,255,0.6)">Fretline</div></div>
+          <nav style="display:flex;align-items:stretch;justify-content:center;gap:6px;height:76px">
+            <sc-for list="{{ navAlu }}" as="n" hint-placeholder-count="5">
+              <button style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:0 14px;border:none;background:transparent;color:{{ n.color }};font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.14em;text-transform:uppercase;text-shadow:0 1px 0 rgba(255,255,255,0.5)"><span style="width:30px;height:4px;border-radius:2px;background:{{ n.lamp }};box-shadow:{{ n.lampGlow }}"></span>{{ n.label }}</button>
+            </sc-for>
+          </nav>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:112px;display:flex;flex-direction:column;gap:5px;padding:5px 8px;border-radius:4px;background:#1a1512;box-shadow:inset 0 1px 3px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><dc-import name="Fl Meter" label="In" value="-22" peak="-16" threshold="-48" height="7" hint-size="96px,28px"></dc-import><dc-import name="Fl Meter" label="Out" value="-120" live="{{ false }}" height="7" hint-size="96px,28px"></dc-import></div>
+            <div style="height:44px;padding:0 14px;display:flex;flex-direction:column;justify-content:center;border-radius:4px;background:#1a1512;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><div style="font-size:10px;letter-spacing:0.18em;color:#8f8272;font-weight:600">TUNING</div><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.08em;color:#e9a23b;line-height:1.1;white-space:nowrap">DROP D · CAPO 2</div></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#2a2420"><span style="width:46px;height:24px;border-radius:4px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><span style="position:absolute;top:3px;left:24px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#f3ead2,#d9c69a);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:9px;left:8px;width:7px;height:7px;border-radius:50%;background:#d4442c;box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span></span><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em;text-shadow:0 1px 0 rgba(255,255,255,0.5)">LISTEN</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#2a2420"><span style="width:46px;height:24px;border-radius:4px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><span style="position:absolute;top:3px;left:3px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#f3ead2,#d9c69a);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:9px;right:8px;width:7px;height:7px;border-radius:50%;background:#3a302a"></span></span><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em;text-shadow:0 1px 0 rgba(255,255,255,0.5)">OUTPUT</span></div>
+          </div>
+        </header>
+        <div style="height:3px;margin-top:3px;background:linear-gradient(90deg,#d4442c 0%,#e9a23b 45%,#f0c46b 70%,#4db6a4 100%)"></div>
+        <div style="padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:22px">
+          <div style="position:relative;height:110px;border-radius:8px;background:#2d2622;box-shadow:inset 0 1px 0 rgba(255,235,210,0.09),0 2px 0 #0f0c0b,0 10px 24px rgba(0,0,0,0.35);display:grid;place-items:center;color:#5e564d;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em"><span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733)"></span>FACE PANEL · #2D2622</div>
+          <div style="height:110px;border-radius:8px;background:#2d2622;box-shadow:inset 0 1px 0 rgba(255,235,210,0.09),0 2px 0 #0f0c0b,0 10px 24px rgba(0,0,0,0.35);display:grid;place-items:center;color:#5e564d;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em">CHASSIS · #221C19 + CHERRY / TEAL LIGHT</div>
+        </div>
+        <footer style="height:46px;display:flex;align-items:center;gap:14px;padding:0 22px;background:#0f0c0b;box-shadow:inset 0 1px 0 rgba(255,235,210,0.06)"><span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 8px #4db6a4"></span><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.18em;color:#4db6a4">TUTOR</span><span style="font-size:14px">One sentence at a time. Never a modal. Tap it to open the lesson it came from.</span><span style="margin-left:auto;font-size:12px;color:#8f8272">Today · Open chords <span style="color:#e9a23b;font-weight:700">72</span></span></footer>
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start">
+        <div style="width:360px;border-radius:8px;overflow:hidden;background:radial-gradient(500px 300px at 10% 0%,rgba(212,68,44,0.28),transparent 65%),#221c19;box-shadow:inset 0 0 0 1px #3b322c">
+          <header style="height:56px;display:flex;align-items:center;gap:12px;padding:0 14px;background-color:#c9c4ba;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,0.05) 0 1px,transparent 1px 2px),linear-gradient(180deg,#dcd8cf,#b8b3a9);box-shadow:0 2px 0 #15110f"><div style="font-family:'Yellowtail',cursive;font-size:24px;line-height:1;color:#2a2420;text-shadow:0 1px 0 rgba(255,255,255,0.6)">Fretline</div><div style="margin-left:auto;width:100px;padding:4px 6px;border-radius:3px;background:#1a1512;box-shadow:inset 0 1px 3px rgba(0,0,0,0.9)"><dc-import name="Fl Meter" label="In" value="-22" threshold="-48" height="6" hint-size="88px,24px"></dc-import></div><span style="width:36px;height:20px;border-radius:3px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9)"><span style="position:absolute;top:3px;left:19px;width:14px;height:14px;border-radius:2px;background:linear-gradient(180deg,#f3ead2,#d9c69a)"></span><span style="position:absolute;top:7px;left:6px;width:6px;height:6px;border-radius:50%;background:#d4442c;box-shadow:0 0 6px #d4442c"></span></span></header>
+          <div style="height:2px;margin-top:2px;background:linear-gradient(90deg,#d4442c,#e9a23b 50%,#4db6a4)"></div>
+          <div style="height:90px;display:grid;place-items:center;color:#5e564d;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em">VIEW</div>
+          <div style="height:38px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#0f0c0b;font-size:12px"><span style="width:7px;height:7px;border-radius:50%;background:#4db6a4;box-shadow:0 0 8px #4db6a4"></span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Mute low E, pluck A next.</span></div>
+          <nav style="height:60px;display:grid;grid-template-columns:repeat(5,1fr);background-color:#c9c4ba;background-image:linear-gradient(180deg,#dcd8cf,#b8b3a9);box-shadow:inset 0 2px 0 #15110f">
+            <sc-for list="{{ navAlu }}" as="n" hint-placeholder-count="5">
+              <button style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:none;background:transparent;color:{{ n.color }};font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;text-shadow:0 1px 0 rgba(255,255,255,0.5)"><span style="width:22px;height:3px;border-radius:2px;background:{{ n.lamp }};box-shadow:{{ n.lampGlow }}"></span>{{ n.label }}</button>
+            </sc-for>
+          </nav>
+        </div>
+        <div style="flex:1;min-width:240px;font-size:13px;line-height:1.55;color:#b8a994;padding-top:6px"><strong style="color:#efe4c8">Phone (≤700px).</strong> The faceplate keeps the wordmark, one In meter and the Listen switch. Nav drops to an aluminum bottom bar with the same page lamps. The tutor strip sits above it and truncates to one line; tapping expands it.</div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;amber&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#e9a23b&quot;,&quot;options&quot;:[&quot;#e9a23b&quot;,&quot;#f0b650&quot;,&quot;#d9902a&quot;,&quot;#e2b35a&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Accents&quot;},&quot;cherry&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#d4442c&quot;,&quot;options&quot;:[&quot;#d4442c&quot;,&quot;#c8261e&quot;,&quot;#e2563d&quot;,&quot;#b8321c&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Accents&quot;},&quot;teal&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#4db6a4&quot;,&quot;options&quot;:[&quot;#4db6a4&quot;,&quot;#3c8578&quot;,&quot;#5fc9b7&quot;,&quot;#2f9fb8&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Accents&quot;},&quot;cents&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:-9,&quot;min&quot;:-50,&quot;max&quot;:50,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Demo&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const amber = this.props.amber ?? '#e9a23b', cherry = this.props.cherry ?? '#d4442c', teal = this.props.teal ?? '#4db6a4';
+    const ink = '#efe4c8';
+    const accents = [
+      { name: 'Cherry', hex: cherry, role: 'Live, recording, danger' },
+      { name: 'Amber', hex: amber, role: 'Selected, on, primary action' },
+      { name: 'Teal', hex: teal, role: 'Confirmed, tutor, in tune' },
+    ];
+    const lamps = [
+      { name: 'OFF', bg: '#15110f', glow: 'inset 0 1px 2px rgba(0,0,0,0.9)' },
+      { name: 'LIVE', bg: cherry, glow: `0 0 10px ${cherry}` },
+      { name: 'ON', bg: amber, glow: `0 0 10px ${amber}` },
+      { name: 'OK', bg: teal, glow: `0 0 10px ${teal}` },
+    ];
+    const chip = (label, c, pulse) => ({ label, color: c, dot: c, bg: `${c}1f`, edge: `${c}80`, glow: `0 0 8px ${c}` });
+    const chips = [chip('LIVE', cherry), chip('IN TUNE', teal), chip('OUTPUT ON', amber), { label: 'PAUSED', color: '#b8a994', dot: '#3a302a', bg: '#0d0b0a', edge: '#3b322c', glow: 'none' }, { label: 'NO INPUT', color: '#8f8272', dot: '#3a302a', bg: '#0d0b0a', edge: '#3b322c', glow: 'none' }];
+    const labels = ['Tuner', 'Chords', 'Tabs', 'Pedals', 'Learn'];
+    const navAlu = labels.map((label) => { const a = label === 'Learn'; return { label, color: a ? '#1c1612' : '#6a6157', lamp: a ? amber : '#8f8679', lampGlow: a ? `0 0 12px ${amber}, 0 0 2px ${amber}` : 'inset 0 1px 1px rgba(0,0,0,0.35)' }; });
+    const shapes = { G: [3, 2, 0, 0, 0, 3], Em: [0, 2, 2, 0, 0, 0], F: [1, 3, 3, 2, 1, 1], Bm7: [-1, 1, 3, 1, 3, 1] };
+    const yOf = (s) => 10 + (5 - s) * 22;
+    const raw = [[6, 0, 5], [14, 1, 5], [22, 2, 6], [30, 1, 5], [40, 3, 7], [48, 2, 6], [56, 1, 5], [64, 0, 5], [74, 1, 7], [82, 2, 6], [90, 1, 5]];
+    const tabNotes = raw.map(([left, s, f], i) => ({ left, top: yOf(s), f, color: i === 5 ? '#c8431f' : '#2b1d10' }));
+    const cents = this.props.cents ?? -9;
+    const st = this.state ?? {};
+    const CHROM = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'], OPEN = [4, 9, 2, 7, 11, 4], IVN = ['1', '♭2', '2', '♭3', '3', '4', '♭5', '5', '♭6', '6', '♭7', '7'];
+    const marksFor = (rootIdx, ivs, frets, chordIvs) => { const out = []; for (let s = 0; s < 6; s++) for (let f = 0; f <= frets; f++) { const iv = (OPEN[s] + f - rootIdx + 24) % 12; if (ivs.includes(iv)) out.push({ s, f, tone: iv === 0 ? 'root' : chordIvs.includes(iv) ? 'chord' : 'scale', note: CHROM[(OPEN[s] + f) % 12], iv: IVN[iv] }); } return out; };
+    const beatSteps = 'D-DU-UDUD-DU-UDU'.split('').map((stroke, i) => ({ stroke, hit: stroke === '-' || i >= 9 ? null : [4, 0, -12, 18, 0, 31, -6, 58, 2][i] }));
+    const tapped = st.tapped;
+    return { amber, cherry, teal, accents, lamps, chips, navAlu, shapes, fingersG: [2, 1, 0, 0, 0, 3], tabNotes, needleLeft: 50 + Math.max(-50, Math.min(50, cents)) * 0.8,
+      sw1: st.sw1 ?? true, setSw1: (v) => this.setState({ sw1: v }), sw2: st.sw2 ?? true, setSw2: (v) => this.setState({ sw2: v }), sw3: st.sw3 ?? true, setSw3: (v) => this.setState({ sw3: v }),
+      lampTones: [{ name: 'OFF', tone: 'off' }, { name: 'LIVE', tone: 'live' }, { name: 'ON', tone: 'on' }, { name: 'OK', tone: 'ok' }],
+      seg: st.seg ?? 'IDENTIFY', setSeg: (id) => this.setState({ seg: id }), segOpts: ['IDENTIFY', 'CONFIRM'], segOpts3: ['1/4', '1/8', '1/16'], segOptsN: [{ id: 'saved', label: 'SAVED', n: 3 }, { id: 'deleted', label: 'DELETED', n: 0 }], qualOpts: [{ id: 'maj', label: 'MAJOR' }, { id: 'min', label: 'MINOR' }, { id: 'maj7', label: 'MAJ7' }, { id: 'sus4', label: 'SUS4' }, { id: 'dim', label: 'DIM' }],
+      showOpts: [{ id: 'notes', label: 'NOTES' }, { id: 'intervals', label: 'INTERVALS' }, { id: 'dots', label: 'DOTS' }], fbMode: st.fbMode ?? 'notes', setFbMode: (id) => this.setState({ fbMode: id }),
+      pentMarks: marksFor(9, [0, 3, 5, 7, 10], 12, [3, 7]), cMarks: marksFor(0, [0, 4, 7], 5, [4, 7]), fbTap: (s, f) => this.setState({ tapped: { s, f } }), fbTapText: tapped ? `Tapped ${['E', 'A', 'D', 'G', 'B', 'e'][tapped.s]} string, fret ${tapped.f}: ${CHROM[(OPEN[tapped.s] + tapped.f) % 12]}` : 'A minor pentatonic. Tap any fret; onTap reports string and fret.',
+      beatSteps, beatCur: 9,
+    };
+  }
+}
+</script>
+</body>
+</html>

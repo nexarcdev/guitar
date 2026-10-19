@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<section style="position:relative;flex:{{ flex }};min-width:0;min-height:{{ minH }};border-radius:8px;background:{{ bg }};padding:{{ pad }};box-shadow:{{ shadow }};display:flex;flex-direction:column;gap:{{ gap }}px;color:{{ ink }}">
+  <sc-for list="{{ screws }}" as="k" hint-placeholder-count="4"><span style="position:absolute;top:{{ k.t }};left:{{ k.l }};right:{{ k.r }};bottom:{{ k.b }};width:9px;height:9px;border-radius:50%;background:{{ screw }};box-shadow:{{ screwShadow }}"></span></sc-for>
+  <sc-if value="{{ hasHead }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:{{ headPad }};flex-wrap:wrap;min-height:24px">
+      <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display','Barlow',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;text-transform:uppercase;color:{{ titleColor }}"><sc-if value="{{ hasLamp }}" hint-placeholder-val="{{ false }}"><dc-import name="Fl Lamp" tone="{{ lamp }}" pulse="{{ pulse }}" surface="{{ lampSurface }}" hint-size="7px,7px"></dc-import></sc-if>{{ title }}</div>
+      <div style="font-size:12px;color:{{ metaColor }};min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ meta }}</div>
+    </div>
+  </sc-if>
+  {{ children }}
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:420,&quot;height&quot;:240},&quot;surface&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;dark&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;ivory&quot;],&quot;tsType&quot;:&quot;'dark'|'ivory'&quot;},&quot;title&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;PANEL TITLE&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;meta&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Meta on the right&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;lamp&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;&quot;,&quot;options&quot;:[&quot;&quot;,&quot;off&quot;,&quot;live&quot;,&quot;on&quot;,&quot;ok&quot;],&quot;tsType&quot;:&quot;''|'off'|'live'|'on'|'ok'&quot;},&quot;pulse&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;minHeight&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;0&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;flex&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;1 1 auto&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;children&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;ReactNode&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const ivory = (p.surface ?? 'dark') === 'ivory';
+    const screws = [{ t: '8px', l: '8px', r: 'auto', b: 'auto' }, { t: '8px', l: 'auto', r: '8px', b: 'auto' }, { t: 'auto', l: '8px', r: 'auto', b: '8px' }, { t: 'auto', l: 'auto', r: '8px', b: '8px' }];
+    const lamp = p.lamp ?? '';
+    return {
+      screws, children: p.children ?? null,
+      flex: p.flex ?? '1 1 auto', minH: p.minHeight ?? '0',
+      bg: ivory ? 'linear-gradient(180deg,#ebe0c6,#dccfae)' : '#2d2622',
+      shadow: ivory ? 'inset 0 1px 0 rgba(255,255,255,0.7),inset 0 -1px 0 rgba(90,60,20,0.25),0 2px 0 #8e7a50,0 10px 24px rgba(0,0,0,0.4)' : 'inset 0 1px 0 rgba(255,235,210,0.09),0 2px 0 #0f0c0b,0 10px 24px rgba(0,0,0,0.35)',
+      pad: ivory ? '18px 20px' : '16px', gap: ivory ? 14 : 12, headPad: ivory ? '0 4px' : '0 8px',
+      ink: ivory ? '#2b1d10' : '#efe4c8', titleColor: ivory ? '#8a5a12' : '#e9a23b', metaColor: ivory ? '#6b5636' : '#b8a994',
+      screw: ivory ? 'radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a)' : 'radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733)',
+      screwShadow: ivory ? 'inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)' : 'inset 0 0 0 1px rgba(0,0,0,0.6)',
+      hasHead: !!(p.title || p.meta), title: p.title ?? '', meta: p.meta ?? '',
+      hasLamp: !!lamp, lamp, pulse: !!p.pulse, lampSurface: ivory ? 'ivory' : 'dark',
+    };
+  }
+}
+</script>
+</body>
+</html>

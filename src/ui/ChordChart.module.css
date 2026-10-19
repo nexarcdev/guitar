@@ -1,0 +1,108 @@
+.card {
+  position: relative;
+  padding: 14px 14px 12px;
+  border-radius: 3px;
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px rgba(90, 60, 20, 0.25), inset 0 0 40px rgba(90, 60, 20, 0.35), 0 2px 0 rgba(0, 0, 0, 0.35), 0 10px 24px rgba(0, 0, 0, 0.45);
+  color: var(--paper-ink-2);
+  font-family: var(--font-body);
+}
+.flat {
+  box-shadow: inset 0 0 0 1px rgba(90, 60, 20, 0.22), inset 0 0 18px rgba(90, 60, 20, 0.12), 0 1px 2px rgba(60, 40, 10, 0.22);
+}
+.grain {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  background: var(--paper-grain), repeating-linear-gradient(90deg, rgba(80, 50, 10, 0.04) 0 1px, transparent 1px 5px);
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--paper-ink);
+  white-space: nowrap;
+}
+.sub {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--paper-ink-3);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.marks {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  height: 14px;
+}
+.marks > div {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 14px;
+}
+.grid {
+  position: relative;
+}
+.nut {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  background: var(--paper-ink);
+  border-radius: 1px;
+}
+.lines {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(180deg, transparent 0 calc(20% - 1.5px), #3a2a1a calc(20% - 1.5px) 20%),
+    repeating-linear-gradient(90deg, #3a2a1a 0 1.5px, transparent 1.5px 20%);
+  background-size: 100% 100%, calc(100% + 1.5px) 100%;
+  opacity: 0.85;
+}
+.fretNums {
+  position: absolute;
+  right: calc(100% + 6px);
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--paper-ink-3);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.dot,
+.barre {
+  position: absolute;
+  height: var(--dot);
+  margin-top: calc(var(--dot) / -2);
+  background: var(--paper-ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.dot {
+  width: var(--dot);
+  margin-left: calc(var(--dot) / -2);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.barre {
+  border-radius: 999px;
+}

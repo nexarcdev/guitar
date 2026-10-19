@@ -1,26 +1,27 @@
-# Always-listening music app design
+# Design implementation process
 
-_Started 2026-10-06 12:21 UTC_
+_Started 2026-10-08 18:24 UTC_
 
 ---
 
 ## User
 
-"Listen" is a global state. The app should always listen by default but allow the user to pause it. That means the tuner is always active, chord identifier is active, and tablature is recording a rolling riff for the user, no "record" button necessary. And since the app is always recording, we need an output toggle too, because the app is the amp and needs passthrough with the effect pedals.
-
-## User
-
-Found issues — fixing…
-
-## User
-
-Found issues — fixing…
+This is great. Now, what's the process of getting the new design into the app in the repository?
 
 ## Assistant
 
-_[tool: dc_js_str_replace]_
+_[tool: read_file]_
 
-_[tool: ready_for_verification]_
+I can't commit to `nexarcdev/guitar` myself. I can only read the repo, so the change has to go through a developer or Claude Code. Here's the process:
 
-I fixed the error that was firing on every screen update. Because of it, knobs, footswitches and reordering weren't changing the sound, and the tab stream didn't jump to your latest notes when you paused. Both should work now; the change is being checked again.
+1. **I build a handoff package.** It covers:
+   - The locked design system as CSS variables: chassis, ivory, glass, paper, the three accents and the two fonts. These would go into `src/styles/global.css`.
+   - A spec for each screen, mapped to its file: Shell, Tuner, Chords, Tabs, Pedals, Learn and Studio.
+   - Specs for the shared parts (Knob, Meter, Chord Chart, Skill Ring) as React components, with their props and states.
+   - Any assets and fonts, plus the house rules (the ivory, glass and paper rule, tutor strip behavior, no em dashes).
+2. **You or Claude Code make the change in the repo.** Start with the variables and the shared components, then reskin one screen at a time by editing each `*.module.css` and its `.tsx`. Leave the audio and theory code in `src/audio` and `src/theory` alone; this is a visual redesign.
+3. **Check it.** Put each screen next to its frame in `Fretline App.dc.html` and compare. One PR per screen keeps reviews small.
+4. **Sync back here.** After the changes merge, hit Sync and I'll update the designs to match the new code.
+
+Want me to build the handoff package now?
 

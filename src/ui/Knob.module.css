@@ -1,0 +1,100 @@
+.knob {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+}
+.ring {
+  position: relative;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background-image: var(--well-grain), radial-gradient(circle at 50% 40%, #3a322c 0%, #231d1a 70%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.interactive {
+  cursor: ns-resize;
+  touch-action: none;
+}
+.arc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--arc);
+  -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%);
+  mask: radial-gradient(circle, transparent 62%, #000 63%);
+}
+.halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: var(--glow);
+  pointer-events: none;
+}
+.cap {
+  position: relative;
+  width: var(--cap);
+  height: var(--cap);
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  --knurl: rgba(60, 40, 10, 0.09);
+  --pointer: #3a2a1a;
+}
+.black {
+  background: radial-gradient(circle at 38% 30%, #3b322d, #1b1614 65%, #0e0b0a);
+  border: 1px solid #000;
+  --knurl: rgba(255, 235, 210, 0.07);
+  --pointer: #efe4c8;
+}
+.cream {
+  background: radial-gradient(circle at 38% 30%, #f6ecd4, #d9c69a 60%, #b39e6e);
+  border: 1px solid #8e7a50;
+}
+.chrome {
+  background: conic-gradient(from 0deg, #d8d8d8, #7a7a7a 25%, #e8e8e8 50%, #6f6f6f 75%, #d8d8d8);
+  border: 1px solid #444;
+  --pointer: #1a1a1a;
+}
+/* The only layer that turns. */
+.turn {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, var(--knurl) 0deg 3deg, transparent 3deg 10deg);
+  transform: rotate(var(--deg));
+  transition: transform 0.08s linear;
+}
+.pointer {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 3px;
+  height: 36%;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--pointer);
+}
+.shine {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 28%, rgba(255, 255, 255, 0.22), transparent 55%);
+  pointer-events: none;
+}
+.interactive:focus-visible {
+  outline-offset: 4px;
+}
+.label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-align: center;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import type { BufferHealth, EngineEvent, StreamHealth, Telemetry } from '../../core/protocol';
 import { useStore } from '../../state/store';
+import { Window } from '../../ui';
 import { Section, type Tone } from './Section';
 import s from './Studio.module.css';
 
@@ -23,9 +24,9 @@ function verdict(t: Telemetry, recentDry: boolean): [string, Tone] {
   return ['Steady at ' + ms(b.targetMs), 'ok'];
 }
 
-function Stream({ title, h, tone }: { title: string; h: StreamHealth | null; tone: 'gold' | 'red' }) {
+function Stream({ title, h, tone }: { title: string; h: StreamHealth | null; tone: 'amber' | 'cherry' }) {
   return (
-    <div className={s.healthCard} data-accent={tone}>
+    <Window surface="glass" pad="12px 14px" gap={8} className={s.healthCard} style={{ '--accent': `var(--${tone})` } as React.CSSProperties}>
       <div className={s.healthTitle}>{title}</div>
       {h ? (
         <dl className={s.healthKv}>
@@ -43,17 +44,15 @@ function Stream({ title, h, tone }: { title: string; h: StreamHealth | null; ton
           <dd data-tone={h.restarts ? 'bad' : undefined}>{h.restarts}</dd>
         </dl>
       ) : (
-        <p className={s.desc} style={{ margin: 0 }}>
-          Not open.
-        </p>
+        <p className={s.glassDesc}>Not open.</p>
       )}
-    </div>
+    </Window>
   );
 }
 
 function Buffer({ b }: { b: BufferHealth | null }) {
   return (
-    <div className={s.healthCard} data-accent="green">
+    <Window surface="glass" pad="12px 14px" gap={8} className={s.healthCard} style={{ '--accent': 'var(--teal)' } as React.CSSProperties}>
       <div className={s.healthTitle}>Buffer</div>
       {b ? (
         <dl className={s.healthKv}>
@@ -71,11 +70,9 @@ function Buffer({ b }: { b: BufferHealth | null }) {
           <dd>{(b.driftPpm >= 0 ? '+' : '') + b.driftPpm.toFixed(0) + ' ppm'}</dd>
         </dl>
       ) : (
-        <p className={s.desc} style={{ margin: 0 }}>
-          Sized once the speakers open.
-        </p>
+        <p className={s.glassDesc}>Sized once the speakers open.</p>
       )}
-    </div>
+    </Window>
   );
 }
 
@@ -107,6 +104,7 @@ export function EngineHealth() {
   return (
     <>
       <Section
+        surface="dark"
         title="Engine health"
         status={status}
         tone={tone}
@@ -114,22 +112,24 @@ export function EngineHealth() {
       >
         {t ? (
           <div className={s.health}>
-            <Stream title="Guitar input" h={t.input} tone="gold" />
+            <Stream title="Guitar input" h={t.input} tone="amber" />
             <Buffer b={t.buffer} />
-            <Stream title="Speakers" h={t.output} tone="red" />
+            <Stream title="Speakers" h={t.output} tone="cherry" />
           </div>
         ) : (
-          <p className={s.desc} style={{ margin: 0 }}>
+          <p className={s.desc}>
             {waited ? 'This engine (' + (version || 'unknown') + ') does not report its timing. Install the latest from Download above; the installer replaces it.' : 'Shown once the engine reports in.'}
           </p>
         )}
       </Section>
       <Section
+        surface="dark"
         title="Engine events"
         status={t ? (problems ? problems + (problems === 1 ? ' warning' : ' warnings') + ' in 5 min' : 'All quiet') : ''}
         tone={t ? (problems ? 'warn' : 'ok') : undefined}
         desc="What the engine did and ran into, newest first: devices opening and the modes they got, the speakers running dry, the buffer resizing, errors."
       >
+        <Window surface="glass" pad="6px 14px">
         <ol className={s.events} aria-label="Engine events">
           {events.map((e) => (
             <li key={e.seq} className={s.event} data-level={e.level}>
@@ -141,8 +141,9 @@ export function EngineHealth() {
               </span>
             </li>
           ))}
-          {!events.length && <li className={s.desc}>Nothing yet.</li>}
+          {!events.length && <li className={s.glassDesc}>Nothing yet.</li>}
         </ol>
+        </Window>
       </Section>
     </>
   );

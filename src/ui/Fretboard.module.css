@@ -1,0 +1,191 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  --line: rgba(239, 228, 200, 0.35);
+  --wire: 2px solid rgba(239, 228, 200, 0.18);
+  --nut: var(--amber);
+  --label: var(--ink-2);
+  --num: var(--ink-3);
+  --inlay: var(--amber);
+}
+.paper {
+  --line: #3a2a1a;
+  --wire: 1px solid #3a2a1a;
+  --nut: var(--paper-ink);
+  --label: var(--paper-ink-3);
+  --num: var(--paper-ink-3);
+  --inlay: var(--paper-ink);
+}
+.board {
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(255, 235, 210, 0.08);
+}
+.well .board {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+.paper .board {
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 0 0 1.5px #3a2a1a;
+}
+.row {
+  display: grid;
+}
+.nut,
+.cell {
+  border: none;
+  padding: 0;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+}
+.nut {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  align-items: center;
+  padding-left: 6px;
+  border-right: 4px solid var(--nut);
+  background: rgba(0, 0, 0, 0.3);
+}
+.paper .nut {
+  background: rgba(43, 29, 16, 0.08);
+}
+.cell {
+  display: grid;
+  place-items: center;
+  border-right: var(--wire);
+  background: linear-gradient(transparent calc(50% - var(--t) / 2), var(--line) calc(50% - var(--t) / 2), var(--line) calc(50% + var(--t) / 2), transparent calc(50% + var(--t) / 2));
+}
+.tappable .nut,
+.tappable .cell {
+  cursor: pointer;
+}
+.tappable .cell:hover {
+  background-color: rgba(255, 235, 210, 0.06);
+}
+.paper.tappable .cell:hover {
+  background-color: rgba(43, 29, 16, 0.08);
+}
+.name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--label);
+  text-align: center;
+}
+
+.dot,
+.nutDot {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: transform 0.15s, opacity 0.15s;
+  color: var(--ink);
+}
+.dot {
+  width: var(--dot);
+  height: var(--dot);
+  font-size: var(--fs);
+}
+.nutDot {
+  justify-self: center;
+  width: var(--dot-sm);
+  height: var(--dot-sm);
+  font-size: var(--fs-sm);
+}
+.on,
+.muted {
+  opacity: 1;
+  transform: scale(1);
+}
+.muted {
+  color: var(--cherry);
+  font-size: calc(var(--fs-sm) * 1.8);
+}
+.paper .muted {
+  color: var(--playhead);
+}
+
+/* Tones on glass and wells. */
+.root {
+  background: radial-gradient(circle at 35% 30%, #f6d98a, #e9a23b 50%, #a86e14);
+  color: #1c1612;
+  box-shadow: 0 0 12px rgba(233, 162, 59, 0.6);
+}
+.chord,
+.heard {
+  background: radial-gradient(circle at 35% 30%, #a7f3c4, #4db6a4 50%, #1f6d61);
+  color: #0e1a18;
+  box-shadow: 0 0 12px rgba(77, 182, 164, 0.5);
+}
+.heard {
+  box-shadow: 0 0 18px #4db6a4;
+}
+.scale {
+  background: rgba(239, 228, 200, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(239, 228, 200, 0.45);
+}
+.target {
+  background: rgba(212, 68, 44, 0.2);
+  color: var(--cherry);
+  box-shadow: inset 0 0 0 2px var(--cherry), 0 0 12px rgba(212, 68, 44, 0.5);
+  animation: lamp 1.2s ease-in-out infinite;
+}
+.dim {
+  background: rgba(239, 228, 200, 0.06);
+  color: var(--ink-3);
+}
+
+/* Tones on paper: ink, never lit. */
+.paper .root,
+.paper .heard {
+  background: var(--paper-ink);
+  color: #e8d6ad;
+  box-shadow: none;
+}
+.paper .chord {
+  background: var(--paper-ink-3);
+  color: #f3e6c4;
+  box-shadow: none;
+}
+.paper .scale {
+  background: transparent;
+  color: var(--paper-ink);
+  box-shadow: inset 0 0 0 1.5px #3a2a1a;
+}
+.paper .target {
+  background: var(--playhead);
+  color: #fff3ee;
+  box-shadow: 0 0 6px rgba(200, 67, 31, 0.5);
+}
+.paper .dim {
+  background: transparent;
+  color: #8a7a5a;
+  box-shadow: inset 0 0 0 1px rgba(58, 42, 26, 0.4);
+}
+
+.nums {
+  display: grid;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--num);
+}
+.nums span {
+  text-align: center;
+}
+.nums .inlay {
+  color: var(--inlay);
+}

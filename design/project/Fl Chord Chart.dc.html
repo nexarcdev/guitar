@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="position:relative;width:{{ w }}px;padding:14px 14px 12px;border-radius:3px;background:radial-gradient(120% 90% at 50% 40%, #e8d6ad 0%, #dcc492 55%, #c9ad74 100%);box-shadow:{{ shadow }};color:#3a2a1a;font-family:'Barlow',sans-serif;box-sizing:border-box">
+  <div style="position:absolute;inset:0;border-radius:3px;background:repeating-linear-gradient(0deg,rgba(80,50,10,0.05) 0 1px,transparent 1px 3px),repeating-linear-gradient(90deg,rgba(80,50,10,0.04) 0 1px,transparent 1px 5px);pointer-events:none;mix-blend-mode:multiply"></div>
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:8px">
+    <div style="font-family:'Big Shoulders Display','Barlow',sans-serif;font-weight:800;font-size:{{ nameSize }}px;line-height:1;letter-spacing:0.02em;color:#2b1d10">{{ name }}</div>
+    <div style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#6b5636;font-weight:600">{{ sub }}</div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(6,1fr);height:14px;margin:0 {{ pad }}px 2px">
+    <sc-for list="{{ heads }}" as="h" hint-placeholder-count="6">
+      <div style="text-align:center;font-size:12px;font-weight:700;line-height:14px;color:{{ h.color }}">{{ h.mark }}</div>
+    </sc-for>
+  </div>
+  <div style="position:relative;height:{{ gridH }}px;margin:0 {{ pad }}px">
+    <div style="position:absolute;left:0;right:0;top:0;height:{{ nutH }}px;background:#2b1d10;border-radius:1px"></div>
+    <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(180deg,transparent 0 calc(20% - 1.5px),#3a2a1a calc(20% - 1.5px) 20%),repeating-linear-gradient(90deg,#3a2a1a 0 1.5px,transparent 1.5px 20%);background-size:100% 100%,calc(100% + 1.5px) 100%;opacity:0.85"></div>
+    <div style="position:absolute;right:calc(100% + 6px);top:0;bottom:0;display:flex;flex-direction:column;justify-content:space-around;font-size:10px;font-weight:600;color:#6b5636;font-variant-numeric:tabular-nums;text-align:right;opacity:{{ fretNumOpacity }}">
+      <sc-for list="{{ fretNums }}" as="n" hint-placeholder-count="5"><span>{{ n }}</span></sc-for>
+    </div>
+    <sc-for list="{{ dots }}" as="d" hint-placeholder-count="3">
+      <div style="position:absolute;left:{{ d.left }}%;top:{{ d.top }}%;width:{{ dotSize }}px;height:{{ dotSize }}px;margin:-{{ dotHalf }}px 0 0 -{{ dotHalf }}px;border-radius:50%;background:{{ d.bg }};box-shadow:0 1px 2px rgba(0,0,0,0.4);display:grid;place-items:center;font-size:10px;font-weight:700;color:#efe4c8">{{ d.finger }}</div>
+    </sc-for>
+    <div style="position:absolute;left:{{ barreLeft }}%;right:{{ barreRight }}%;top:{{ barreTop }}%;height:{{ dotSize }}px;margin-top:-{{ dotHalf }}px;border-radius:999px;background:{{ barreBg }};opacity:{{ barreOpacity }};box-shadow:0 1px 2px rgba(0,0,0,0.4)"></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:180,&quot;height&quot;:220},&quot;chord&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;G&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;sub&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;major&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;frets&quot;:{&quot;editor&quot;:null,&quot;default&quot;:[3,2,0,0,0,3],&quot;tsType&quot;:&quot;number[]&quot;},&quot;fingers&quot;:{&quot;editor&quot;:null,&quot;default&quot;:[2,1,0,0,0,3],&quot;tsType&quot;:&quot;(number|string)[]&quot;},&quot;baseFret&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1,&quot;min&quot;:1,&quot;max&quot;:12,&quot;tsType&quot;:&quot;number&quot;},&quot;barre&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;width&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:150,&quot;min&quot;:90,&quot;max&quot;:320,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;flat&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Surface&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#c8431f&quot;,&quot;options&quot;:[&quot;#c8431f&quot;,&quot;#1f8c7c&quot;,&quot;#2b1d10&quot;],&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const frets = p.frets ?? [3, 2, 0, 0, 0, 3];
+    const base = p.baseFret ?? 1;
+    const fingers = p.fingers ?? [];
+    const w = p.width ?? 150;
+    const ink = p.dotColor ?? '#2b1d10';
+    const accent = p.accent ?? '#c8431f';
+    const pad = 10;
+    const cols = 6, rows = 5;
+    const gridH = Math.round((w - 28 - pad * 2) * 1.15);
+    const heads = frets.map((f) => ({ mark: f === -1 ? '×' : f === 0 ? 'o' : '', color: f === -1 ? accent : '#3a2a1a' }));
+    const dots = [];
+    frets.forEach((f, i) => {
+      if (f > 0) dots.push({ left: (i / (cols - 1)) * 100, top: ((f - 0.5) / rows) * 100, bg: ink, finger: fingers[i] ?? '' });
+    });
+    // Barre: lowest fret shared by 3+ strings spanning outer strings
+    let barreOpacity = 0, barreLeft = 0, barreRight = 0, barreTop = 0;
+    const minF = Math.min(...frets.filter((f) => f > 0));
+    const idx = frets.map((f, i) => (f === minF ? i : -1)).filter((i) => i >= 0);
+    if (p.barre && idx.length >= 3) {
+      barreOpacity = 1; barreLeft = (idx[0] / 5) * 100; barreRight = 100 - (idx[idx.length - 1] / 5) * 100; barreTop = ((minF - 0.5) / rows) * 100;
+    }
+    const dotSize = Math.round(w / 8);
+    return {
+      name: p.chord ?? 'G', sub: p.sub ?? '', w, pad, gridH, heads, dots, dotSize, dotHalf: dotSize / 2,
+      nutH: base === 1 ? 5 : 1.5, nameSize: Math.round(w / 4.6),
+      fretNums: [0, 1, 2, 3, 4].map((k) => base + k), fretNumOpacity: base === 1 ? 0 : 1,
+      barreOpacity, barreLeft, barreRight, barreTop, barreBg: ink,
+      // flat: card lies on paper, so only a hairline edge and a soft lift, no dark halo
+      shadow: p.flat ? 'inset 0 0 0 1px rgba(90,60,20,0.22),inset 0 0 18px rgba(90,60,20,0.12),0 1px 2px rgba(60,40,10,0.22)' : 'inset 0 0 0 1px rgba(90,60,20,0.25),inset 0 0 40px rgba(90,60,20,0.35),0 2px 0 rgba(0,0,0,0.35),0 10px 24px rgba(0,0,0,0.45)',
+    };
+  }
+}
+</script>
+</body>
+</html>

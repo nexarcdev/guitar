@@ -1,0 +1,52 @@
+.shown {
+  font-size: clamp(90px, 14vw, 150px);
+}
+.sub {
+  font-size: 15px;
+  color: var(--ink-2);
+  min-height: 22px;
+}
+.play {
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #5a4e46, #2e2622);
+  color: var(--ink);
+  font-size: 18px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.play:active {
+  transform: translateY(2px);
+}
+.opts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 4px;
+}
+.opt {
+  height: 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+.optName {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 19px;
+  line-height: 1;
+}
+.guitar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.guitar > span {
+  flex: 1;
+  min-width: 180px;
+}

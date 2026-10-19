@@ -1,5 +1,6 @@
 // The Studio in a real browser (web channel, fake microphone): guided calibration, the threshold
 // gauge, follow/fixed noise floor, and that controls don't move when their status text changes.
+// Also the app's real URLs: deep links, the Studio's own path, Back, and unknown paths.
 // Usage: node tests/e2e/studio.mjs <app url> (needs Playwright; PLAYWRIGHT_MODULE / CHROMIUM override)
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -76,9 +77,9 @@ try {
     await sleep(300);
     const after = await box(outputChip);
     await page.getByRole('button', { name: 'Resume listening' }).click();
-    check(before.x === after.x && before.y === after.y, `${name}: Output chip stays put when listening changes (${before.x},${before.y} then ${after.x},${after.y})`);
+    check(before.x === after.x && before.y === after.y, `${name}: Output switch stays put when listening changes (${before.x},${before.y} then ${after.x},${after.y})`);
 
-    await page.getByRole('button', { name: 'Studio', exact: true }).filter({ visible: true }).first().click();
+    await page.getByRole('link', { name: 'Studio', exact: true }).filter({ visible: true }).first().click();
     await page.getByRole('tab', { name: 'Input' }).filter({ visible: true }).first().click();
     check(await page.getByRole('slider', { name: 'Playing threshold' }).isVisible(), `${name}: input gauge with threshold handle`);
 
@@ -164,6 +165,43 @@ try {
     }
     await page.getByRole('button', { name: 'Done' }).click();
     check(!(await page.getByRole('dialog', { name: 'Studio' }).isVisible()), `${name}: Done closes the Studio`);
+    await page.close();
+  }
+
+  // Real URLs: every view is a path under the base, served directly and followed by Back.
+  {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, serviceWorkers: 'block' });
+    currentPage = page;
+    page.on('pageerror', (e) => errors.push(e.stack ?? e.message));
+    const base = new URL(appUrl).pathname;
+    const at = (path) => page.waitForFunction((p) => location.pathname === p, path, { timeout: 5000 }).then(() => true, () => false);
+    await page.goto(new URL('learn/lesson', appUrl).href);
+    await page.waitForFunction(() => document.title.includes('Fretline'), null, { timeout: 10000 }).catch(() => {});
+    check((await page.title()) === 'Lesson · Learn · Fretline', `deep link to learn/lesson (${await page.title()})`);
+
+    await page.goto(new URL('studio/sound', appUrl).href);
+    const dialog = page.getByRole('dialog', { name: 'Studio' });
+    await dialog.waitFor({ timeout: 10000 }).catch(() => {});
+    check((await dialog.isVisible()) && (await page.getByRole('tab', { name: 'Sound' }).getAttribute('aria-selected')) === 'true', 'deep link to studio/sound opens the Studio on Sound');
+    const len0 = await page.evaluate(() => history.length);
+    await page.getByRole('button', { name: 'Done' }).click();
+    const closed = await at(base + 'tuner');
+    const len1 = await page.evaluate(() => history.length);
+    check(closed && len1 === len0 && !(await dialog.isVisible()), `Done from a deep-linked Studio replaces it with ${base}tuner (history ${len0} then ${len1})`);
+
+    await page.evaluate(() => {
+      window.__sameDocument = true;
+    });
+    await page.getByRole('link', { name: 'Chords', exact: true }).click();
+    const moved = await at(base + 'chords');
+    check(moved && (await page.evaluate(() => window.__sameDocument === true)), `a nav link moves to ${base}chords without reloading`);
+    await page.goBack();
+    const back = await at(base + 'tuner');
+    check(back && (await page.getByRole('link', { name: 'Tuner', exact: true }).getAttribute('aria-current')) === 'page', 'Back returns to the tuner');
+
+    await page.goto(new URL('nope', appUrl).href);
+    await page.getByRole('region', { name: 'Not found' }).waitFor({ timeout: 10000 }).catch(() => {});
+    check(await page.getByRole('region', { name: 'Not found' }).isVisible(), 'an unknown path shows the not-found view');
     await page.close();
   }
   check(errors.length === 0, `no page errors ${errors.length ? JSON.stringify(errors.slice(0, 3)) : ''}`);

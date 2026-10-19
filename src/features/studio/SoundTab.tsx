@@ -3,7 +3,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { engine } from '../../audio/engine';
 import type { DeviceInfo } from '../../core/protocol';
 import { actions, useStore } from '../../state/store';
-import { LevelBar } from '../gauges/Gauges';
+import { LevelMeter } from '../gauges/Gauges';
+import { Button, Window } from '../../ui';
 import { Options, Section } from './Section';
 import s from './Studio.module.css';
 
@@ -49,12 +50,22 @@ export function SoundTab() {
             [false, 'Off', 'Listen only'],
           ]}
         />
-        <LevelBar kind="out" size="large" />
+        <Window surface="glass" pad="14px 16px">
+          <LevelMeter kind="out" height={22} scale={[-96, -72, -48, -24, -12, 0]} />
+        </Window>
         <div className={s.row}>
-          <button className={s.testBtn} onClick={() => { engine.resume(); engine.reference(440); }}>
+          <Button
+            variant="cream"
+            size="sm"
+            className={s.mid}
+            onClick={() => {
+              engine.resume();
+              engine.reference(440);
+            }}
+          >
             Play a test tone
-          </button>
-          <span className={s.desc} style={{ margin: 0 }}>The gauge should move. If it moves and you hear nothing, the sound is muted after it leaves Fretline.</span>
+          </Button>
+          <span className={s.hint}>The meter should move. If it moves and you hear nothing, the sound is muted after it leaves Fretline.</span>
         </div>
       </Section>
 
@@ -105,9 +116,9 @@ export function SoundTab() {
           />
           {latency !== initialLatency && (
             <div className={s.row}>
-              <button className={s.testOk} onClick={() => setTimeout(() => location.reload(), 300)}>
+              <Button variant="primary" size="sm" className={s.mid} onClick={() => setTimeout(() => location.reload(), 300)}>
                 Reload now
-              </button>
+              </Button>
             </div>
           )}
         </Section>

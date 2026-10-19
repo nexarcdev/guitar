@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yellowtail&family=Big+Shoulders+Display:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#0e0c0b;color:#efe4c8;font-family:'Barlow',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#e9a23b}a:hover{color:#f3c36a}
+button{font-family:inherit;cursor:pointer}
+@keyframes lamp{0%,100%{opacity:1}50%{opacity:.55}}
+</style>
+</helmet>
+<div style="padding:40px;display:flex;flex-direction:column;gap:12px;align-items:flex-start">
+  <div style="color:#b8a994;font-size:13px;letter-spacing:0.14em;text-transform:uppercase;font-weight:600"><span style="color:#efe4c8">Learn · lesson mock</span> · Tablet 1024×768 · locked system</div>
+  <div data-screen-label="Learn · Open chords lesson" style="width:1024px;height:768px;position:relative;overflow:hidden;background:radial-gradient(900px 520px at 12% 0%,rgba(212,68,44,0.30),transparent 65%),radial-gradient(700px 520px at 100% 100%,rgba(77,182,164,0.14),transparent 65%),#221c19;color:#efe4c8;font-family:'Barlow',sans-serif;border-radius:6px;box-shadow:0 30px 80px rgba(0,0,0,0.6)">
+    <header style="position:absolute;top:0;left:0;right:0;height:76px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;padding:0 18px;gap:clamp(6px,1.2vw,14px);background-color:#c9c4ba;background-image:repeating-linear-gradient(90deg,rgba(0,0,0,0.05) 0 1px,transparent 1px 2px),linear-gradient(180deg,#dcd8cf,#b8b3a9);box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 3px 0 #15110f">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(160deg,#d4442c 0%,#e9a23b 55%,#f0c46b 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.4),0 2px 3px rgba(0,0,0,0.45);display:grid;place-items:center"><div style="width:22px;height:22px;border-radius:4px;background:#efe4c8;background-image:repeating-linear-gradient(90deg,#1c1612 0 2px,transparent 2px 6px);background-size:18px 14px;background-position:center;background-repeat:no-repeat"></div></div>
+      <div style="font-family:'Yellowtail',cursive;font-size:clamp(22px,2.8vw,30px);line-height:1;color:#2a2420;text-shadow:0 1px 0 rgba(255,255,255,0.6)">Fretline</div>
+    </div>
+    <nav aria-label="Pages" style="display:flex;align-items:stretch;justify-content:center;gap:2px;height:76px;min-width:0">
+      <sc-for list="{{ nav }}" as="n" hint-placeholder-count="5">
+        <button onClick="{{ n.go }}" aria-current="{{ n.current }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:0 clamp(5px,1.2vw,14px);border:none;background:transparent;color:{{ n.color }};font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:clamp(13px,1.5vw,16px);letter-spacing:0.14em;text-transform:uppercase;text-shadow:0 1px 0 rgba(255,255,255,0.5)"><span style="width:30px;height:4px;border-radius:2px;background:{{ n.lamp }};box-shadow:{{ n.lampGlow }}"></span>{{ n.label }}</button>
+      </sc-for>
+    </nav>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button aria-label="Levels: open Studio input" style="width:112px;display:flex;flex-direction:column;gap:5px;padding:5px 8px;border:none;border-radius:4px;background:#1a1512;box-shadow:inset 0 1px 3px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)">
+        <dc-import name="Fl Meter" label="In" value="{{ inDb }}" peak="-16" threshold="-48" height="7" hint-size="96px,28px"></dc-import>
+        <dc-import name="Fl Meter" label="Out" value="{{ outDb }}" live="{{ output }}" height="7" hint-size="96px,28px"></dc-import>
+      </button>
+      <button title="Tuning and capo" style="height:44px;padding:0 14px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;border:none;border-radius:4px;background:#1a1512;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><span style="font-size:10px;letter-spacing:0.18em;color:#8f8272;font-weight:600">TUNING</span><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:15px;letter-spacing:0.08em;color:#e9a23b;line-height:1.1;white-space:nowrap">STANDARD · 440</span></button>
+      <div style="display:flex;gap:10px">
+        <button onClick="{{ toggleListen }}" aria-pressed="{{ listening }}" style="display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:transparent;padding:0;color:#2a2420"><span style="width:46px;height:24px;border-radius:4px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><span style="position:absolute;top:3px;left:{{ listenCap }}px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#f3ead2,#d9c69a);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6);transition:left .15s"></span><span style="position:absolute;top:9px;left:8px;width:7px;height:7px;border-radius:50%;background:{{ listenLamp }};box-shadow:{{ listenGlow }};animation:{{ listenAnim }}"></span></span><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em;text-shadow:0 1px 0 rgba(255,255,255,0.5)">LISTEN</span></button>
+        <button onClick="{{ toggleOutput }}" aria-pressed="{{ output }}" style="display:flex;flex-direction:column;align-items:center;gap:5px;border:none;background:transparent;padding:0;color:#2a2420"><span style="width:46px;height:24px;border-radius:4px;background:#1a1512;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.9),0 1px 0 rgba(255,255,255,0.5)"><span style="position:absolute;top:3px;left:{{ outputCap }}px;width:19px;height:18px;border-radius:3px;background:linear-gradient(180deg,#f3ead2,#d9c69a);box-shadow:0 1px 2px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.6);transition:left .15s"></span><span style="position:absolute;top:9px;right:8px;width:7px;height:7px;border-radius:50%;background:{{ outputLamp }};box-shadow:{{ outputGlow }}"></span></span><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:11px;letter-spacing:0.16em;text-shadow:0 1px 0 rgba(255,255,255,0.5)">OUTPUT</span></button>
+      </div>
+    </div>
+  </header>
+    <div style="position:absolute;top:79px;left:0;right:0;height:3px;background:linear-gradient(90deg,#d4442c 0%,#e9a23b 45%,#f0c46b 70%,#4db6a4 100%)"></div>
+
+    <main style="position:absolute;top:82px;bottom:46px;left:0;right:0;padding:22px;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:22px">
+      <div style="position:relative;border-radius:8px;background:#2d2622;padding:16px;box-shadow:inset 0 1px 0 rgba(255,235,210,0.09),0 2px 0 #0f0c0b,0 10px 24px rgba(0,0,0,0.35);display:flex;flex-direction:column;gap:12px;min-height:0">
+        <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #3d3733 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#2a2522 45% 55%,transparent 55%), linear-gradient(135deg,#8a8178,#3d3733);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.6)"></span>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 8px">
+          <div style="display:flex;align-items:center;gap:8px;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#b8a994"><span style="width:7px;height:7px;border-radius:50%;background:#d4442c;box-shadow:0 0 8px #d4442c;animation:lamp 1.6s ease-in-out infinite"></span>LESSON 4 · PLAYING ALONG</div>
+          <div style="display:flex;gap:2px;padding:3px;border-radius:5px;background:#0d0b0a;box-shadow:inset 0 2px 4px rgba(0,0,0,0.8)">
+            <button onClick="{{ showCharts }}" style="height:28px;padding:0 12px;border:none;border-radius:3px;background:{{ chartsBg }};color:{{ chartsColor }};font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:12px;letter-spacing:0.14em;box-shadow:{{ chartsGlow }}">CHARTS</button>
+            <button onClick="{{ showTab }}" style="height:28px;padding:0 12px;border:none;border-radius:3px;background:{{ tabBg }};color:{{ tabColor }};font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:12px;letter-spacing:0.14em;box-shadow:{{ tabGlow }}">TAB</button>
+          </div>
+        </div>
+        <div style="position:relative;flex:1;min-height:0;padding:18px 22px 16px;border-radius:3px;background:radial-gradient(120% 90% at 50% 40%,#e8d6ad 0%,#dcc492 55%,#c9ad74 100%);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.25),inset 0 0 60px rgba(90,60,20,0.4),0 2px 0 rgba(0,0,0,0.35),0 10px 24px rgba(0,0,0,0.45);color:#3a2a1a;display:flex;flex-direction:column;gap:16px;overflow:hidden">
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(80,50,10,0.05) 0 1px,transparent 1px 3px);pointer-events:none;mix-blend-mode:multiply"></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;position:relative">
+            <div><div style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#6b5636;font-weight:700">Open chords · part 2 of 3</div><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:30px;line-height:1;color:#2b1d10;margin-top:4px">G · Em · C · D</div></div>
+            <div style="text-align:right;font-size:12px;color:#6b5636;font-weight:600;line-height:1.5">Key of G · 4/4 · 72 BPM<br>One bar each, strum down on every beat</div>
+          </div>
+          <sc-if value="{{ isTab }}" hint-placeholder-val="{{ false }}">
+            <div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;gap:10px">
+              <div style="display:grid;grid-template-columns:28px repeat(16,1fr);gap:0 2px;align-items:end">
+                <span></span>
+                <sc-for list="{{ tabHeads }}" as="h" hint-placeholder-count="16">
+                  <div style="grid-column:span 4;display:flex;align-items:baseline;gap:8px;padding-left:4px;border-left:2px solid #2b1d10;height:30px"><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:24px;line-height:1;color:{{ h.color }}">{{ h.name }}</span><span style="font-size:10px;letter-spacing:0.14em;color:#6b5636;font-weight:700">{{ h.tag }}</span></div>
+                </sc-for>
+              </div>
+              <div style="position:relative;display:grid;grid-template-columns:28px repeat(16,1fr);gap:0 2px;padding:6px 0;background-image:repeating-linear-gradient(180deg,transparent 0 13px,#3a2a1a 13px 14px,transparent 14px 28px);background-size:calc(100% - 30px) 168px;background-repeat:no-repeat;background-position:30px 6px">
+                <div style="display:flex;flex-direction:column;font-size:12px;font-weight:700;color:#6b5636;line-height:28px;height:168px;padding-left:4px">
+                  <sc-for list="{{ tabStrings }}" as="s" hint-placeholder-count="6"><span>{{ s }}</span></sc-for>
+                </div>
+                <sc-for list="{{ tabCols }}" as="col" hint-placeholder-count="16">
+                  <div style="display:flex;flex-direction:column;align-items:center;height:168px;position:relative;background:{{ col.bg }};border-left:{{ col.border }}">
+                    <sc-for list="{{ col.cells }}" as="cell" hint-placeholder-count="6">
+                      <div style="height:28px;display:grid;place-items:center;width:100%"><span style="min-width:18px;height:18px;line-height:18px;padding:0 3px;text-align:center;background:#dcc492;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:16px;color:{{ cell.color }};opacity:{{ cell.opacity }}">{{ cell.f }}</span></div>
+                    </sc-for>
+                    <div style="position:absolute;left:50%;bottom:-16px;transform:translateX(-50%);font-size:12px;color:{{ col.strumColor }};font-weight:700">{{ col.strum }}</div>
+                  </div>
+                </sc-for>
+                <div style="position:absolute;top:0;bottom:0;width:3px;left:{{ tabPlayLeft }}%;margin-left:-1.5px;background:#c8431f;box-shadow:0 0 6px rgba(200,67,31,0.6)"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#6b5636;font-weight:600;margin-top:14px"><span>↓ down strum on every beat · let each chord ring into the next bar</span><span>Bar <span style="color:#c8431f">2</span> of 4 · 72 BPM</span></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isCharts }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;position:relative">
+            <sc-for list="{{ charts }}" as="c" hint-placeholder-count="4">
+              <div style="position:relative;border-radius:4px;box-shadow:{{ c.ring }};width:max-content;justify-self:center">
+                <dc-import name="Fl Chord Chart" chord="{{ c.name }}" sub="{{ c.sub }}" frets="{{ c.frets }}" fingers="{{ c.fingers }}" width="{{ chartW }}" hint-size="112px,160px"></dc-import>
+                <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);padding:2px 8px;border-radius:3px;background:{{ c.tagBg }};color:{{ c.tagColor }};font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:11px;letter-spacing:0.16em;opacity:{{ c.tagOpacity }};box-shadow:0 1px 2px rgba(0,0,0,0.4)">{{ c.tag }}</div>
+              </div>
+            </sc-for>
+          </div>
+          </sc-if>
+          <div style="position:relative;margin-top:auto">
+            <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#6b5636;margin-bottom:8px"><span>Progression · bar 2 of 4</span><span>Changes landed: <span style="color:#1f8c7c">3</span> / 4 on time</span></div>
+            <div style="position:relative;height:56px;display:grid;grid-template-columns:repeat(4,1fr);border:2px solid #2b1d10;border-radius:2px;background:rgba(255,255,255,0.12)">
+              <sc-for list="{{ bars }}" as="b" hint-placeholder-count="4">
+                <div style="position:relative;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-right:1.5px solid #3a2a1a;background:{{ b.bg }}">
+                  <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:26px;color:{{ b.color }}">{{ b.name }}</span>
+                  <span style="display:flex;gap:6px">
+                    <sc-for list="{{ b.beats }}" as="d" hint-placeholder-count="4"><span style="width:9px;height:9px;border-radius:50%;background:{{ d }}"></span></sc-for>
+                  </span>
+                </div>
+              </sc-for>
+              <div style="position:absolute;top:-6px;bottom:-6px;width:3px;left:{{ playLeft }}%;margin-left:-1.5px;background:#c8431f;box-shadow:0 0 6px rgba(200,67,31,0.6)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:22px;min-height:0">
+        <div style="position:relative;border-radius:8px;background:linear-gradient(180deg,#ebe0c6,#dccfae);padding:18px 20px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),inset 0 -1px 0 rgba(90,60,20,0.25),0 2px 0 #8e7a50,0 10px 24px rgba(0,0,0,0.4);color:#2b1d10;display:flex;flex-direction:column;gap:14px">
+          <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;padding:0 4px"><div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#8a5a12">YOUR SKILLS</div><div style="font-size:12px;color:#6b5636">Updated as you play</div></div>
+          <div style="display:flex;justify-content:space-around;padding:0 4px">
+            <dc-import name="Fl Skill Ring" label="Open chords" score="72" size="88" color="#1f8c7c" label-color="#6b5636" hint-size="100px,120px"></dc-import>
+            <dc-import name="Fl Skill Ring" label="Chord changes" score="58" size="88" color="#d9902a" label-color="#6b5636" hint-size="100px,120px"></dc-import>
+            <dc-import name="Fl Skill Ring" label="Timing" score="81" size="88" color="#1f8c7c" label-color="#6b5636" hint-size="100px,120px"></dc-import>
+          </div>
+        </div>
+        <div style="position:relative;flex:1;min-height:0;border-radius:8px;background:linear-gradient(180deg,#ebe0c6,#dccfae);padding:18px 20px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),inset 0 -1px 0 rgba(90,60,20,0.25),0 2px 0 #8e7a50,0 10px 24px rgba(0,0,0,0.4);color:#2b1d10;display:flex;flex-direction:column;gap:14px">
+          <span style="position:absolute;top:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;left:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span><span style="position:absolute;bottom:8px;right:8px;width:9px;height:9px;border-radius:50%;background:radial-gradient(circle, transparent 0 58%, #c9b990 59%) 0 0/100% 100%, linear-gradient(45deg,transparent 45%,#8e7a50 45% 55%,transparent 55%), linear-gradient(135deg,#fbf5e6,#b9a98a);box-shadow:inset 0 0 0 1px rgba(90,60,20,0.45),0 1px 0 rgba(255,255,255,0.6)"></span>
+          <div style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:14px;letter-spacing:0.18em;color:#8a5a12;padding:0 4px">PLAY ALONG</div>
+          <div style="display:flex;align-items:center;justify-content:space-around;padding:0 4px">
+            <dc-import name="Fl Knob" label="Tempo · 72" value="36" size="78" cap="cream" color="#d9902a" label-color="#6b5636" hint-size="100px,110px"></dc-import>
+            <dc-import name="Fl Knob" label="Click · 60%" value="60" size="78" cap="cream" color="#1f8c7c" label-color="#6b5636" hint-size="100px,110px"></dc-import>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px"><span style="width:38px;height:20px;border-radius:3px;background:#2d2622;position:relative;box-shadow:inset 0 2px 4px rgba(0,0,0,0.6),0 1px 0 rgba(255,255,255,0.6)"><span style="position:absolute;top:3px;left:20px;width:15px;height:14px;border-radius:2px;background:#e9a23b;box-shadow:0 0 8px rgba(233,162,59,0.6)"></span></span><span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.14em;color:#6b5636">COUNT-IN</span></div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button style="flex:1;height:50px;border:none;border-radius:6px;background:linear-gradient(180deg,#e2563d,#b8321c);color:#fff3ee;font-family:'Big Shoulders Display',sans-serif;font-weight:800;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 1px 0 rgba(255,255,255,0.3),inset 0 -2px 0 rgba(0,0,0,0.3),0 2px 0 #5a1509;display:flex;align-items:center;justify-content:center;gap:10px"><span style="width:10px;height:10px;border-radius:50%;background:#fff3ee;box-shadow:0 0 8px #fff3ee;animation:lamp 1s ease-in-out infinite"></span>STOP · 0:42</button>
+            <button style="height:50px;padding:0 18px;border-radius:6px;border:none;background:#1c1816;color:#b8a994;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:17px;letter-spacing:0.14em;box-shadow:inset 0 0 0 1px #3b322c,inset 0 1px 0 rgba(255,235,210,0.05)">SLOWER</button>
+          </div>
+          <div style="flex:1;min-height:0;border-radius:6px;background:rgba(90,60,20,0.1);box-shadow:inset 0 2px 4px rgba(90,60,20,0.25),0 1px 0 rgba(255,255,255,0.6);padding:12px 14px;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+            <div style="font-size:10px;letter-spacing:0.18em;color:#8a7a5a;font-weight:700">UP NEXT</div>
+            <sc-for list="{{ next }}" as="x" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500"><span style="width:7px;height:7px;border-radius:50%;background:{{ x.dot }};flex:none"></span><span style="color:{{ x.color }}">{{ x.title }}</span><span style="margin-left:auto;font-size:11px;color:#8a7a5a;white-space:nowrap">{{ x.meta }}</span></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer style="position:absolute;bottom:0;left:0;right:0;height:46px;display:flex;align-items:center;gap:14px;padding:0 22px;background:#0d0b0a;border-top:1px solid #0b0908;box-shadow:inset 0 1px 0 rgba(255,235,210,0.05)">
+      <span style="width:8px;height:8px;border-radius:50%;background:#4db6a4;box-shadow:0 0 8px #4db6a4"></span>
+      <span style="font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.18em;color:#4db6a4">TUTOR</span>
+      <span style="font-size:14px;color:#efe4c8">Your G → C change lands a half beat late. Keep finger 3 on the high e as a pivot and move the other two.</span>
+      <button style="margin-left:auto;height:28px;padding:0 12px;border:none;border-radius:4px;background:rgba(77,182,164,0.12);color:#4db6a4;font-family:'Big Shoulders Display',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.14em;box-shadow:inset 0 0 0 1px rgba(77,182,164,0.5)">SHOW ME</button>
+    </footer>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;view&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;charts&quot;,&quot;options&quot;:[&quot;charts&quot;,&quot;tab&quot;],&quot;tsType&quot;:&quot;'charts'|'tab'&quot;},&quot;currentBar&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0,&quot;max&quot;:3,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;},&quot;beat&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:2,&quot;min&quot;:0,&quot;max&quot;:3,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;}}">
+class Component extends DCLogic {
+  state = { view: null };
+
+  renderVals() {
+    const amber = '#e9a23b', teal = '#4db6a4', cherry = '#d4442c', ink = '#efe4c8';
+    const labels = ['Tuner', 'Chords', 'Tabs', 'Pedals', 'Learn'];
+    const nav = labels.map((label) => { const a = label === 'Learn'; return { label, current: a ? 'page' : undefined, color: a ? '#1c1612' : '#6a6157', lamp: a ? amber : '#8f8679', lampGlow: a ? `0 0 12px ${amber}, 0 0 2px ${amber}` : 'inset 0 1px 1px rgba(0,0,0,0.35)' }; });
+    const shell = { inDb: -20, outDb: -120, output: false, listening: true, listenCap: 24, listenLamp: cherry, listenGlow: `0 0 8px ${cherry}`, listenAnim: 'lamp 1.6s ease-in-out infinite', outputCap: 3, outputLamp: '#3a302a', outputGlow: 'none' };
+    const current = this.props.currentBar ?? 1;
+    const defs = [
+      { name: 'G', sub: 'major', frets: [3, 2, 0, 0, 0, 3], fingers: [2, 1, 0, 0, 0, 3] },
+      { name: 'Em', sub: 'minor', frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0] },
+      { name: 'C', sub: 'major', frets: [-1, 3, 2, 0, 1, 0], fingers: ['', 3, 2, 0, 1, 0] },
+      { name: 'D', sub: 'major', frets: [-1, -1, 0, 2, 3, 2], fingers: ['', '', 0, 1, 3, 2] },
+    ];
+    const charts = defs.map((d, i) => {
+      const now = i === current, next = i === (current + 1) % 4;
+      return { ...d, ring: now ? '0 0 0 3px #c8431f, 0 0 18px rgba(200,67,31,0.45)' : next ? '0 0 0 2px rgba(31,140,124,0.6)' : 'none', pad: 0, tag: now ? 'NOW' : next ? 'NEXT' : '', tagOpacity: now || next ? 1 : 0, tagBg: now ? '#c8431f' : '#1f8c7c', tagColor: '#f6ecd4' };
+    });
+    const beat = this.props.beat ?? 2;
+    const bars = defs.map((d, i) => {
+      const now = i === current;
+      return { name: d.name, color: now ? '#c8431f' : i < current ? '#6b5636' : '#2b1d10', bg: now ? 'rgba(200,67,31,0.12)' : 'transparent', beats: [0, 1, 2, 3].map((b) => (i < current || (now && b < beat)) ? (i === 2 && b === 0 ? '#c8431f' : '#1f8c7c') : now && b === beat ? '#c8431f' : 'rgba(58,42,26,0.25)') };
+    });
+    const playLeft = ((current + beat / 4) / 4) * 100;
+    const next = [
+      { title: 'Part 3 · Faster changes, 84 BPM', meta: '6 min', dot: amber, color: '#2b1d10' },
+      { title: 'Strumming · down-down-up-up-down-up', meta: '8 min', dot: '#b9a98a', color: '#6b5636' },
+      { title: 'Lesson 5 · Your first barre: F', meta: 'Locked at 80', dot: '#b9a98a', color: '#8a7a5a' },
+    ];
+    if (this.props.view !== this._propView) { this._propView = this.props.view; this.state.view = this.props.view ?? null; }
+    const view = this.state.view ?? 'charts';
+    const isTab = view === 'tab';
+    const tabStrings = ['e', 'B', 'G', 'D', 'A', 'E'];
+    const tabHeads = defs.map((d, i) => ({ name: d.name, color: i === current ? '#c8431f' : '#2b1d10', tag: i === current ? 'NOW' : i === (current + 1) % 4 ? 'NEXT' : '' }));
+    const tabCols = [];
+    defs.forEach((d, i) => {
+      for (let b = 0; b < 4; b++) {
+        const played = i < current || (i === current && b < beat);
+        const now = i === current && b === beat;
+        tabCols.push({
+          bg: now ? 'rgba(200,67,31,0.12)' : 'transparent', border: b === 0 ? '1px solid #3a2a1a' : 'none',
+          strum: '↓', strumColor: played ? '#1f8c7c' : now ? '#c8431f' : '#9a8a6a',
+          cells: [5, 4, 3, 2, 1, 0].map((s) => { const f = d.frets[s]; return { f: f < 0 ? '×' : String(f), color: now ? '#c8431f' : played ? '#6b5636' : '#2b1d10', opacity: b === 0 || now ? 1 : 0.45 }; }),
+        });
+      }
+    });
+    const on = { bg: '#e9a23b', color: '#1c1612', glow: '0 0 10px rgba(233,162,59,0.5)' }, off = { bg: 'transparent', color: '#b8a994', glow: 'none' };
+    const c = isTab ? off : on, t = isTab ? on : off;
+    return { ...shell, nav, charts, chartW: 112, bars, playLeft, next, isTab, isCharts: !isTab, tabStrings, tabHeads, tabCols, tabPlayLeft: 5.5 + ((current * 4 + beat + 0.5) / 16) * 94.5,
+      showCharts: () => this.setState({ view: 'charts' }), showTab: () => this.setState({ view: 'tab' }),
+      chartsBg: c.bg, chartsColor: c.color, chartsGlow: c.glow, tabBg: t.bg, tabColor: t.color, tabGlow: t.glow };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react';
+import { Button, Panel, Window } from '../../ui';
 import s from './Contained.module.css';
 
 /**
@@ -18,18 +19,21 @@ export class Contained extends Component<{ what: string; children: ReactNode }, 
     const { error } = this.state;
     if (!error) return this.props.children;
     return (
-      <div className={s.box} role="alert">
-        <div className={s.title}>{this.props.what} hit a problem and stopped</div>
-        <p className={s.desc}>The rest of Fretline is still running. Try again, or reload if this keeps happening (a reload also picks up a newer version).</p>
-        <div className={s.error}>{error.message}</div>
-        <div className={s.row}>
-          <button className={s.retry} onClick={() => this.setState({ error: null })}>
-            Try again
-          </button>
-          <button className={s.reload} onClick={() => location.reload()}>
-            Reload Fretline
-          </button>
-        </div>
+      <div role="alert">
+        <Panel title={this.props.what + ' hit a problem and stopped'} lamp="live">
+          <Window surface="glass" gap={12}>
+            <p className={s.desc}>The rest of Fretline is still running. Try again, or reload if this keeps happening (a reload also picks up a newer version).</p>
+            <div className={s.error}>{error.message}</div>
+            <div className={s.row}>
+              <Button variant="primary" size="sm" onClick={() => this.setState({ error: null })}>
+                Try again
+              </Button>
+              <Button variant="dark" size="sm" onClick={() => location.reload()}>
+                Reload Fretline
+              </Button>
+            </div>
+          </Window>
+        </Panel>
       </div>
     );
   }

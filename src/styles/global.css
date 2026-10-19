@@ -1,9 +1,17 @@
-/* Design tokens from the Claude Design handoff (design/project/Guitar App.dc.html).
-   Three hues carry meaning: red = live/recording, gold = selected/on, green = confirmed. */
+@import '@fontsource/barlow/latin-400';
+@import '@fontsource/barlow/latin-500';
+@import '@fontsource/barlow/latin-600';
+@import '@fontsource/barlow/latin-700';
+@import '@fontsource/big-shoulders-display/latin-600';
+@import '@fontsource/big-shoulders-display/latin-700';
+@import '@fontsource/big-shoulders-display/latin-800';
+@import '@fontsource/yellowtail/latin-400';
+@import './tokens.css';
+
+/* Legacy tokens: removed once every view is on the tokens in tokens.css. */
 :root {
   --bg: #140b0c;
   --bg-deep: #0f0a0b;
-  --ink: #f7efe8;
   --muted: #b9a9a3;
   --muted-2: #8f807b;
   --gold: #e9b949;
@@ -31,19 +39,19 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
+  background: var(--chassis);
   color: var(--ink);
-  font-family: var(--font);
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
 * {
   box-sizing: border-box;
 }
 a {
-  color: var(--gold);
+  color: var(--amber);
 }
 a:hover {
-  color: var(--gold-hi);
+  color: #f3c36a;
 }
 button,
 input,
@@ -57,13 +65,24 @@ input::placeholder {
   color: var(--muted-2);
 }
 :focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--amber);
   outline-offset: 2px;
 }
 
 @keyframes noteHit {
   0% { background: #e9b949; color: #140b0c; }
   100% { background: #1d1112; color: #f7efe8; }
+}
+@keyframes lamp {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@keyframes sheen {
+  0% { transform: translateX(-120%); }
+  60%, 100% { transform: translateX(620%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }
 @keyframes recPulse {
   0%, 100% { opacity: 1; }

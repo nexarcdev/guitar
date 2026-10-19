@@ -1,0 +1,32 @@
+.well {
+  --edge: var(--well-edge);
+  border-radius: 6px;
+  background-color: var(--well-bg);
+  background-image: var(--well-grain);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5), inset 0 0 0 1px var(--edge), 0 1px 0 rgba(255, 255, 255, 0.6);
+  color: var(--ink);
+}
+.active {
+  --edge: var(--amber);
+}
+.button {
+  border: none;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+}
+.button:hover:not(:disabled) {
+  background-color: #332b26;
+}
+.note {
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: var(--ivory-note);
+  box-shadow: var(--ivory-note-shadow);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ivory-ink-2);
+}
+.note strong {
+  color: var(--ivory-ink);
+}

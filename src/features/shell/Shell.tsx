@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { useStore, actions, type TabId } from '../../state/store';
+import { go } from '../../state/router';
 import { engine } from '../../audio/engine';
 import { setupStr } from '../../theory/music';
 import { Tuner } from '../tuner/Tuner';
@@ -12,13 +13,13 @@ const Chords = lazy(() => import('../chords/Chords').then((m) => ({ default: m.C
 const Tabs = lazy(() => import('../tabs/Tabs').then((m) => ({ default: m.Tabs })));
 const Pedals = lazy(() => import('../pedals/Pedals').then((m) => ({ default: m.Pedals })));
 
-const NAV: Array<[TabId, string, string]> = [
+const NAV: Array<[Exclude<TabId, 'learn'>, string, string]> = [
   ['tuner', 'Tuner', '◎'],
   ['chords', 'Chords', '⌗'],
   ['tabs', 'Tabs', '≣'],
   ['pedals', 'Pedals', '▣'],
 ];
-const TITLES: Record<TabId, string> = { tuner: 'Tuner', chords: 'Chords', tabs: 'Tab stream', pedals: 'Pedalboard' };
+const TITLES: Record<TabId, string> = { tuner: 'Tuner', chords: 'Chords', tabs: 'Tab stream', pedals: 'Pedalboard', learn: 'Learn' };
 
 export function Shell() {
   const tab = useStore((x) => x.tab);
@@ -39,12 +40,12 @@ export function Shell() {
           <div className={s.wordmark}>FRETLINE</div>
         </div>
         {NAV.map(([id, label, icon]) => (
-          <button key={id} className={s.navBtn} aria-label={label} aria-current={tab === id ? 'page' : undefined} onClick={() => actions.selectTab(id)}>
+          <button key={id} className={s.navBtn} aria-label={label} aria-current={tab === id ? 'page' : undefined} onClick={() => go.page(id)}>
             <span className={s.navIcon} aria-hidden>{icon}</span>
             <span className={s.navLabel}>{label}</span>
           </button>
         ))}
-        <button className={`${s.navBtn} ${s.settingsBtn}`} aria-label="Studio" onClick={() => actions.openStudio()}>
+        <button className={`${s.navBtn} ${s.settingsBtn}`} aria-label="Studio" onClick={() => go.studio('input')}>
           <span className={s.navIcon} aria-hidden>⚙</span>
           <span className={s.navLabel}>Studio</span>
         </button>
@@ -62,10 +63,10 @@ export function Shell() {
             <span className={s.cGauge}>
               <MiniGauges />
             </span>
-            <button className={`${s.gearChip} ${s.cGear}`} aria-label="Studio" title="Studio" onClick={() => actions.openStudio()}>
+            <button className={`${s.gearChip} ${s.cGear}`} aria-label="Studio" title="Studio" onClick={() => go.studio('input')}>
               ⚙
             </button>
-            <button className={`${s.setupChip} ${s.cSetup}`} title="Tuning and capo" onClick={() => actions.openStudio('guitar')}>
+            <button className={`${s.setupChip} ${s.cSetup}`} title="Tuning and capo" onClick={() => go.studio('guitar')}>
               <span style={{ fontSize: 15, lineHeight: 1 }} aria-hidden>♩</span>
               {setupStr(setup)}
             </button>
@@ -90,7 +91,7 @@ export function Shell() {
           </div>
         </header>
         <MicBanner />
-        <Contained key={tab} what={'The ' + NAV.find((n) => n[0] === tab)![1] + ' view'}>
+        <Contained key={tab} what={'The ' + TITLES[tab] + ' view'}>
           <Suspense fallback={null}>
             {tab === 'tuner' && <Tuner />}
             {tab === 'chords' && <Chords />}
@@ -102,7 +103,7 @@ export function Shell() {
       <Studio />
       <nav className={s.bottomNav} aria-label="Sections">
         {NAV.map(([id, label, icon]) => (
-          <button key={id} className={s.bottomBtn} aria-current={tab === id ? 'page' : undefined} onClick={() => actions.selectTab(id)}>
+          <button key={id} className={s.bottomBtn} aria-current={tab === id ? 'page' : undefined} onClick={() => go.page(id)}>
             <span className={s.navIcon} aria-hidden>{icon}</span>
             {label}
           </button>

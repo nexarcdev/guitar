@@ -1,0 +1,115 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex: none;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter 0.12s;
+}
+.btn:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(2px);
+}
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+}
+.grow {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+.md {
+  height: 46px;
+  padding: 0 18px;
+  font-size: 16px;
+}
+.lg {
+  height: 50px;
+  padding: 0 18px;
+  font-size: 17px;
+}
+.icon {
+  padding: 0;
+  aspect-ratio: 1;
+}
+.sm.icon {
+  width: 32px;
+}
+
+.primary {
+  background: linear-gradient(180deg, #f0b650, #d9902a);
+  color: #1c1612;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -2px 0 rgba(0, 0, 0, 0.25), 0 3px 0 #7a4e12;
+}
+.primary:active:not(:disabled) {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 1px 0 #7a4e12;
+}
+.dark {
+  background: linear-gradient(180deg, #3a302a, #1c1612);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 235, 210, 0.15), 0 3px 0 #0b0908;
+}
+.dark:active:not(:disabled) {
+  box-shadow: inset 0 1px 0 rgba(255, 235, 210, 0.15), 0 1px 0 #0b0908;
+}
+.danger {
+  background: linear-gradient(180deg, #e2563d, #b8321c);
+  color: #fff3ee;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -2px 0 rgba(0, 0, 0, 0.3), 0 3px 0 #5a1509;
+}
+.danger:active:not(:disabled) {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 1px 0 #5a1509;
+}
+.cream {
+  background: var(--cream);
+  color: var(--ivory-ink);
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 0 #8e7a50;
+}
+.cream:active:not(:disabled) {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 0 0 #8e7a50;
+}
+.paper {
+  background: transparent;
+  color: var(--paper-ink-2);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1.5px var(--paper-ink-3);
+}
+.paper:active:not(:disabled) {
+  transform: none;
+  background: rgba(43, 29, 16, 0.08);
+}
+.tutor {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(77, 182, 164, 0.12);
+  color: var(--teal);
+  box-shadow: inset 0 0 0 1px rgba(77, 182, 164, 0.5);
+}
+.tutor:active:not(:disabled) {
+  transform: none;
+}

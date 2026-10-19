@@ -3,6 +3,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useStore, type StudioTab } from '../../state/store';
+import { closeStudio, navigate, tabRoute } from '../../state/router';
 import { setupStr } from '../../theory/music';
 import { GuitarTab } from './GuitarTab';
 import { InputTab } from './InputTab';
@@ -27,7 +28,7 @@ export function Studio() {
   const setup = useStore((x) => x.setup);
   const done = useRef<HTMLButtonElement>(null);
   const content = useRef<HTMLDivElement>(null);
-  const close = () => useStore.setState({ setupOpen: false });
+  const close = () => closeStudio(tabRoute(useStore.getState()));
 
   useEffect(() => {
     if (!open) return;
@@ -42,7 +43,7 @@ export function Studio() {
   }, [tab]);
 
   if (!open) return null;
-  const select = (t: StudioTab) => useStore.setState({ studioTab: t });
+  const select = (t: StudioTab) => navigate({ kind: 'studio', tab: t }, { replace: true });
   const tabs = (
     <>
       {TABS.map(([id, label, icon]) => (

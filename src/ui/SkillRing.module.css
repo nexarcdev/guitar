@@ -1,0 +1,47 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+}
+.ring {
+  position: relative;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.dial {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, #1e1916, #110e0c);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+.center {
+  position: relative;
+  text-align: center;
+  line-height: 1;
+}
+.num {
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.grade {
+  margin-top: 3px;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-align: center;
+  line-height: 1.2;
+}

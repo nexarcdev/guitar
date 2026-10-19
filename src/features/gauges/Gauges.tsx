@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { engine, type LiveLevels } from '../../audio/engine';
 import { actions } from '../../state/store';
+import { go } from '../../state/router';
 import s from './Gauges.module.css';
 
 export const MIN_DB = -96;
@@ -204,7 +205,7 @@ export function LevelBar({ kind, size, editable }: BarProps) {
 /** Compact IN/OUT pair for the header; opens the Studio's Input tab. */
 export function MiniGauges() {
   return (
-    <button className={s.minis} aria-label="Levels: open Studio input" title="Guitar in and speakers out" onClick={() => actions.openStudio('input')}>
+    <button className={s.minis} aria-label="Levels: open Studio input" title="Guitar in and speakers out" onClick={() => go.studio('input')}>
       <span className={s.miniRow}>
         <span className={s.miniLabel}>IN</span>
         <LevelBar kind="in" size="mini" />
